@@ -1,0 +1,20 @@
+{
+  "name": "saa-alumni-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "St. Agnes Academy Alumni Management System - REST API (Node.js + Express + SQLite) with bcrypt password hashing.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "seed": "node scripts/seed.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "express": "^5.2.1"
+  }
+}

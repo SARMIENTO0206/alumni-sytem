@@ -1,12 +1,14 @@
 # Dependencies
 node_modules/
-.pnp
-.pnp.js
 
-# Build outputs
+# Build / runtime outputs
 dist/
 dist-ssr/
 *.local
+
+# Backend (Node.js + Express + SQLite)
+server/node_modules/
+server/data/
 
 # Logs
 logs/
