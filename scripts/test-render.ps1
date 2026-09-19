@@ -28,8 +28,20 @@ try {
     Log ('[React] dom bytes: ' + $dom.Length)
     Log ('[React] app mounted: ' + ($dom -match 'id="root"><div|auth-screen'))
     Log ('[React] login heading present: ' + ($dom -match 'Sign In'))
+    Log ('[React] school logo rendered: ' + ($dom -match 'logo\.jpeg'))
     if ($errs) { Log '[React] JS ERRORS:'; $errs | Select-Object -First 5 | ForEach-Object { Log ('    ' + $_) } }
     else { Log '[React] no JS runtime errors' }
+
+    # Brand assets + ported design system
+    $logo = Invoke-WebRequest 'http://localhost:3000/logo.jpeg' -UseBasicParsing
+    Log ('[Brand] /logo.jpeg              -> ' + $logo.StatusCode + ' (' + $logo.RawContentLength + ' bytes)')
+
+    $cssUrl = ([regex]::Match($dom, 'href="(/assets/index-[^"]+\.css)"')).Groups[1].Value
+    $css = (Invoke-WebRequest ('http://localhost:3000' + $cssUrl) -UseBasicParsing).Content
+    Log ('[Brand] brand gradient present  -> ' + ($css -match '1b1124'))
+    Log ('[Brand] Plus Jakarta Sans       -> ' + ($css -match 'Plus Jakarta Sans'))
+    Log ('[Brand] Playfair/Cinzel         -> ' + (($css -match 'Playfair Display') -and ($css -match 'Cinzel')))
+    Log ('[Brand] sidebar gradient theme  -> ' + ($css -match 'btn-gradient'))
 
     # The legacy /classic route must be gone.
     try {

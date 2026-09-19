@@ -30,12 +30,13 @@ export default function Login({ onAuthed }) {
   return (
     <div className="auth-screen">
       <div className="auth-card">
-        <div className="brand">
-          <div className="brand-mark">SAA</div>
-          <div>
-            <h1>St. Agnes Academy</h1>
-            <p className="sub">Alumni Management System</p>
+        <div className="auth-brand">
+          <div className="brand-logo brand-logo-lg pulse-brand">
+            <img src="/logo.jpeg" alt="St. Agnes Academy logo" />
           </div>
+          <h1 className="font-cinzel">ST. AGNES ACADEMY</h1>
+          <p className="brand-location">OF CALOOCAN INC.</p>
+          <p className="sub">Alumni Management System</p>
         </div>
 
         {error && <div className="error-box">{error}</div>}

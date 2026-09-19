@@ -42,7 +42,9 @@ export default function Layout({ user, view, setView, children }) {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">SAA</div>
+          <div className="brand-logo">
+            <img src="/logo.jpeg" alt="St. Agnes Academy logo" />
+          </div>
           <div>
             <h2>St. Agnes Academy</h2>
             <p>Alumni Management System</p>

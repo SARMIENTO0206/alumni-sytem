@@ -11,14 +11,17 @@ export default function Dashboard({ user }) {
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h2>Dashboard Overview</h2>
-          <p className="sub">Welcome back, {user.name} ({user.role}).</p>
+      <div className="gradient-card md">
+        <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div>
+            <span className="brand-location">Caritas et Scientia</span>
+            <h2>Welcome back, {user.name}!</h2>
+            <p>Alumni Management System overview · signed in as {user.role}.</p>
+          </div>
+          <span className="badge badge-green">
+            <i className="fa-solid fa-circle-check" /> Live data
+          </span>
         </div>
-        <span className="badge badge-green">
-          <i className="fa-solid fa-circle-check" /> Live data
-        </span>
       </div>
 
       {error && <div className="message message-error">{error}</div>}
