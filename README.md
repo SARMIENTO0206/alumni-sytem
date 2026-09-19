@@ -7,29 +7,50 @@ A full-stack Alumni Management System for St. Agnes Academy of Caloocan with a
 
 | Path                  | Description                                                                 |
 | --------------------- | --------------------------------------------------------------------------- |
-| `index.html`          | Main single-page application (home, login, dashboard, directory, events, QR-code verification) |
-| `style.css`           | Custom design system / brand styling                                        |
+| `client/`             | **React front-end (Vite)** — the primary UI, matching the manuscript stack (React + CSS) |
+| `index.html`          | Classic vanilla HTML/CSS/JS app — now served at `/classic` (kept as a fallback) |
+| `style.css`           | Design system / brand styling for the classic app                           |
 | `logo.jpeg`           | School logo asset                                                           |
-| `js/`                 | Front-end logic split into **8 modular JS files** (replaces the old 2,650-line monolith) |
-| `server/`             | **Node.js + Express + SQLite REST API** (39 endpoints) with **bcrypt** password hashing + **OpenAI API** chat/compose endpoints |
-| `scripts/`            | Dev utilities: `test-api.ps1` smoke test, `split-modules.ps1` refactor tool |
+| `js/`                 | Classic front-end logic, split into 8 modular JS files                      |
+| `server/`             | **Node.js + Express + SQLite REST API** with **bcrypt** hashing + OpenAI API endpoints |
+| `scripts/`            | Dev/test utilities (`test-frontends.ps1`, `test-render.ps1`, `test-api.ps1`, `extract-docx.ps1`) |
 
-### Front-end modules (`js/`)
+## 🧩 Technology stack (per project manuscript)
 
-| File           | Responsibility                                                    |
-| -------------- | ----------------------------------------------------------------- |
-| `config.js`    | Global state + seed data (loaded first)                           |
-| `api.js`       | REST client (`SAA_API`): health probe, auth headers, error handling |
-| `utils.js`     | Toast notifications, localStorage sync                            |
-| `auth.js`      | Login/registration (bcrypt via API), roles, session handling      |
-| `navigation.js`| View router, counters, digital ID, profile, page navigation       |
-| `records.js`   | Alumni database, transcripts, reprints, placements, academic records |
-| `engagement.js`| Events, reunions, donations, resume, notifications engine, newsletter, feedback, assistant chat |
-| `reports.js`   | Graduate tracking, CHED tracer study, charts, registrar workflow, initialization |
+| Layer      | Manuscript (`DOCU-CHAPT-1-3`, `B.1 Project Charter`) | Implemented as |
+| ---------- | ---------------------------------------------------- | -------------- |
+| Frontend   | **React + CSS**                                       | `client/` (React 19 + Vite + hand-written CSS) |
+| Backend    | **Node.js** (RESTful APIs)                            | `server/` (Express 5) |
+| Database   | Supabase / **PostgreSQL**                             | SQLite (`node:sqlite`) — same REST surface; swap-in ready* |
+| Auth       | Supabase Auth                                         | **bcrypt** + bearer-token sessions |
+| AI / comms | OpenAI API, Gmail, SMS                                | `POST /api/ai/assistant`, `/api/ai/compose-announcement`, notification log |
+
+\* The manuscripts target Supabase/PostgreSQL. The API layer is written so the
+storage engine can be swapped; the current runnable build uses the embedded
+SQLite driver so the project runs with **zero external services**.
+
+### Front-end modules
+
+| File                              | Responsibility |
+| --------------------------------- | -------------- |
+| `client/src/App.jsx`              | Auth gate + view switching |
+| `client/src/api.js`               | REST client, session handling, domain APIs |
+| `client/src/styles.css`           | Brand design system |
+| `client/src/components/Layout.jsx`| Role-based sidebar/navigation shell |
+| `client/src/pages/Login.jsx`      | bcrypt-backed sign-in |
+| `client/src/pages/Dashboard.jsx`  | Live roll-up stats from the API |
+| `client/src/pages/AlumniDatabase.jsx` | Alumni CRUD (admin) / read-only for registrar |
+| `client/src/pages/Transcripts.jsx`| Request filing + registrar approval workflow |
+| `client/src/pages/Tracking.jsx`   | Graduate tracking KPIs, employment updates, CHED export |
+| `client/src/pages/Events.jsx`     | Events + RSVP |
+
+### Classic modules (`js/`, served at `/classic`)
+
+`config`, `api`, `utils`, `auth`, `navigation`, `records`, `engagement`, `reports`.
 
 ## 🚀 Quick start
 
-The backend serves the site **and** the API on the same port.
+### 1. Backend (serves the API **and** both front-ends)
 
 ```bash
 cd server
@@ -37,7 +58,26 @@ npm install
 npm start          # => http://localhost:3000
 ```
 
-Open **http://localhost:3000** in your browser.
+### 2. Build the React front-end (once)
+
+```bash
+cd client
+npm install
+npm run build      # outputs client/dist, served by Express at /
+```
+
+Open **http://localhost:3000** → React front-end.
+The classic app remains available at **http://localhost:3000/classic**.
+
+### Optional: React dev server with hot reload
+
+```bash
+cd client
+npm run dev        # => http://localhost:5173  (proxies /api to :3000)
+```
+
+> If `client/dist` is missing, the server automatically falls back to serving
+> the classic app at `/` so the project always runs.
 
 ### Demo accounts
 
@@ -67,10 +107,12 @@ Base URL: `http://localhost:3000/api` (bcrypt-hashed auth via `Authorization: Be
 - **Reports:** `GET /reports/summary`, `GET /reports/registrar`, `GET /reports/tracer-study`, `GET /reports/tracer-study/download`
 - **AI / OpenAI:** `POST /ai/assistant`, `POST /ai/compose-announcement`
 
-Run the smoke test to verify everything:
+Run the smoke tests to verify everything:
 
 ```bash
-powershell -ExecutionPolicy Bypass -File scripts/test-api.ps1
+powershell -ExecutionPolicy Bypass -File scripts/test-api.ps1         # 39 API endpoints
+powershell -ExecutionPolicy Bypass -File scripts/test-frontends.ps1   # / vs /classic routing
+powershell -ExecutionPolicy Bypass -File scripts/test-render.ps1      # headless render (no JS errors)
 ```
 
 ## 🤖 OpenAI API — Automated Text Message Flows & AI Assistant

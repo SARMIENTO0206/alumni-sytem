@@ -1,6 +1,7 @@
 import express from 'express';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import { initDb } from './src/db.js';
 import { requireAuth } from './src/auth.js';
 import authRoutes from './src/routes/auth.js';
@@ -40,8 +41,32 @@ app.use('/api/reports', requireAuth, reportsRoutes);
 app.use('/api', requireAuth, documentsRoutes);      // /transcripts, /reprints, /placements
 app.use('/api', requireAuth, engagementRoutes);     // /events, /reunions, /donations, /newsletters, /feedback, /notifications
 
-/* Serve the SPA (index.html + js/ + style.css + logo.jpeg). */
-app.use(express.static(PROJECT_ROOT, { index: 'index.html' }));
+/* ------------------------------- Front-ends ------------------------------
+ * `/`        -> React front-end (client/dist, built with Vite) when available,
+ *               otherwise the classic vanilla app.
+ * `/classic` -> original HTML/CSS/JS app (index.html + js/ + style.css).
+ * Source folders (server/, client/) are never exposed through /classic.
+ * ------------------------------------------------------------------------- */
+const CLIENT_DIST = join(PROJECT_ROOT, 'client', 'dist');
+const hasReactBuild = existsSync(join(CLIENT_DIST, 'index.html'));
+
+app.use(
+  '/classic',
+  (req, res, next) => {
+    if (/^\/(server|client)(\/|$)/.test(req.path)) return res.status(404).end();
+    next();
+  },
+  express.static(PROJECT_ROOT, { index: 'index.html' })
+);
+
+if (hasReactBuild) {
+  app.use(express.static(CLIENT_DIST, { index: 'index.html' }));
+  app.get('/', (req, res) => res.sendFile(join(CLIENT_DIST, 'index.html')));
+  console.log('  React front-end detected (client/dist) -> served at /');
+} else {
+  app.use(express.static(PROJECT_ROOT, { index: 'index.html' }));
+  console.log('  No React build found (run: cd client && npm run build) -> serving classic app at /');
+}
 
 app.use((err, req, res, next) => {
   console.error('[api] Unhandled error:', err);

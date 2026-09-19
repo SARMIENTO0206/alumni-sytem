@@ -1,0 +1,20 @@
+{
+  "name": "saa-alumni-client",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "St. Agnes Academy Alumni Management System - React front-end (matches the manuscript tech stack: React + CSS, Node.js backend, RESTful APIs).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.0",
+    "vite": "^8.2.2"
+  }
+}
