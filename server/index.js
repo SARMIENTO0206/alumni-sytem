@@ -1,7 +1,6 @@
 import express from 'express';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
 import { initDb } from './src/db.js';
 import { requireAuth } from './src/auth.js';
 import authRoutes from './src/routes/auth.js';
@@ -41,23 +40,8 @@ app.use('/api/reports', requireAuth, reportsRoutes);
 app.use('/api', requireAuth, documentsRoutes);      // /transcripts, /reprints, /placements
 app.use('/api', requireAuth, engagementRoutes);     // /events, /reunions, /donations, /newsletters, /feedback, /notifications
 
-/* ------------------------------- Front-end -------------------------------
- * The React application (client/dist, built with Vite) is the UI.
- * Build it with:  cd client && npm install && npm run build
- * ------------------------------------------------------------------------ */
-const CLIENT_DIST = join(PROJECT_ROOT, 'client', 'dist');
-const hasClientBuild = existsSync(join(CLIENT_DIST, 'index.html'));
-
-if (hasClientBuild) {
-  app.use(express.static(CLIENT_DIST, { index: 'index.html' }));
-} else {
-  app.get('/', (req, res) => {
-    res
-      .status(503)
-      .type('html')
-      .send('<h1>Front-end not built</h1><p>Run <code>cd client &amp;&amp; npm install &amp;&amp; npm run build</code>, then restart the server.</p>');
-  });
-}
+/* Serve the SPA (index.html + js/ + style.css + logo.jpeg). */
+app.use(express.static(PROJECT_ROOT, { index: 'index.html' }));
 
 app.use((err, req, res, next) => {
   console.error('[api] Unhandled error:', err);

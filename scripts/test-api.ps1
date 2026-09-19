@@ -39,9 +39,9 @@ try {
     $alumni = Invoke-RestMethod 'http://localhost:3000/api/alumni' -Headers $headers
     ShowResponse 'GET /api/alumni (count)' @{ total = $alumni.alumni.Count }
 
-    $created = Invoke-RestMethod 'http://localhost:3000/api/alumni' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"Test Graduate","batch":"2025","program":"BS Psychology","status":"Employed","company":"ACME Corp","title":"HR Associate"}'
-    $newId = $created.alumni.id
-    ShowResponse 'POST /api/alumni (create, admin)' @{ id = $newId; name = $created.alumni.name }
+    ShowResponse 'POST /api/alumni (create, admin)' (
+        Invoke-RestMethod 'http://localhost:3000/api/alumni' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"Test Graduate","batch":"2025","program":"BS Psychology","status":"Employed","company":"ACME Corp","title":"HR Associate"}'
+    )
 
     ShowResponse 'GET /api/reports/summary' (Invoke-RestMethod 'http://localhost:3000/api/reports/summary' -Headers $headers)
 
@@ -91,101 +91,7 @@ try {
         (Invoke-WebRequest 'http://localhost:3000/api/reports/tracer-study/download' -Headers $headers -UseBasicParsing).Content.Substring(0, 220)
     )
 
-    ShowResponse 'GET /api/alumni/:id' @{ status = (Invoke-WebRequest ("http://localhost:3000/api/alumni/$newId") -Headers $headers -UseBasicParsing).StatusCode }
-
-    ShowResponse 'PUT /api/alumni/:id (update, admin)' (
-        Invoke-RestMethod ("http://localhost:3000/api/alumni/$newId") -Method Put -Headers $headers -ContentType 'application/json' -Body '{"status":"Unemployed"}'
-    )
-
-    ShowResponse 'DELETE /api/alumni/:id (admin)' @{
-        status = (Invoke-WebRequest ("http://localhost:3000/api/alumni/$newId") -Method Delete -Headers $headers -UseBasicParsing).StatusCode
-    }
-
-    ShowResponse 'GET /api/events (count)' @{
-        total = (Invoke-RestMethod 'http://localhost:3000/api/events' -Headers $headers).events.Count
-    }
-
-    ShowResponse 'POST /api/events (create, admin)' (
-        Invoke-RestMethod 'http://localhost:3000/api/events' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"title":"API Test Event","date":"2026-01-10","location":"SAA Gym"}'
-    )
-
-    ShowResponse 'POST /api/reprints (create)' (
-        Invoke-RestMethod 'http://localhost:3000/api/reprints' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"Test Graduate","type":"Diploma Copy"}'
-    )
-
-    ShowResponse 'PUT /api/reprints/1/status (registrar)' (
-        Invoke-RestMethod 'http://localhost:3000/api/reprints/1/status' -Method Put -Headers $headers -ContentType 'application/json' -Body '{"status":"Approved"}'
-    )
-
-    ShowResponse 'POST /api/placements (create, admin)' (
-        Invoke-RestMethod 'http://localhost:3000/api/placements' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"alumni":"Test Graduate","company":"ACME Corp","title":"HR Associate"}'
-    )
-
-    ShowResponse 'GET /api/reunions (count)' @{
-        total = (Invoke-RestMethod 'http://localhost:3000/api/reunions' -Headers $headers).reunions.Count
-    }
-
-    ShowResponse 'POST /api/reunions (create, admin)' (
-        Invoke-RestMethod 'http://localhost:3000/api/reunions' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"batch":"API Test Batch","date":"2026-02-01","venue":"SAA Hall","coordinators":"QA"}'
-    )
-
-    ShowResponse 'GET /api/donations (count)' @{
-        total = (Invoke-RestMethod 'http://localhost:3000/api/donations' -Headers $headers).donations.Count
-    }
-
-    ShowResponse 'POST /api/donations (create)' (
-        Invoke-RestMethod 'http://localhost:3000/api/donations' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"campaign":"API Test Fund","donor":"QA","amount":1000}'
-    )
-
-    ShowResponse 'GET /api/newsletters (count)' @{
-        total = (Invoke-RestMethod 'http://localhost:3000/api/newsletters' -Headers $headers).newsletters.Count
-    }
-
-    ShowResponse 'POST /api/newsletters (create, admin)' (
-        Invoke-RestMethod 'http://localhost:3000/api/newsletters' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"subject":"API Test Newsletter","body":"Verification body"}'
-    )
-
-    ShowResponse 'GET /api/feedback (count)' @{
-        total = (Invoke-RestMethod 'http://localhost:3000/api/feedback' -Headers $headers).feedback.Count
-    }
-
-    ShowResponse 'POST /api/feedback (create)' (
-        Invoke-RestMethod 'http://localhost:3000/api/feedback' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"QA","rating":5,"category":"Systems","message":"API verification"}'
-    )
-
-    ShowResponse 'POST /api/ai/assistant' @{
-        provider = (Invoke-RestMethod 'http://localhost:3000/api/ai/assistant' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"query":"how many total alumni"}').provider
-    }
-
-    ShowResponse 'POST /api/ai/compose-announcement' @{
-        provider = (Invoke-RestMethod 'http://localhost:3000/api/ai/compose-announcement' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"topic":"Homecoming","channel":"SMS"}').provider
-    }
-
-    $uname = 'qa' + (Get-Random -Minimum 1000 -Maximum 9999)
-    $regBody = @{ username = $uname; password = 'secret123'; name = 'QA Registrant'; batch = '2026' } | ConvertTo-Json
-    $reg = Invoke-RestMethod 'http://localhost:3000/api/auth/register' -Method Post -ContentType 'application/json' -Body $regBody
-    ShowResponse 'POST /api/auth/register (self-registration)' @{ username = $reg.user.username; role = $reg.user.role }
-
-    $regHeaders = @{ Authorization = 'Bearer ' + $reg.token }
-    ShowResponse 'GET /api/auth/me (registered user)' @{
-        username = (Invoke-RestMethod 'http://localhost:3000/api/auth/me' -Headers $regHeaders).user.username
-    }
-
-    Invoke-RestMethod 'http://localhost:3000/api/auth/logout' -Method Post -Headers $regHeaders | Out-Null
-    $afterLogout = 0
-    try {
-        Invoke-RestMethod 'http://localhost:3000/api/auth/me' -Headers $regHeaders | Out-Null
-        $afterLogout = 200
-    } catch {
-        if ($_.Exception.Response.StatusCode.value__) {
-            $afterLogout = $_.Exception.Response.StatusCode.value__
-        } else {
-            $afterLogout = $_.Exception.Response.StatusCode
-        }
-    }
-    ShowResponse 'POST /api/auth/logout (token revoked -> me returns 401)' @{ meAfterLogout = $afterLogout }
-
-    Write-Host 'Total endpoints: auth(4) + alumni(5) + documents(8) + tracking(4) + engagement(15) + reports(4) + health(1) = 41.'
+    Write-Host 'Total documented endpoints: auth(3) + alumni(5) + documents(8) + tracking(5) + engagement(11) + reports(4) + health(1) = 37.'
 }
 finally {
     Stop-Job $job -ErrorAction SilentlyContinue

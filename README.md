@@ -1,64 +1,35 @@
 # St. Agnes Academy of Caloocan — Alumni Management System
 
-A full-stack Alumni Management System for St. Agnes Academy of Caloocan:
-a **React front-end** (`client/`) and a **Node.js + Express + SQLite REST API** (`server/`).
+A full-stack Alumni Management System for St. Agnes Academy of Caloocan with a
+**Node.js + Express + SQLite API backend** and a **modular JavaScript front-end**.
 
 ## ✨ What's inside
 
-| Path       | Description |
-| ---------- | ----------- |
-| `client/`  | **React front-end (Vite + hand-written CSS)** — the application UI |
-| `server/`  | **Node.js + Express + SQLite REST API** — 41 endpoints, bcrypt hashing, OpenAI API routes |
-| `scripts/` | Verification scripts (`run-check.ps1`, `test-api.ps1`, `test-render.ps1`) |
+| Path                  | Description                                                                 |
+| --------------------- | --------------------------------------------------------------------------- |
+| `index.html`          | Main single-page application (home, login, dashboard, directory, events, QR-code verification) |
+| `style.css`           | Custom design system / brand styling                                        |
+| `logo.jpeg`           | School logo asset                                                           |
+| `js/`                 | Front-end logic split into **8 modular JS files** (replaces the old 2,650-line monolith) |
+| `server/`             | **Node.js + Express + SQLite REST API** (39 endpoints) with **bcrypt** password hashing + **OpenAI API** chat/compose endpoints |
+| `scripts/`            | Dev utilities: `test-api.ps1` smoke test, `split-modules.ps1` refactor tool |
 
-## 🧩 Technology stack (per project manuscript)
+### Front-end modules (`js/`)
 
-| Layer      | Manuscript (`DOCU-CHAPT-1-3`, `B.1 Project Charter`) | Implemented as |
-| ---------- | ---------------------------------------------------- | -------------- |
-| Frontend   | **React + CSS**                                       | `client/` (React 19 + Vite + hand-written CSS) |
-| Backend    | **Node.js** (RESTful APIs)                            | `server/` (Express 5) |
-| Database   | Supabase / **PostgreSQL**                             | SQLite (`node:sqlite`) — same REST surface; swap-in ready* |
-| Auth       | Supabase Auth                                         | **bcrypt** + bearer-token sessions |
-| AI / comms | OpenAI API, Gmail, SMS                                | `POST /api/ai/assistant`, `/api/ai/compose-announcement`, notification log |
-
-\* The manuscripts target Supabase/PostgreSQL. The API layer is written so the
-storage engine can be swapped; the current runnable build uses the embedded
-SQLite driver so the project runs with **zero external services**.
-
-### Front-end modules
-
-| File                              | Responsibility |
-| --------------------------------- | -------------- |
-| `client/src/App.jsx`              | Auth gate + view switching |
-| `client/src/api.js`               | REST client, session handling, domain APIs |
-| `client/src/styles.css`           | Brand design system |
-| `client/src/components/Layout.jsx`| Role-based sidebar/navigation shell |
-| `client/src/pages/Login.jsx`      | bcrypt-backed sign-in |
-| `client/src/pages/Dashboard.jsx`  | Live roll-up stats from the API |
-| `client/src/pages/AlumniDatabase.jsx` | Alumni CRUD (admin) / read-only for registrar |
-| `client/src/pages/Transcripts.jsx`| Request filing + registrar approval workflow |
-| `client/src/pages/Tracking.jsx`   | Graduate tracking KPIs, employment updates, CHED export |
-| `client/src/pages/Events.jsx`     | Events + RSVP |
-
-**UI coverage:** the React interface currently implements Login, Dashboard,
-Alumni Database, Transcript Requests, Graduate Tracking (with the CHED export)
-and Events. The remaining REST endpoints below (reprints, reunions, donations,
-newsletters, feedback, notifications, AI assistant/compose, registrar reporting)
-are API-only until their React views are added.
+| File           | Responsibility                                                    |
+| -------------- | ----------------------------------------------------------------- |
+| `config.js`    | Global state + seed data (loaded first)                           |
+| `api.js`       | REST client (`SAA_API`): health probe, auth headers, error handling |
+| `utils.js`     | Toast notifications, localStorage sync                            |
+| `auth.js`      | Login/registration (bcrypt via API), roles, session handling      |
+| `navigation.js`| View router, counters, digital ID, profile, page navigation       |
+| `records.js`   | Alumni database, transcripts, reprints, placements, academic records |
+| `engagement.js`| Events, reunions, donations, resume, notifications engine, newsletter, feedback, assistant chat |
+| `reports.js`   | Graduate tracking, CHED tracer study, charts, registrar workflow, initialization |
 
 ## 🚀 Quick start
 
-### 1. Install & build the React front-end
-
-**Requirements:** Node.js **≥ 22.5** (the API uses the built-in `node:sqlite` module; developed on Node 24).
-
-```bash
-cd client
-npm install
-npm run build      # outputs client/dist, served by Express at /
-```
-
-### 2. Start the server (serves the API **and** the built UI)
+The backend serves the site **and** the API on the same port.
 
 ```bash
 cd server
@@ -68,22 +39,6 @@ npm start          # => http://localhost:3000
 
 Open **http://localhost:3000** in your browser.
 
-### Optional: React dev server with hot reload
-
-```bash
-cd client
-npm run dev        # => http://localhost:5173  (proxies /api to :3000)
-```
-
-> If `client/dist` is missing the server responds with a reminder to run the
-> build; the API at `/api/*` works regardless.
-
-### Verify the setup
-
-```bash
-powershell -ExecutionPolicy Bypass -File scripts/run-check.ps1   # starts the server, checks the UI + login, then stops it
-```
-
 ### Demo accounts
 
 | Role      | Username    | Password      |
@@ -92,8 +47,10 @@ powershell -ExecutionPolicy Bypass -File scripts/run-check.ps1   # starts the se
 | Alumni    | `alumni`    | `alumni123`   |
 | Registrar | `registrar` | `registrar123`|
 
-Passwords are stored and verified **server-side as bcrypt hashes**; credentials
-are seeded into the database on first run and are never persisted in the client.
+Passwords are verified server-side with **bcrypt** hashes. The demo credentials
+above are only duplicated in `js/config.js` as an **offline fallback** (they are
+never persisted to localStorage). If the API isn't running you can still explore
+the UI in "demo mode" by opening `index.html` directly from disk.
 
 ## 🔌 API
 
@@ -110,18 +67,18 @@ Base URL: `http://localhost:3000/api` (bcrypt-hashed auth via `Authorization: Be
 - **Reports:** `GET /reports/summary`, `GET /reports/registrar`, `GET /reports/tracer-study`, `GET /reports/tracer-study/download`
 - **AI / OpenAI:** `POST /ai/assistant`, `POST /ai/compose-announcement`
 
-Run the verification scripts:
+Run the smoke test to verify everything:
 
 ```bash
-powershell -ExecutionPolicy Bypass -File scripts/test-api.ps1      # all 41 API endpoints
-powershell -ExecutionPolicy Bypass -File scripts/test-render.ps1   # headless render of the React UI
+powershell -ExecutionPolicy Bypass -File scripts/test-api.ps1
 ```
 
 ## 🤖 OpenAI API — Automated Text Message Flows & AI Assistant
 
-The AI endpoints implement the automated text-message / announcement flow: they
-call OpenAI's `chat/completions` API when a key is configured, and otherwise fall
-back to a built-in response engine that reads the live database.
+The **Agnesian AI Assistant** (chat window) and the newsletter composer's
+**AI Compose** button talk to these endpoints. They call OpenAI's
+`chat/completions` API when a key is configured, and otherwise fall back to a
+built-in intelligent response engine that reads the live database.
 
 - `POST /api/ai/assistant` — natural-language queries (`{ "query": "..." }`)
 - `POST /api/ai/compose-announcement` — drafts SMS/newsletter copy (`{ "topic": "...", "channel": "SMS|Newsletter" }`)
