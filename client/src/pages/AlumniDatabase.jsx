@@ -3,6 +3,9 @@ import { alumniApi } from '../api.js';
 
 const EMPTY = { name: '', batch: '', program: '', status: 'Employed', company: '', title: '', contact: '', studentId: '' };
 
+/** Maps an employment status to its CSS pill class (e.g. "Further Studies" -> status-FurtherStudies). */
+const statusClass = (status) => `status-${String(status || '').replace(/\s+/g, '')}`;
+
 export default function AlumniDatabase({ user }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +77,7 @@ export default function AlumniDatabase({ user }) {
       <div className="page-header">
         <div>
           <h2>Alumni Database</h2>
-          <p className="sub">Registered alumni records — served from the Express + SQLite API.</p>
+          <p className="sub">Registered alumni records and employment outcomes.</p>
         </div>
         {canEdit && (
           <button className="btn btn-primary" style={{ width: 'auto' }} onClick={startCreate}>
@@ -160,7 +163,7 @@ export default function AlumniDatabase({ user }) {
                 </td>
                 <td>{r.batch}</td>
                 <td>{r.program}</td>
-                <td><span className={`status-pill status-${(r.status || '').replace(' ', '')}`}>{r.status}</span></td>
+                <td><span className={`status-pill ${statusClass(r.status)}`}>{r.status}</span></td>
                 <td>{r.company || '—'}</td>
                 {(canEdit || user.role === 'registrar') && (
                   <td>

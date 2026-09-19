@@ -311,6 +311,7 @@ table.data tr:hover td { background: #faf8f5; }
 .status-Employed { background: #ecfdf5; color: #047857; }
 .status-Unemployed { background: #fef2f2; color: #b91c1c; }
 .status-Freelance { background: #eef2ff; color: #4338ca; }
+.status-FurtherStudies { background: #f5f3ff; color: #6d28d9; }
 
 .message { padding: 14px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; }
 .message-success { background: #ecfdf5; border: 1px solid #a7e3c1; color: #065f46; }

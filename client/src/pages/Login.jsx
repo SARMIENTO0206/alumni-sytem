@@ -34,7 +34,7 @@ export default function Login({ onAuthed }) {
           <div className="brand-mark">SAA</div>
           <div>
             <h1>St. Agnes Academy</h1>
-            <p className="sub">Alumni Management System — React Frontend</p>
+            <p className="sub">Alumni Management System</p>
           </div>
         </div>
 
@@ -72,7 +72,7 @@ export default function Login({ onAuthed }) {
         </form>
 
         <div className="demo-hint">
-          Demo accounts (bcrypt-verified by the backend):
+          Demo accounts:
           <br />
           <button type="button" className="btn btn-secondary btn-sm mt" onClick={() => fillDemo('admin', 'admin123')}>Admin</button>{' '}
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => fillDemo('alumni', 'alumni123')}>Alumni</button>{' '}

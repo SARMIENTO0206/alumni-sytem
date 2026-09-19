@@ -16,8 +16,8 @@ export default function Dashboard({ user }) {
           <h2>Dashboard Overview</h2>
           <p className="sub">Welcome back, {user.name} ({user.role}).</p>
         </div>
-        <span className="badge badge-magenta">
-          <i className="fa-solid fa-wifi mr-1" /> Express + SQLite API
+        <span className="badge badge-green">
+          <i className="fa-solid fa-circle-check" /> Live data
         </span>
       </div>
 
@@ -51,11 +51,9 @@ export default function Dashboard({ user }) {
 
           <div className="grid grid-3 mt">
             <div className="card">
-              <h3 style={{ marginTop: 0 }}>Donations</h3>
-              <p style={{ fontSize: 26, fontWeight: 800, margin: '6px 0' }}>
-                ₱ {Number(data.donations * 12500).toLocaleString()}
-              </p>
-              <p className="sub" style={{ margin: 0 }}>{data.donations} donation records</p>
+              <h3 style={{ marginTop: 0 }}>Donation Records</h3>
+              <p style={{ fontSize: 26, fontWeight: 800, margin: '6px 0' }}>{data.donations}</p>
+              <p className="sub" style={{ margin: 0 }}>recorded contributions</p>
             </div>
             <div className="card">
               <h3 style={{ marginTop: 0 }}>Newsletters</h3>
@@ -72,8 +70,7 @@ export default function Dashboard({ user }) {
       )}
 
       <p className="footer-note">
-        St. Agnes Academy of Caloocan — React frontend, Node.js (Express) REST API,
-        SQLite persistence. Data is served through protected endpoints.
+        St. Agnes Academy of Caloocan — Alumni Management System
       </p>
     </div>
   );

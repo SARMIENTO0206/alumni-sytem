@@ -41,31 +41,22 @@ app.use('/api/reports', requireAuth, reportsRoutes);
 app.use('/api', requireAuth, documentsRoutes);      // /transcripts, /reprints, /placements
 app.use('/api', requireAuth, engagementRoutes);     // /events, /reunions, /donations, /newsletters, /feedback, /notifications
 
-/* ------------------------------- Front-ends ------------------------------
- * `/`        -> React front-end (client/dist, built with Vite) when available,
- *               otherwise the classic vanilla app.
- * `/classic` -> original HTML/CSS/JS app (index.html + js/ + style.css).
- * Source folders (server/, client/) are never exposed through /classic.
- * ------------------------------------------------------------------------- */
+/* ------------------------------- Front-end -------------------------------
+ * The React application (client/dist, built with Vite) is the UI.
+ * Build it with:  cd client && npm install && npm run build
+ * ------------------------------------------------------------------------ */
 const CLIENT_DIST = join(PROJECT_ROOT, 'client', 'dist');
-const hasReactBuild = existsSync(join(CLIENT_DIST, 'index.html'));
+const hasClientBuild = existsSync(join(CLIENT_DIST, 'index.html'));
 
-app.use(
-  '/classic',
-  (req, res, next) => {
-    if (/^\/(server|client)(\/|$)/.test(req.path)) return res.status(404).end();
-    next();
-  },
-  express.static(PROJECT_ROOT, { index: 'index.html' })
-);
-
-if (hasReactBuild) {
+if (hasClientBuild) {
   app.use(express.static(CLIENT_DIST, { index: 'index.html' }));
-  app.get('/', (req, res) => res.sendFile(join(CLIENT_DIST, 'index.html')));
-  console.log('  React front-end detected (client/dist) -> served at /');
 } else {
-  app.use(express.static(PROJECT_ROOT, { index: 'index.html' }));
-  console.log('  No React build found (run: cd client && npm run build) -> serving classic app at /');
+  app.get('/', (req, res) => {
+    res
+      .status(503)
+      .type('html')
+      .send('<h1>Front-end not built</h1><p>Run <code>cd client &amp;&amp; npm install &amp;&amp; npm run build</code>, then restart the server.</p>');
+  });
 }
 
 app.use((err, req, res, next) => {

@@ -1,19 +1,15 @@
 # St. Agnes Academy of Caloocan — Alumni Management System
 
-A full-stack Alumni Management System for St. Agnes Academy of Caloocan with a
-**Node.js + Express + SQLite API backend** and a **modular JavaScript front-end**.
+A full-stack Alumni Management System for St. Agnes Academy of Caloocan:
+a **React front-end** (`client/`) and a **Node.js + Express + SQLite REST API** (`server/`).
 
 ## ✨ What's inside
 
-| Path                  | Description                                                                 |
-| --------------------- | --------------------------------------------------------------------------- |
-| `client/`             | **React front-end (Vite)** — the primary UI, matching the manuscript stack (React + CSS) |
-| `index.html`          | Classic vanilla HTML/CSS/JS app — now served at `/classic` (kept as a fallback) |
-| `style.css`           | Design system / brand styling for the classic app                           |
-| `logo.jpeg`           | School logo asset                                                           |
-| `js/`                 | Classic front-end logic, split into 8 modular JS files                      |
-| `server/`             | **Node.js + Express + SQLite REST API** with **bcrypt** hashing + OpenAI API endpoints |
-| `scripts/`            | Dev/test utilities (`test-frontends.ps1`, `test-render.ps1`, `test-api.ps1`, `extract-docx.ps1`) |
+| Path       | Description |
+| ---------- | ----------- |
+| `client/`  | **React front-end (Vite + hand-written CSS)** — the application UI |
+| `server/`  | **Node.js + Express + SQLite REST API** — 41 endpoints, bcrypt hashing, OpenAI API routes |
+| `scripts/` | Verification scripts (`test-api.ps1`, `test-render.ps1`) |
 
 ## 🧩 Technology stack (per project manuscript)
 
@@ -44,21 +40,15 @@ SQLite driver so the project runs with **zero external services**.
 | `client/src/pages/Tracking.jsx`   | Graduate tracking KPIs, employment updates, CHED export |
 | `client/src/pages/Events.jsx`     | Events + RSVP |
 
-### Classic modules (`js/`, served at `/classic`)
-
-`config`, `api`, `utils`, `auth`, `navigation`, `records`, `engagement`, `reports`.
+**UI coverage:** the React interface currently implements Login, Dashboard,
+Alumni Database, Transcript Requests, Graduate Tracking (with the CHED export)
+and Events. The remaining REST endpoints below (reprints, reunions, donations,
+newsletters, feedback, notifications, AI assistant/compose, registrar reporting)
+are API-only until their React views are added.
 
 ## 🚀 Quick start
 
-### 1. Backend (serves the API **and** both front-ends)
-
-```bash
-cd server
-npm install
-npm start          # => http://localhost:3000
-```
-
-### 2. Build the React front-end (once)
+### 1. Install & build the React front-end
 
 ```bash
 cd client
@@ -66,8 +56,15 @@ npm install
 npm run build      # outputs client/dist, served by Express at /
 ```
 
-Open **http://localhost:3000** → React front-end.
-The classic app remains available at **http://localhost:3000/classic**.
+### 2. Start the server (serves the API **and** the built UI)
+
+```bash
+cd server
+npm install
+npm start          # => http://localhost:3000
+```
+
+Open **http://localhost:3000** in your browser.
 
 ### Optional: React dev server with hot reload
 
@@ -76,8 +73,8 @@ cd client
 npm run dev        # => http://localhost:5173  (proxies /api to :3000)
 ```
 
-> If `client/dist` is missing, the server automatically falls back to serving
-> the classic app at `/` so the project always runs.
+> If `client/dist` is missing the server responds with a reminder to run the
+> build; the API at `/api/*` works regardless.
 
 ### Demo accounts
 
@@ -87,10 +84,8 @@ npm run dev        # => http://localhost:5173  (proxies /api to :3000)
 | Alumni    | `alumni`    | `alumni123`   |
 | Registrar | `registrar` | `registrar123`|
 
-Passwords are verified server-side with **bcrypt** hashes. The demo credentials
-above are only duplicated in `js/config.js` as an **offline fallback** (they are
-never persisted to localStorage). If the API isn't running you can still explore
-the UI in "demo mode" by opening `index.html` directly from disk.
+Passwords are stored and verified **server-side as bcrypt hashes**; credentials
+are seeded into the database on first run and are never persisted in the client.
 
 ## 🔌 API
 
@@ -107,20 +102,18 @@ Base URL: `http://localhost:3000/api` (bcrypt-hashed auth via `Authorization: Be
 - **Reports:** `GET /reports/summary`, `GET /reports/registrar`, `GET /reports/tracer-study`, `GET /reports/tracer-study/download`
 - **AI / OpenAI:** `POST /ai/assistant`, `POST /ai/compose-announcement`
 
-Run the smoke tests to verify everything:
+Run the verification scripts:
 
 ```bash
-powershell -ExecutionPolicy Bypass -File scripts/test-api.ps1         # 39 API endpoints
-powershell -ExecutionPolicy Bypass -File scripts/test-frontends.ps1   # / vs /classic routing
-powershell -ExecutionPolicy Bypass -File scripts/test-render.ps1      # headless render (no JS errors)
+powershell -ExecutionPolicy Bypass -File scripts/test-api.ps1      # all 41 API endpoints
+powershell -ExecutionPolicy Bypass -File scripts/test-render.ps1   # headless render of the React UI
 ```
 
 ## 🤖 OpenAI API — Automated Text Message Flows & AI Assistant
 
-The **Agnesian AI Assistant** (chat window) and the newsletter composer's
-**AI Compose** button talk to these endpoints. They call OpenAI's
-`chat/completions` API when a key is configured, and otherwise fall back to a
-built-in intelligent response engine that reads the live database.
+The AI endpoints implement the automated text-message / announcement flow: they
+call OpenAI's `chat/completions` API when a key is configured, and otherwise fall
+back to a built-in response engine that reads the live database.
 
 - `POST /api/ai/assistant` — natural-language queries (`{ "query": "..." }`)
 - `POST /api/ai/compose-announcement` — drafts SMS/newsletter copy (`{ "topic": "...", "channel": "SMS|Newsletter" }`)
