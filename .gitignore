@@ -10,6 +10,13 @@ dist-ssr/
 server/node_modules/
 server/data/
 
+# Secrets / configuration - NEVER commit real credentials
+.env
+.env.local
+server/.env
+server/.env.local
+# (server/.env.example IS committed as a template)
+
 # Logs
 logs/
 *.log

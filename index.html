@@ -1924,6 +1924,73 @@
                                 </div>
                             </div>
                         </div>
+<!-- AI SaaS TOOLS (OpenAI API) -->
+                    <div class="app-card p-6 sm:p-8 mt-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#801235] to-[#1b1124] text-white flex items-center justify-center">
+                                    <i class="fa-solid fa-brain"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-extrabold text-slate-800">AI Assistant Tools</h3>
+                                    <p class="text-xs text-slate-400 font-medium">OpenAI API for chat support, Gmail auto-reply, survey summaries and dashboard insights.</p>
+                                </div>
+                            </div>
+                            <span id="aiEngineBadge" class="status-badge status-pending text-[10px]">
+                                <i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Checking AI engine...
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                            <!-- Gmail Auto-Reply -->
+                            <div class="border border-slate-200 rounded-xl p-4 bg-white">
+                                <p class="font-extrabold text-slate-800 text-sm mb-1">
+                                    <i class="fa-regular fa-envelope text-indigo-500 mr-1"></i> Gmail Auto-Reply
+                                </p>
+                                <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
+                                    Simulates an inbound alumni email: OpenAI analyzes the content and drafts the reply automatically.
+                                </p>
+                                <form onsubmit="runGmailAutoReply(event)" class="space-y-2">
+                                    <input id="aiGmailFrom" type="email" required placeholder="Alumni email (e.g. maria.santos@example.com)" class="form-input text-xs">
+                                    <input id="aiGmailSubject" type="text" placeholder="Subject (e.g. Transcript requirements)" class="form-input text-xs">
+                                    <textarea id="aiGmailBody" rows="3" required placeholder="Inbound message body..." class="form-input text-xs"></textarea>
+                                    <button type="submit" class="btn btn-primary text-xs w-full py-2">
+                                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Auto-Reply
+                                    </button>
+                                </form>
+                                <div id="aiGmailReply" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
+                            </div>
+
+                            <!-- Survey Summary + Dashboard Insights -->
+                            <div class="space-y-5">
+                                <div class="border border-slate-200 rounded-xl p-4 bg-white">
+                                    <p class="font-extrabold text-slate-800 text-sm mb-1">
+                                        <i class="fa-regular fa-comments text-brand-magenta mr-1"></i> Survey Response Summary
+                                    </p>
+                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
+                                        OpenAI summarizes collected alumni feedback into sentiment, themes and recommendations.
+                                    </p>
+                                    <button onclick="runSurveySummary()" class="btn btn-secondary text-xs w-full py-2">
+                                        <i class="fa-solid fa-file-lines text-[#801235] mr-1"></i> Summarize Survey Responses
+                                    </button>
+                                    <div id="aiSurveySummary" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
+                                </div>
+
+                                <div class="border border-slate-200 rounded-xl p-4 bg-white">
+                                    <p class="font-extrabold text-slate-800 text-sm mb-1">
+                                        <i class="fa-solid fa-chart-line text-emerald-600 mr-1"></i> Dashboard Insights
+                                    </p>
+                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
+                                        AI narrative analysis of live metrics: employment, tracer freshness, document requests and engagement.
+                                    </p>
+                                    <button onclick="runDashboardInsights()" class="btn btn-secondary text-xs w-full py-2">
+                                        <i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Generate Dashboard Insights
+                                    </button>
+                                    <div id="aiDashboardInsights" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     </div>
                 </div>
 

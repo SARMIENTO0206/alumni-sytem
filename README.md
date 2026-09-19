@@ -12,7 +12,7 @@ A full-stack Alumni Management System for St. Agnes Academy of Caloocan with a
 | `logo.jpeg`           | School logo asset                                                           |
 | `js/`                 | Front-end logic split into **8 modular JS files** (replaces the old 2,650-line monolith) |
 | `server/`             | **Node.js + Express + SQLite REST API** (39 endpoints) with **bcrypt** password hashing + **OpenAI API** chat/compose endpoints |
-| `scripts/`            | Dev utilities: `test-api.ps1` smoke test, `split-modules.ps1` refactor tool |
+| `scripts/`            | Dev utilities: `test-api.ps1` (API smoke test), `test-ai.ps1` / `test-ai-live.ps1` (AI endpoints), `split-modules.ps1` (refactor tool) |
 
 ### Front-end modules (`js/`)
 
@@ -65,7 +65,7 @@ Base URL: `http://localhost:3000/api` (bcrypt-hashed auth via `Authorization: Be
 - **Tracking:** `GET /tracking`, `PUT /tracking/:id/employment`, `GET /tracking/stale-profiles`, `POST /tracking/reminders/sweep`
 - **Engagement:** `GET/POST /events`, `POST /events/:id/rsvp`, `GET/POST /reunions`, `GET/POST /donations`, `GET/POST /newsletters`, `GET/POST /feedback`, `GET/POST /notifications`
 - **Reports:** `GET /reports/summary`, `GET /reports/registrar`, `GET /reports/tracer-study`, `GET /reports/tracer-study/download`
-- **AI / OpenAI:** `POST /ai/assistant`, `POST /ai/compose-announcement`
+- **AI / OpenAI:** `GET /ai/status`, `POST /ai/assistant`, `POST /ai/compose-announcement`, `POST /ai/gmail-auto-reply`, `POST /ai/summarize-survey`, `POST /ai/dashboard-insights`
 
 Run the smoke test to verify everything:
 
@@ -75,29 +75,55 @@ powershell -ExecutionPolicy Bypass -File scripts/test-api.ps1
 
 ## 🤖 OpenAI API — Automated Text Message Flows & AI Assistant
 
-The **Agnesian AI Assistant** (chat window) and the newsletter composer's
-**AI Compose** button talk to these endpoints. They call OpenAI's
-`chat/completions` API when a key is configured, and otherwise fall back to a
-built-in intelligent response engine that reads the live database.
+The **Agnesian AI Assistant** (chat window), the newsletter **AI Compose** button,
+and the **AI Assistant Tools** panel in *System Reports* call OpenAI's
+`chat/completions` API when a key is configured. Without a key the system uses a
+built-in fallback engine that reads the live database, so it always works.
 
-- `POST /api/ai/assistant` — natural-language queries (`{ "query": "..." }`)
-- `POST /api/ai/compose-announcement` — drafts SMS/newsletter copy (`{ "topic": "...", "channel": "SMS|Newsletter" }`)
+| Endpoint | Purpose |
+| -------- | ------- |
+| `GET  /api/ai/status` | Reports which engine is active (OpenAI vs fallback) |
+| `POST /api/ai/assistant` | AI Chat Support — natural-language queries |
+| `POST /api/ai/compose-announcement` | AI-generated SMS / newsletter copy |
+| `POST /api/ai/gmail-auto-reply` | Gmail Auto-Reply — inbound email → OpenAI → drafted reply (logged to the notification centre) |
+| `POST /api/ai/summarize-survey` | Summarizes collected survey responses into sentiment, themes and recommendations |
+| `POST /api/ai/dashboard-insights` | Narrative insight from live metrics (employment, tracer freshness, requests, engagement) |
 
-### Set up your OpenAI key
+### Set up your OpenAI key (2 steps)
 
 ```bash
-# Option 1: environment variable
-set OPENAI_API_KEY=sk-...          # Windows (PowerShell / cmd)
-export OPENAI_API_KEY=sk-...       # Linux / macOS
-
-# Option 2: pass the key via Node's --env-file
-# server/.env  ->  OPENAI_API_KEY=sk-...
-node --env-file=.env server/index.js
+# 1. Create the config file from the template
+copy server\.env.example server\.env      # Windows
+cp   server/.env.example server/.env      # Linux / macOS
 ```
 
-> No key? The endpoints still respond using the **built-in fallback** (which
-> quotes live alumni counts, pending transcript requests, and events), so the
-> UI keeps working for demos and offline review.
+```ini
+# 2. Edit server/.env and paste your key
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini        # optional
+OPENAI_TIMEOUT_MS=20000         # optional
+```
+
+Then restart the server. The startup banner confirms which engine is active:
+
+```
+  AI engine:      OpenAI API (model: gpt-4o-mini)
+```
+
+> **Security:** `server/.env` is **gitignored** — the key is never committed nor
+> sent to the frontend. This satisfies the manuscript's requirement that API
+> credentials must not be exposed in publicly accessible source code.
+>
+> **No key?** Every AI endpoint still responds using the built-in fallback
+> (live alumni counts, pending requests, events, computed survey statistics and
+> rule-based dashboard insights), so the UI keeps working for demos.
+
+Verify the AI features:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/test-ai.ps1        # all 5 AI endpoints
+powershell -ExecutionPolicy Bypass -File scripts/test-ai-live.ps1   # proves the real OpenAI path is called
+```
 
 ## 📊 CHED Tracer Study compliance
 

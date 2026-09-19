@@ -1,18 +1,33 @@
 import express from 'express';
 import { dirname, join } from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { initDb } from './src/db.js';
 import { requireAuth } from './src/auth.js';
+import { isAiConfigured, aiModel } from './src/ai.js';
 import authRoutes from './src/routes/auth.js';
 import alumniRoutes from './src/routes/alumni.js';
 import documentsRoutes from './src/routes/documents.js';
 import trackingRoutes from './src/routes/tracking.js';
 import engagementRoutes from './src/routes/engagement.js';
 import reportsRoutes from './src/routes/reports.js';
+import aiRoutes from './src/routes/ai.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..');
 const PORT = Number(process.env.PORT) || 3000;
+
+/* Load server/.env using Node's built-in loader (no extra dependency).
+ * server/.env.example is the template; .env itself is gitignored so the
+ * OpenAI credential is never committed nor exposed to the frontend. */
+const envFile = join(__dirname, '.env');
+if (existsSync(envFile)) {
+  try {
+    process.loadEnvFile(envFile);
+  } catch (err) {
+    console.warn(`  Could not read server/.env: ${err.message}`);
+  }
+}
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -30,13 +45,19 @@ app.use((req, res, next) => {
 initDb();
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, service: 'SAA Alumni Management System API', time: new Date().toISOString() });
+  res.json({
+    ok: true,
+    service: 'SAA Alumni Management System API',
+    time: new Date().toISOString(),
+    ai: { configured: isAiConfigured(), model: isAiConfigured() ? aiModel() : null }
+  });
 });
 
 app.use('/api/auth', authRoutes);
 app.use('/api/alumni', requireAuth, alumniRoutes);
 app.use('/api/tracking', requireAuth, trackingRoutes);
 app.use('/api/reports', requireAuth, reportsRoutes);
+app.use('/api/ai', requireAuth, aiRoutes);          // assistant, compose, gmail-auto-reply, summaries, insights
 app.use('/api', requireAuth, documentsRoutes);      // /transcripts, /reprints, /placements
 app.use('/api', requireAuth, engagementRoutes);     // /events, /reunions, /donations, /newsletters, /feedback, /notifications
 
@@ -53,5 +74,10 @@ app.listen(PORT, () => {
   console.log('  St. Agnes Academy of Caloocan - Alumni Management System');
   console.log(`  API + Site running at  http://localhost:${PORT}`);
   console.log('  Demo accounts:  admin/admin123  alumni/alumni123  registrar/registrar123');
+  console.log(
+    isAiConfigured()
+      ? `  AI engine:      OpenAI API (model: ${aiModel()})`
+      : '  AI engine:      Built-in fallback (add OPENAI_API_KEY to server/.env for OpenAI)'
+  );
   console.log('  ');
 });

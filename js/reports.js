@@ -691,11 +691,111 @@
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 5625-5650 */
 /* ------------------------------------------------------------------------- */
+    /* ------------------------------------------------------------------ *
+     * AI Assistant Tools (OpenAI API) - Gmail auto-reply, survey summary
+     * and dashboard insights. All calls are API-first with local fallback.
+     * ------------------------------------------------------------------ */
+
+    /** Shows which engine is active (OpenAI API vs built-in fallback). */
+    async function refreshAiStatus() {
+        const badge = document.getElementById("aiEngineBadge");
+        if (!badge) return;
+
+        try {
+            const res = await fetch((typeof SAA_API !== "undefined" ? SAA_API.base : "") + "/api/health");
+            const health = await res.json();
+            const ai = health && health.ai;
+            if (ai && ai.configured) {
+                badge.className = "status-badge status-approved text-[10px]";
+                badge.innerHTML = `<i class="fa-solid fa-bolt mr-1"></i> OpenAI API (${ai.model || "configured"})`;
+            } else {
+                badge.className = "status-badge status-pending text-[10px]";
+                badge.innerHTML = '<i class="fa-solid fa-circle-info mr-1"></i> Built-in AI fallback - add OPENAI_API_KEY';
+            }
+        } catch (e) {
+            badge.className = "status-badge status-rejected text-[10px]";
+            badge.innerHTML = '<i class="fa-solid fa-plug-circle-xmark mr-1"></i> API server offline';
+        }
+    }
+
+    /** Renders an AI result block with its provider label. */
+    function showAiOutput(elementId, heading, text) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        el.innerHTML = `<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">${heading}</p>${text.replace(/</g, "&lt;")}`;
+        el.classList.remove("hidden");
+    }
+
+    /** Shared POST helper for the AI endpoints (returns null when offline). */
+    async function aiPost(path, payload) {
+        if (typeof SAA_API === "undefined") return null;
+        if (!(await SAA_API.health())) return null;
+        try {
+            return await SAA_API.request(path, { method: "POST", body: JSON.stringify(payload || {}) });
+        } catch (err) {
+            showToast("AI request failed: " + (err.message || "unknown error"), "error");
+            return null;
+        }
+    }
+
+    /** Gmail Auto-Reply: inbound email -> OpenAI -> drafted reply (logged server-side). */
+    async function runGmailAutoReply(event) {
+        if (event) event.preventDefault();
+        const from = document.getElementById("aiGmailFrom").value.trim();
+        const subject = document.getElementById("aiGmailSubject").value.trim();
+        const body = document.getElementById("aiGmailBody").value.trim();
+        if (!from || !body) return;
+
+        showAiOutput("aiGmailReply", "Generating reply...", "Please wait while the AI analyzes the inbound email.");
+
+        const data = await aiPost("/api/ai/gmail-auto-reply", { from, subject, body });
+
+        if (!data) {
+            showAiOutput("aiGmailReply", "API server offline", "Start the server (npm start in /server) to use Gmail Auto-Reply.");
+            return;
+        }
+
+        showAiOutput("aiGmailReply", `Draft reply - ${data.provider}`, data.reply);
+        showToast(`Auto-reply drafted for ${from} and logged to the notification centre.`, "success");
+    }
+
+    /** AI summary of collected alumni survey/feedback responses. */
+    async function runSurveySummary() {
+        showAiOutput("aiSurveySummary", "Generating summary...", "Analyzing collected survey responses.");
+
+        const data = await aiPost("/api/ai/summarize-survey", {});
+        if (!data) {
+            showAiOutput("aiSurveySummary", "API server offline", "Start the server (npm start in /server) to generate AI summaries.");
+            return;
+        }
+
+        const meta = data.responses != null
+            ? `Draft summary - ${data.provider} - ${data.responses} response(s)`
+            : `Draft summary - ${data.provider}`;
+        showAiOutput("aiSurveySummary", meta, data.summary);
+        showToast("Survey summary generated.", "success");
+    }
+
+    /** AI narrative insights from live system metrics. */
+    async function runDashboardInsights() {
+        showAiOutput("aiDashboardInsights", "Generating insights...", "Reviewing live alumni metrics.");
+
+        const data = await aiPost("/api/ai/dashboard-insights", {});
+        if (!data) {
+            showAiOutput("aiDashboardInsights", "API server offline", "Start the server (npm start in /server) to generate AI insights.");
+            return;
+        }
+
+        showAiOutput("aiDashboardInsights", `Draft insights - ${data.provider}`, data.insights);
+        showToast("Dashboard insights generated.", "success");
+    }
+
     /* Initialization */
     window.addEventListener("DOMContentLoaded", () => {
         updateNotificationBadge();
         renderResumeUI();
         if (typeof renderOutdatedProfilesTable === 'function') renderOutdatedProfilesTable();
+        if (typeof refreshAiStatus === 'function') refreshAiStatus();
 
         const remembered = localStorage.getItem("rememberedUsername");
         if (remembered) {

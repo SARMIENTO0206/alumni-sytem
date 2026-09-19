@@ -59,7 +59,10 @@
         if (viewId === "reunions") renderReunionsGrid();
         if (viewId === "newsletter") renderNewsletterArchive();
         if (viewId === "academic-records") renderAcademicRecords();
-        if (viewId === "reports") updateReports();
+        if (viewId === "reports") {
+            updateReports();
+            if (typeof refreshAiStatus === "function") refreshAiStatus();
+        }
         if (viewId === "request-approval") renderRequestApproval();
         if (viewId === "document-processing") renderDocumentPreparation();
         if (viewId === "release-claiming") renderReleaseClaiming();
