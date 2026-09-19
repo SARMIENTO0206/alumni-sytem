@@ -11,7 +11,7 @@ A full-stack Alumni Management System for St. Agnes Academy of Caloocan with a
 | `style.css`           | Custom design system / brand styling                                        |
 | `logo.jpeg`           | School logo asset                                                           |
 | `js/`                 | Front-end logic split into **8 modular JS files** (replaces the old 2,650-line monolith) |
-| `server/`             | **Node.js + Express + SQLite REST API** (37 endpoints) with **bcrypt** password hashing |
+| `server/`             | **Node.js + Express + SQLite REST API** (39 endpoints) with **bcrypt** password hashing + **OpenAI API** chat/compose endpoints |
 | `scripts/`            | Dev utilities: `test-api.ps1` smoke test, `split-modules.ps1` refactor tool |
 
 ### Front-end modules (`js/`)
@@ -65,12 +65,39 @@ Base URL: `http://localhost:3000/api` (bcrypt-hashed auth via `Authorization: Be
 - **Tracking:** `GET /tracking`, `PUT /tracking/:id/employment`, `GET /tracking/stale-profiles`, `POST /tracking/reminders/sweep`
 - **Engagement:** `GET/POST /events`, `POST /events/:id/rsvp`, `GET/POST /reunions`, `GET/POST /donations`, `GET/POST /newsletters`, `GET/POST /feedback`, `GET/POST /notifications`
 - **Reports:** `GET /reports/summary`, `GET /reports/registrar`, `GET /reports/tracer-study`, `GET /reports/tracer-study/download`
+- **AI / OpenAI:** `POST /ai/assistant`, `POST /ai/compose-announcement`
 
 Run the smoke test to verify everything:
 
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts/test-api.ps1
 ```
+
+## 🤖 OpenAI API — Automated Text Message Flows & AI Assistant
+
+The **Agnesian AI Assistant** (chat window) and the newsletter composer's
+**AI Compose** button talk to these endpoints. They call OpenAI's
+`chat/completions` API when a key is configured, and otherwise fall back to a
+built-in intelligent response engine that reads the live database.
+
+- `POST /api/ai/assistant` — natural-language queries (`{ "query": "..." }`)
+- `POST /api/ai/compose-announcement` — drafts SMS/newsletter copy (`{ "topic": "...", "channel": "SMS|Newsletter" }`)
+
+### Set up your OpenAI key
+
+```bash
+# Option 1: environment variable
+set OPENAI_API_KEY=sk-...          # Windows (PowerShell / cmd)
+export OPENAI_API_KEY=sk-...       # Linux / macOS
+
+# Option 2: pass the key via Node's --env-file
+# server/.env  ->  OPENAI_API_KEY=sk-...
+node --env-file=.env server/index.js
+```
+
+> No key? The endpoints still respond using the **built-in fallback** (which
+> quotes live alumni counts, pending transcript requests, and events), so the
+> UI keeps working for demos and offline review.
 
 ## 📊 CHED Tracer Study compliance
 

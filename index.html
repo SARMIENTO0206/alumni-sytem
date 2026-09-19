@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>St. Agnes Academy of Caloocan - Alumni Management System</title>
+    <title>St. Agnes Academy of Caloocan - Web-Based Alumni Management System with Automated Text Message Flows using OpenAI API</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -36,7 +36,7 @@
                     </div>
                     <div>
                         <h1 class="font-bold text-slate-900 text-base leading-tight">St. Agnes Academy</h1>
-                        <p class="text-[11px] text-slate-500 font-medium">Alumni Management System</p>
+                        <p class="text-[11px] text-slate-500 font-medium">Alumni Management System &bull; Automated Text Message Flows &bull; OpenAI API</p>
                     </div>
                 </div>
                 
@@ -58,13 +58,13 @@
                     <!-- Left Content -->
                     <div class="md:col-span-7">
                         <span class="inline-block px-3 py-1 rounded-full bg-white/10 text-gold-accent text-[11px] font-extrabold tracking-widest uppercase mb-4 border border-amber-500/20">
-                            CENTRALIZED SCHOOL OPERATIONS
+                            AUTOMATED TEXT MESSAGE FLOWS &bull; OPENAI API INTEGRATED
                         </span>
                         <h2 class="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight mb-2 text-white">
-                            Welcome to St. Agnes Academy
+                            St. Agnes Academy of Caloocan
                         </h2>
                         <h3 class="text-xl sm:text-2xl font-bold text-gold-accent mb-4">
-                            Alumni Management System
+                            Alumni Management System with Automated Text Message Flows
                         </h3>
                         <p class="text-sm sm:text-base text-slate-200 mb-8 leading-relaxed max-w-lg">
                             Access and manage essential school services through one secure and connected platform designed for the St. Agnes Academy community.
@@ -248,17 +248,17 @@
 
                 <div class="text-center">
                     <span class="inline-block px-3.5 py-1 rounded-full bg-white/10 border border-white/20 text-gold-accent text-xs font-bold tracking-wider uppercase mb-2">
-                        Official Alumni Portal
+                        Official Alumni Portal &bull; OpenAI API
                     </span>
                     <h1 class="text-2xl md:text-3xl font-extrabold tracking-wider text-white">
                         ST. AGNES ACADEMY
                     </h1>
                     <h2 class="text-lg md:text-xl font-bold tracking-widest text-gold-accent">
-                        OF CALOOCAN
+                        OF CALOOCAN INC.
                     </h2>
                     <div class="w-16 h-1 bg-gradient-to-r from-amber-500 to-amber-300 mx-auto my-4 rounded-full"></div>
-                    <p class="text-xs tracking-widest uppercase text-slate-200 font-semibold">
-                        Alumni Management & Records System
+                    <p class="text-[11px] tracking-wider uppercase text-slate-200 font-semibold leading-relaxed">
+                        Alumni Management System with Automated Text Message Flows
                     </p>
                 </div>
             </div>
@@ -1668,7 +1668,12 @@
                         <div id="newsletterComposer" class="hidden">
                             <div class="mb-4 flex items-center justify-between">
                                 <h4 class="font-extrabold text-slate-800 text-sm"><i class="fa-solid fa-pen-nib text-[#801235] mr-1"></i> Compose New Newsletter</h4>
-                                <button type="button" onclick="closeNewsletterComposer()" class="text-xs text-slate-400 hover:text-slate-600 font-semibold"><i class="fa-solid fa-xmark mr-1"></i>Cancel</button>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" id="aiComposeBtn" onclick="aiComposeNewsletter()" class="btn btn-secondary text-xs px-3 py-1.5" title="Let AI draft a professional announcement for this topic (OpenAI API when configured)">
+                                        <i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> AI Compose
+                                    </button>
+                                    <button type="button" onclick="closeNewsletterComposer()" class="text-xs text-slate-400 hover:text-slate-600 font-semibold"><i class="fa-solid fa-xmark mr-1"></i>Cancel</button>
+                                </div>
                             </div>
                             <form onsubmit="sendNewsletter(event)" class="space-y-4">
                                 <div>
@@ -2128,11 +2133,11 @@
             <div class="bg-brand-dark text-white px-4 py-3.5 flex items-center justify-between">
                 <div class="flex items-center space-x-2.5">
                     <div class="w-8 h-8 rounded-full bg-pink-500/20 border border-pink-400/40 flex items-center justify-center text-pink-300 text-xs font-bold">
-                        <i class="fa-solid fa-robot"></i>
+                        <i class="fa-solid fa-brain"></i>
                     </div>
                     <div>
-                        <p class="text-xs font-extrabold leading-tight">Agnesian Assistant</p>
-                        <p class="text-[10px] text-pink-300 font-medium">Alumni & Records AI Helper</p>
+                        <p class="text-xs font-extrabold leading-tight">Agnesian AI Assistant</p>
+                        <p class="text-[10px] text-pink-300 font-medium">Powered by OpenAI API &bull; Natural Language Processing</p>
                     </div>
                 </div>
                 <button onclick="toggleChatWindow()" title="Toggle chat window" aria-label="Toggle chat window" class="text-pink-200 hover:text-white transition p-1">

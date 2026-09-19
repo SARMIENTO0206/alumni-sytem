@@ -791,6 +791,57 @@
         event.target.reset();
     }
 
+    /**
+     * AI Compose for the Newsletter Composer (OpenAI API via /api/ai/compose-announcement).
+     * Falls back to a pre-formatted institutional template when the API is offline.
+     */
+    async function aiComposeNewsletter() {
+        const subjectInput = document.getElementById("newsletterSubject");
+        const bodyInput = document.getElementById("newsletterBody");
+        const btn = document.getElementById("aiComposeBtn");
+        if (!subjectInput || !bodyInput) return;
+
+        const topic = (subjectInput.value || "").trim() || "Upcoming School Activities & Alumni Engagement";
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="fa-solid fa-spinner fa-spin"></span> <span>Drafting...</span>';
+        }
+
+        try {
+            let draftSubject = null;
+            let content = null;
+
+            if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
+                const data = await SAA_API.request("/api/ai/compose-announcement", {
+                    method: "POST",
+                    body: JSON.stringify({ topic, channel: "Newsletter" })
+                });
+                if (data && data.content) {
+                    draftSubject = data.subject || `[SAA Update] ${topic}`;
+                    content = data.content;
+                }
+            }
+
+            if (content === null) {
+                // Local fallback template matching the OBE/CHED manuscript format.
+                draftSubject = `[SAA Update] ${topic}`;
+                content = `ST. AGNES ACADEMY OF CALOOCAN INC. NOTICE: Warm greetings! In line with our upcoming school activities and alumni engagement initiatives regarding "${topic}", we invite all Agnesian graduates to participate. Please check your Alumni Portal for full schedules. Caritas et Scientia.`;
+            }
+
+            subjectInput.value = draftSubject;
+            bodyInput.value = content;
+            showToast("AI-drafted announcement is ready. Review before publishing.", "success");
+        } catch (err) {
+            showToast("AI compose failed: " + (err.message || "unknown error"), "error");
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> AI Compose';
+            }
+        }
+    }
+
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 5212-5227 */
 /* ------------------------------------------------------------------------- */
@@ -846,11 +897,29 @@
         messages.appendChild(typingEl);
         messages.scrollTop = messages.scrollHeight;
 
-        setTimeout(() => {
+        const finishReply = (reply) => {
             const typing = document.getElementById("typingBubble");
             if (typing) typing.remove();
-            appendChatBubble(getAssistantResponse(msg), "assistant");
-        }, 600);
+            appendChatBubble(reply, "assistant");
+        };
+
+        /* Agnesian AI Assistant: prefer the backend (OpenAI API when keyed, else its built-in fallback). */
+        const askAssistant = async () => {
+            try {
+                if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
+                    const data = await SAA_API.request("/api/ai/assistant", {
+                        method: "POST",
+                        body: JSON.stringify({ query: msg })
+                    });
+                    if (data && data.response) return data.response;
+                }
+            } catch (e) { /* offline / unreachable - fall back to the local rule-based reply */ }
+            return getAssistantResponse(msg);
+        };
+
+        // Keep the typing dots visible briefly while the API answers.
+        const minDelay = new Promise(r => setTimeout(r, 600));
+        Promise.all([askAssistant(), minDelay]).then(([reply]) => finishReply(reply));
     }
 
     function appendChatBubble(text, sender) {
