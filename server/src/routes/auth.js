@@ -2,11 +2,17 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { db, createSession, destroySession, mapUser } from '../db.js';
 import { requireAuth } from '../auth.js';
+import { rateLimit } from '../rate-limit.js';
 
 const router = Router();
+const loginLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many login attempts. Please try again later.'
+});
 
 /** POST /api/auth/login - verifies a bcrypt-hashed password, creates a session token. */
-router.post('/login', (req, res) => {
+router.post('/login', loginLimit, (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required.' });

@@ -70,8 +70,6 @@ router.post('/assistant', async (req, res) => {
     fallback = `The alumni registry currently holds <strong>${s.alumni.toLocaleString()}</strong> records.`;
   } else if (q.includes('photo') || q.includes('picture') || q.includes('avatar') || q.includes('upload')) {
     fallback = 'You can upload or update your profile photo in <strong>My Profile</strong> by clicking your avatar.';
-  } else if (q.includes('id') || q.includes('card')) {
-    fallback = 'Your <strong>Digital Alumni ID Card</strong> with dynamic QR verification is available in the <em>Digital Alumni ID</em> module.';
   } else if (q.includes('transcript') || q.includes('tor') || q.includes('record') || q.includes('certificate')) {
     fallback = `There are <strong>${s.pendingRequests} pending</strong> document requests and <strong>${s.releasedRequests} released</strong>. Submit or track requests in the <em>Transcript Request Portal</em>.`;
   } else if (q.includes('event') || q.includes('homecoming')) {

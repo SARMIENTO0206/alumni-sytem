@@ -1,4 +1,4 @@
-/* navigation.js - View routing (switchView), counters, digital ID, profile and page navigation. */
+/* navigation.js - View routing (switchView), counters, profile and page navigation. */
 
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 3337-3612 */
@@ -13,7 +13,7 @@
 
         // Hide all views
         const views = [
-            "dashboard", "idcard", "database", "profile", "job-opportunities", "transcript", "reprint",
+            "dashboard", "database", "profile", "job-opportunities", "transcript", "reprint",
             "tracking", "placement", "events", "reunions", "donor", "newsletter", "feedback", 
             "reports", "verification", "request-approval", "document-processing", "release-claiming", 
             "request-history", "registrar-reports", "academic-records"
@@ -44,9 +44,9 @@
         }
 
         // Trigger view renderers
-        if (viewId === "dashboard") renderGrowthChart();
-        if (viewId === "idcard") renderDigitalIdCard();
+        if (viewId === "dashboard") renderDashboardPanels();
         if (viewId === "profile") loadAlumniProfile();
+        if (viewId === "job-opportunities" && typeof renderJobBoard === "function") renderJobBoard();
         if (viewId === "database") renderAlumniTable();
         if (viewId === "transcript") renderTranscriptRequests();
         if (viewId === "reprint") renderReprintRequests();
@@ -73,7 +73,6 @@
     function formatViewTitle(id) {
         const titles = {
             dashboard: "Dashboard Overview",
-            idcard: "Digital Alumni Identification",
             database: "Alumni Records Database",
             profile: "My Alumni Profile",
             "job-opportunities": "Job Opportunities Board",
@@ -109,50 +108,6 @@
 
         const eventsEl = document.getElementById("stat-events");
         if (eventsEl) eventsEl.textContent = eventsList.length;
-    }
-
-    /* Digital Alumni ID */
-    function renderDigitalIdCard() {
-        if (!currentUser) return;
-        const name = currentUser.name || "Maria Clara Santos";
-        const program = currentUser.program || "BS Information Technology";
-        const batch = currentUser.batch || "2024";
-        const studentId = currentUser.studentId || `SAA-${batch}-0089`;
-        const photoUrl = currentUser.photoUrl || JSON.parse(localStorage.getItem("alumniProfile") || "{}").photoUrl || "";
-
-        document.getElementById("idCardName").textContent = name;
-        document.getElementById("idCardProgram").textContent = program;
-        document.getElementById("idCardBatch").textContent = batch;
-        document.getElementById("idCardNumber").textContent = studentId;
-        document.getElementById("idCardSignature").textContent = name;
-
-        const avatarEl = document.getElementById("idCardAvatar");
-        if (avatarEl) {
-            if (photoUrl) {
-                avatarEl.innerHTML = `<img src="${photoUrl}" class="avatar-img">`;
-            } else {
-                avatarEl.textContent = currentUser.avatar || "AL";
-            }
-        }
-
-        // Generate QR code for ID Card
-        const qrContainer = document.getElementById("idCardQRCode");
-        if (qrContainer && typeof QRCode !== 'undefined') {
-            qrContainer.innerHTML = "";
-            new QRCode(qrContainer, {
-                text: `https://stagnes.edu.ph/verify?id=${studentId}&name=${encodeURIComponent(name)}`,
-                width: 68,
-                height: 68,
-                colorDark: "#4a0422",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.M
-            });
-        }
-    }
-
-    function flipIdCard() {
-        const card = document.getElementById("digitalIdCard");
-        if (card) card.classList.toggle("flipped");
     }
 
     /* Alumni Profile Photo Upload */
@@ -236,6 +191,8 @@
         document.getElementById("profileEmployment").value = saved.employment || "Employed";
         document.getElementById("profileCompany").value = saved.company || "TechSolutions Inc.";
         document.getElementById("profileJobTitle").value = saved.jobTitle || "Software Engineer";
+        document.getElementById("profileAdviser").value = saved.adviser || "";
+        document.getElementById("profileSection").value = saved.section || "";
 
         const avatarEl = document.getElementById("alumniProfileAvatar");
         const removeBtn = document.getElementById("removePhotoBtn");
@@ -261,6 +218,8 @@
             employment: document.getElementById("profileEmployment").value,
             company: document.getElementById("profileCompany").value.trim(),
             jobTitle: document.getElementById("profileJobTitle").value.trim(),
+            adviser: document.getElementById("profileAdviser").value.trim(),
+            section: document.getElementById("profileSection").value.trim(),
             photoUrl: currentUser.photoUrl || savedProfile.photoUrl || ""
         };
 
@@ -280,6 +239,7 @@
         document.getElementById("headerUserName").textContent = profile.name;
         document.getElementById("welcomeName").textContent = profile.name;
         document.getElementById("profileHeadingName").textContent = profile.name;
+        renderDashboardRecordCard();
         showToast("Profile details successfully updated.", "success");
     }
 
@@ -346,3 +306,321 @@
         window.scrollTo(0, 0);
     }
 
+/* ------------------------------------------------------------------------- */
+/* Portal-style dashboard: record / adviser cards + paginated announcements   */
+/* ------------------------------------------------------------------------- */
+
+    /* Notices shown when the newsletter archive has no published entries yet. */
+    const dashboardAnnouncements = [
+        {
+            title: "Alumni Homecoming 2026: Save the Date",
+            date: "June 2026",
+            author: "Alumni Relations Office",
+            body: "The Agnesian Grand Homecoming returns to the SAA Main Campus Grounds. Batch coordinators are requested to submit their attendance mastersheets early so that reunion tables and kits can be prepared. Pre-registration is open in the Alumni Events section of this portal."
+        },
+        {
+            title: "CHED Tracer Study: Update Your Employment Status",
+            date: "May 2026",
+            author: "Graduate Tracking Unit",
+            body: "All graduates of the last five years are requested to update their employment details in Graduate Tracking. The consolidated CHED tracer report is generated from these records, so kindly confirm your employer, job title and industry before the end of the month."
+        },
+        {
+            title: "Transcript and Diploma Requests: Online Processing",
+            date: "April 2026",
+            author: "Office of the Registrar",
+            body: "Official transcripts of records and diploma reprints can now be requested online. Submit the request through the Transcript Request or Certificate Reprint page, wait for the approval notification, then claim the document at the registrar releasing window."
+        },
+        {
+            title: "Scholarship Endowment Drive for Agnesian Scholars",
+            date: "March 2026",
+            author: "Alumni Relations Office",
+            body: "The alumni association is raising funds for the endowment programme that supports deserving students. Small recurring pledges are welcome, and every donation is acknowledged in the annual alumni report and in the donor honour roll."
+        },
+        {
+            title: "Career Fair 2026: Partner Companies Now Hiring",
+            date: "February 2026",
+            author: "Career Placement Center",
+            body: "Alumni who are hiring are invited to post vacancies on the Job Board. Graduates looking for new opportunities may submit applications online and upload an updated resume through their alumni profile page."
+        },
+        {
+            title: "Alumni ID and Discount Card Renewal",
+            date: "January 2026",
+            author: "Alumni Relations Office",
+            body: "Renewal of the alumni identification and partner discount card is open at the alumni desk. Present proof of graduation and one valid government identification. Renewed cards are released within five working days."
+        },
+        {
+            title: "Batch Reunion Committee: Call for Volunteers",
+            date: "December 2025",
+            author: "Batch Reunions Committee",
+            body: "Batch representatives from the silver, ruby and golden jubilee batches are needed to coordinate reunion programmes, venue arrangements and memorabilia. Register your interest at the alumni desk or through the Batch Reunions page."
+        }
+    ];
+
+    /* Pagination and expansion state of the dashboard announcement feed. */
+    const dashboardFeed = {
+        page: 1,
+        pageSize: 10,
+        items: [],
+        expanded: {},
+        serverItems: [],
+        serverLoaded: false
+    };
+
+    /** Escapes announcement text so published newsletters cannot inject markup. */
+    function escapeAnnouncementText(value) {
+        return String(value === null || value === undefined ? "" : value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    /** Formats a newsletter timestamp (e.g. "2026-09-19 10:58:11") for display. */
+    function formatAnnouncementDate(value) {
+        if (!value) return "Recent";
+        const parsed = new Date(String(value).replace(" ", "T"));
+        if (isNaN(parsed.getTime())) return String(value);
+        return parsed.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    }
+
+    /** Normalises API and local newsletter shapes into one announcement shape. */
+    function normaliseAnnouncement(raw, source) {
+        const item = raw || {};
+        return {
+            title: item.subject || item.title || "Untitled announcement",
+            body: item.body || item.snippet || "",
+            date: item.date || formatAnnouncementDate(item.sentAt),
+            author: item.author || "Alumni Relations Office",
+            reads: item.reads || "",
+            source: source
+        };
+    }
+
+    /** Server archive + locally composed newsletters + the built-in notices. */
+    function buildAnnouncementFeed() {
+        const items = [];
+        const seen = {};
+        const add = (item) => {
+            const key = String(item.title || "").toLowerCase();
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            items.push(item);
+        };
+
+        dashboardFeed.serverItems.forEach(n => add(normaliseAnnouncement(n, "server")));
+
+        let local = [];
+        try {
+            local = JSON.parse(localStorage.getItem("saaNewsletters")) || [];
+        } catch (e) {
+            local = [];
+        }
+        local.forEach(n => add(normaliseAnnouncement(n, "local")));
+
+        dashboardAnnouncements.forEach(n => add(normaliseAnnouncement(n, "default")));
+        return items;
+    }
+
+    /** Entry point used by switchView("dashboard"). */
+    function renderDashboardPanels() {
+        renderDashboardRecordCard();
+        renderAnnouncementFeed();
+        loadDashboardAnnouncementsFromServer();
+    }
+
+    /** Fills the left record card and the right adviser / alumni desk card. */
+    function renderDashboardRecordCard() {
+        const saved = JSON.parse(localStorage.getItem("alumniProfile") || "{}");
+        const role = currentUser ? currentUser.role : "alumni";
+        const isAlumni = role === "alumni";
+        const name = (isAlumni && saved.name) || (currentUser && currentUser.name) || "Alumni";
+
+        const nameEl = document.getElementById("dashRecordName");
+        if (nameEl) nameEl.textContent = name;
+
+        const subtitleEl = document.getElementById("dashRecordSubtitle");
+        if (subtitleEl) subtitleEl.textContent = (currentUser && currentUser.title) || (isAlumni ? "Alumnus" : "Staff");
+
+        const avatarEl = document.getElementById("dashRecordAvatar");
+        const photoUrl = (currentUser && currentUser.photoUrl) || saved.photoUrl || "";
+        if (avatarEl) {
+            if (photoUrl) avatarEl.innerHTML = `<img src="${photoUrl}" class="avatar-img" alt="">`;
+            else avatarEl.textContent = initialsFromName(name);
+        }
+
+        if (isAlumni) {
+            fillDashboardRows("dashRecordRows", [
+                ["Course / Program", saved.program || (currentUser && currentUser.program)],
+                ["Batch Year", saved.batch || (currentUser && currentUser.batch)],
+                ["Student ID", currentUser && currentUser.studentId],
+                ["Employment Status", saved.employment],
+                ["Current Position", [saved.jobTitle, saved.company].filter(Boolean).join(" - ")],
+                ["Contact Number", saved.contact || (currentUser && currentUser.contact)]
+            ]);
+        } else {
+            fillDashboardRows("dashRecordRows", [
+                ["Role", currentUser && currentUser.title],
+                ["Username", currentUser && currentUser.username],
+                ["Email Address", currentUser && currentUser.email],
+                ["Portal Access", role === "admin" ? "Full system access" : "Registrar workflows"]
+            ]);
+        }
+
+        const adviserLabelEl = document.getElementById("dashAdviserLabel");
+        const adviserNoteEl = document.getElementById("dashAdviserNote");
+
+        if (isAlumni) {
+            if (adviserLabelEl) adviserLabelEl.textContent = "Alumni Adviser";
+            if (adviserNoteEl) adviserNoteEl.textContent = "For enrolment, clearance and alumni concerns";
+            const program = saved.program || (currentUser && currentUser.program) || "";
+            const batch = saved.batch || (currentUser && currentUser.batch) || "";
+            fillDashboardRows("dashAdviserRows", [
+                ["Name", saved.adviser || "Alumni Relations Office"],
+                ["My Section", saved.section || [program, batch ? "Batch " + batch : ""].filter(Boolean).join(" - ")],
+                ["Office Email", "alumni@stagnes.edu.ph"],
+                ["Telephone", "(02) 8361-2345"]
+            ]);
+        } else {
+            if (adviserLabelEl) adviserLabelEl.textContent = "Alumni Affairs Desk";
+            if (adviserNoteEl) adviserNoteEl.textContent = "Registrar and alumni office coordination";
+            fillDashboardRows("dashAdviserRows", [
+                ["Office", "Alumni Relations Office"],
+                ["Office Email", "alumni@stagnes.edu.ph"],
+                ["Registrar Email", "registrar@stagnes.edu.ph"],
+                ["Telephone", "(02) 8361-2345"]
+            ]);
+        }
+
+        toggleDashboardButton("dashRecordEditBtn", isAlumni);
+        toggleDashboardButton("dashTrackingBtn", role !== "registrar");
+        toggleDashboardButton("dashNewsletterLinkBtn", role !== "registrar");
+    }
+
+    /** Renders labelled rows into one of the dashboard cards. */
+    function fillDashboardRows(containerId, rows) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = rows.map(([label, value]) => `
+            <div class="record-row">
+                <span class="record-label">${escapeAnnouncementText(label)}</span>
+                <span class="record-value">${escapeAnnouncementText(value || "-")}</span>
+            </div>
+        `).join("");
+    }
+
+    /** Two-letter initials used when the alumnus has no uploaded photo. */
+    function initialsFromName(name) {
+        const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) return "AD";
+        return parts.map(w => w[0]).join("").slice(0, 2).toUpperCase();
+    }
+
+    /** Shows / hides a dashboard button according to the signed-in role. */
+    function toggleDashboardButton(id, visible) {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle("hidden", !visible);
+    }
+
+    /** Renders the current page of the announcement feed plus the pager state. */
+    function renderAnnouncementFeed() {
+        const list = document.getElementById("announcementFeed");
+        if (!list) return;
+
+        dashboardFeed.items = buildAnnouncementFeed();
+
+        const total = dashboardFeed.items.length;
+        const pageSize = dashboardFeed.pageSize;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        dashboardFeed.page = Math.min(Math.max(1, dashboardFeed.page), totalPages);
+
+        const start = (dashboardFeed.page - 1) * pageSize;
+        const pageItems = dashboardFeed.items.slice(start, start + pageSize);
+
+        list.innerHTML = pageItems.map((item, offset) => {
+            const index = start + offset;
+            const expanded = !!dashboardFeed.expanded[index];
+            const toggleLabel = expanded ? "Collapse announcement" : "Read full announcement";
+            return `
+            <article class="announcement-card">
+                <div class="announcement-poster">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    <h4>${escapeAnnouncementText(item.title)}</h4>
+                </div>
+                <div class="announcement-content">
+                    <p class="announcement-body ${expanded ? "" : "line-clamp-2"}">${escapeAnnouncementText(item.body)}</p>
+                </div>
+                <div class="announcement-foot">
+                    <span class="announcement-meta">
+                        <i class="fa-regular fa-calendar mr-0.5"></i> ${escapeAnnouncementText(item.date)}
+                        <span class="mx-1">|</span>
+                        <i class="fa-regular fa-user mr-0.5"></i> ${escapeAnnouncementText(item.author)}
+                    </span>
+                    <button type="button" onclick="toggleAnnouncement(${index})" class="announcement-toggle" title="${toggleLabel}" aria-label="${toggleLabel}">
+                        <i class="fa-solid ${expanded ? "fa-minus" : "fa-plus"}"></i>
+                    </button>
+                </div>
+            </article>`;
+        }).join("");
+
+        const rangeEl = document.getElementById("announcementRange");
+        if (rangeEl) {
+            rangeEl.textContent = total === 0
+                ? "0 of 0"
+                : `${start + 1}-${start + pageItems.length} of ${total}`;
+        }
+
+        const sizeEl = document.getElementById("announcementPageSize");
+        if (sizeEl) sizeEl.value = String(pageSize);
+
+        const atStart = dashboardFeed.page <= 1;
+        const atEnd = dashboardFeed.page >= totalPages;
+        setDashboardPagerState("announcementFirstBtn", atStart);
+        setDashboardPagerState("announcementPrevBtn", atStart);
+        setDashboardPagerState("announcementNextBtn", atEnd);
+        setDashboardPagerState("announcementLastBtn", atEnd);
+    }
+
+    function setDashboardPagerState(id, disabled) {
+        const el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+    }
+
+    function goToAnnouncementPage(direction) {
+        const totalPages = Math.max(1, Math.ceil(dashboardFeed.items.length / dashboardFeed.pageSize));
+        if (direction === "first") dashboardFeed.page = 1;
+        else if (direction === "prev") dashboardFeed.page -= 1;
+        else if (direction === "next") dashboardFeed.page += 1;
+        else if (direction === "last") dashboardFeed.page = totalPages;
+        renderAnnouncementFeed();
+    }
+
+    function changeAnnouncementPageSize(value) {
+        const size = Number(value);
+        dashboardFeed.pageSize = Number.isFinite(size) && size > 0 ? size : 10;
+        dashboardFeed.page = 1;
+        renderAnnouncementFeed();
+    }
+
+    function toggleAnnouncement(index) {
+        dashboardFeed.expanded[index] = !dashboardFeed.expanded[index];
+        renderAnnouncementFeed();
+    }
+
+    /** Merges published server newsletters into the feed (once per session). */
+    async function loadDashboardAnnouncementsFromServer() {
+        if (dashboardFeed.serverLoaded) return;
+        dashboardFeed.serverLoaded = true;
+        if (typeof SAA_API === "undefined") return;
+        try {
+            const data = await SAA_API.request("/api/newsletters");
+            const rows = (data && data.newsletters) || [];
+            if (rows.length) {
+                dashboardFeed.serverItems = rows;
+                dashboardFeed.page = 1;
+                renderAnnouncementFeed();
+            }
+        } catch (err) {
+            /* Offline or unauthenticated: local archive and built-in notices are used. */
+        }
+    }

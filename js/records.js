@@ -220,18 +220,160 @@
         }
     }
 
+    /**
+     * Shared Transcript / Document Request view.
+     *
+     * Separation of responsibilities:
+     *   alumni     -> submit and track their own requests (no approval rights)
+     *   registrar  -> review, approve / reject, process and update status
+     *   admin      -> monitor transactions and reports only (no approval rights)
+     */
+    const transcriptRoles = {
+        admin: {
+            title: "Document Request Monitoring",
+            subtitle: "Consolidated view of all transcript and document request transactions.",
+            notice: "Administrator access is view-only monitoring. Review and approval is performed by the Registrar.",
+            noticeClass: "text-slate-500",
+            actionsHeader: "Monitoring",
+            canApprove: false,
+            monitor: true,
+            canRequest: false
+        },
+        registrar: {
+            title: "Transcript & Academic Records Requests",
+            subtitle: "Review, approve or reject incoming requests, then process and release the documents.",
+            notice: "Registrar access: validate the academic record, then approve or reject each pending request.",
+            noticeClass: "text-[#801235]",
+            actionsHeader: "Actions",
+            canApprove: true,
+            monitor: false,
+            canRequest: false
+        },
+        alumni: {
+            title: "My Transcript Requests",
+            subtitle: "Submit document requests and track their status until the document is released.",
+            notice: "Alumni access: submit a request, then track its status here. Approval is handled by the Registrar.",
+            noticeClass: "text-slate-500",
+            actionsHeader: "Tracking",
+            canApprove: false,
+            monitor: false,
+            canRequest: true
+        }
+    };
+
+    /** Returns the capability set for the signed-in role (defaults to the most limited). */
+    function transcriptRole() {
+        const role = currentUser ? currentUser.role : "";
+        return transcriptRoles[role] || transcriptRoles.alumni;
+    }
+
+    /**
+     * Normalises a person name for comparison: lower-cased, punctuation removed and
+     * single-letter middle initials dropped, so "Maria Clara D. Santos" and
+     * "Maria Clara Santos" are recognised as the same requestor.
+     */
+    function normaliseRequesterName(value) {
+        return String(value || "")
+            .toLowerCase()
+            .replace(/[^a-z\s]/g, " ")
+            .split(/\s+/)
+            .filter(token => token.length > 1)
+            .join(" ");
+    }
+
+    /** True when the request belongs to the signed-in alumnus (by e-mail or by name). */
+    function isOwnRequest(item) {
+        const ownEmail = String((currentUser && currentUser.email) || "").trim().toLowerCase();
+        const itemEmail = String(item.email || "").trim().toLowerCase();
+        if (ownEmail && itemEmail && ownEmail === itemEmail) return true;
+
+        const ownName = normaliseRequesterName(currentUser && currentUser.name);
+        return Boolean(ownName) && normaliseRequesterName(item.name) === ownName;
+    }
+
     function renderTranscriptRequests() {
         const body = document.getElementById("transcriptTableBody");
         if (!body) return;
         body.innerHTML = "";
 
-        transcriptRequests.forEach(item => {
+        const caps = transcriptRole();
+
+        // Role-aware header, subtitle and responsibility notice.
+        const titleEl = document.getElementById("transcriptViewTitle");
+        if (titleEl) titleEl.textContent = caps.title;
+        const subtitleEl = document.getElementById("transcriptViewSubtitle");
+        if (subtitleEl) subtitleEl.textContent = caps.subtitle;
+
+        const noticeEl = document.getElementById("transcriptRoleNotice");
+        if (noticeEl) {
+            noticeEl.textContent = caps.notice;
+            noticeEl.className = `text-[11px] font-bold mt-2 ${caps.noticeClass}`;
+        }
+
+        const actionsHeader = document.getElementById("transcriptActionsHeader");
+        if (actionsHeader) actionsHeader.textContent = caps.actionsHeader;
+
+        // Only a requester may file a new request; monitoring / approving roles may not.
+        toggleDashboardButton("transcriptRequestBtn", caps.canRequest);
+
+        // Administrator monitoring strip.
+        const monitorBar = document.getElementById("transcriptMonitorBar");
+        if (monitorBar) monitorBar.classList.toggle("hidden", !caps.monitor);
+        if (caps.monitor) {
+            const countOf = (status) => transcriptRequests.filter(r => r.status === status).length;
+            const setCount = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = String(value);
+            };
+            setCount("transcriptMonitorTotal", transcriptRequests.length);
+            setCount("transcriptMonitorPending", countOf("Pending"));
+            setCount("transcriptMonitorApproved", countOf("Approved") + countOf("Released"));
+            setCount("transcriptMonitorRejected", countOf("Rejected"));
+        }
+
+        // Alumni only track their own transactions; staff see the whole register.
+        const rows = caps.canRequest
+            ? transcriptRequests.filter(isOwnRequest)
+            : transcriptRequests;
+
+        if (!rows.length) {
+            const empty = document.createElement("tr");
+            empty.innerHTML = `
+                <td colspan="5" class="py-10 text-center text-slate-400 font-semibold">
+                    <i class="fa-regular fa-folder-open text-xl block mb-2"></i>
+                    No document requests to display.
+                </td>`;
+            body.appendChild(empty);
+            return;
+        }
+
+        rows.forEach(item => {
             const tr = document.createElement("tr");
             const statusClass = item.status === "Approved" ? "status-approved" :
                                 item.status === "Rejected" ? "status-rejected" :
                                 item.status === "Released" ? "status-released" : "status-pending";
 
-            const canProcess = ["admin", "registrar"].includes(currentUser?.role);
+            // Only the Registrar may act on a request.
+            const canApprove = caps.canApprove && item.status === "Pending";
+            const canRelease = caps.canApprove && item.status === "Approved";
+
+            let actionCell = `<span class="text-xs text-slate-400 font-semibold">${item.status}</span>`;
+            if (caps.monitor) {
+                actionCell = `<span class="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                                  <i class="fa-regular fa-eye mr-1"></i>View only
+                              </span>`;
+            } else if (canApprove) {
+                actionCell = `
+                        <button onclick="updateRequestStatus(${item.id}, 'Approved')" class="btn btn-success text-xs px-2.5 py-1 mr-1">Approve</button>
+                        <button onclick="updateRequestStatus(${item.id}, 'Rejected')" class="btn btn-danger text-xs px-2.5 py-1">Reject</button>`;
+            } else if (canRelease) {
+                actionCell = `
+                        <button onclick="updateRequestStatus(${item.id}, 'Released')" class="btn btn-primary text-xs px-2.5 py-1">
+                            <i class="fa-solid fa-box-open mr-1"></i>Mark Released
+                        </button>`;
+            } else if (item.status === "Pending") {
+                actionCell = `<span class="text-xs text-amber-600 font-bold"><i class="fa-regular fa-clock mr-1"></i>Awaiting Registrar</span>`;
+            }
 
             tr.innerHTML = `
                 <td class="font-extrabold text-slate-800">
@@ -244,10 +386,7 @@
                 <td class="text-slate-600 font-medium">${item.purpose || "Official Record"}</td>
                 <td><span class="status-badge ${statusClass}">${item.status}</span></td>
                 <td class="text-right">
-                    ${(canProcess && item.status === "Pending") ? `
-                        <button onclick="updateRequestStatus(${item.id}, 'Approved')" class="btn btn-success text-xs px-2.5 py-1 mr-1">Approve</button>
-                        <button onclick="updateRequestStatus(${item.id}, 'Rejected')" class="btn btn-danger text-xs px-2.5 py-1">Reject</button>
-                    ` : `<span class="text-xs text-slate-400 font-semibold">${item.status}</span>`}
+                    ${actionCell}
                 </td>
             `;
             body.appendChild(tr);
@@ -255,6 +394,13 @@
     }
 
     function updateRequestStatus(id, newStatus) {
+        // Separation of responsibilities: ONLY the Registrar reviews and updates
+        // the status of a document request. Administrators monitor them instead.
+        if (!currentUser || currentUser.role !== "registrar") {
+            showToast("Only the Registrar can approve, reject or release document requests.", "error");
+            return;
+        }
+
         transcriptRequests = transcriptRequests.map(r => r.id === id ? { ...r, status: newStatus } : r);
         updateLocalStorage();
         renderTranscriptRequests();
@@ -344,19 +490,30 @@
         if (!body) return;
         body.innerHTML = "";
 
+        const caps = transcriptRole();
+        toggleDashboardButton("reprintRequestBtn", caps.canRequest);
+
         reprintRequests.forEach(item => {
             const tr = document.createElement("tr");
             const statusClass = item.status === "Approved" ? "status-approved" : "status-pending";
-            const canProcess = ["admin", "registrar"].includes(currentUser?.role);
+
+            let actionCell = `<span class="text-xs text-slate-400 font-semibold">${item.status}</span>`;
+            if (caps.monitor) {
+                actionCell = `<span class="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                                  <i class="fa-regular fa-eye mr-1"></i>View only
+                              </span>`;
+            } else if (caps.canApprove && item.status === "Pending") {
+                actionCell = `<button onclick="approveReprint(${item.id})" class="btn btn-success text-xs px-2.5 py-1">Approve Reprint</button>`;
+            } else if (item.status === "Pending") {
+                actionCell = `<span class="text-xs text-amber-600 font-bold"><i class="fa-regular fa-clock mr-1"></i>Awaiting Registrar</span>`;
+            }
 
             tr.innerHTML = `
                 <td class="font-extrabold text-slate-800">${item.name}</td>
                 <td class="text-slate-600">${item.type}</td>
                 <td><span class="status-badge ${statusClass}">${item.status}</span></td>
                 <td class="text-right">
-                    ${(canProcess && item.status === "Pending") ? `
-                        <button onclick="approveReprint(${item.id})" class="btn btn-success text-xs px-2.5 py-1">Approve Reprint</button>
-                    ` : `<span class="text-xs text-slate-400">Processed</span>`}
+                    ${actionCell}
                 </td>
             `;
             body.appendChild(tr);
@@ -364,6 +521,11 @@
     }
 
     function approveReprint(id) {
+        // Registrar-only action; the Administrator monitors reprint transactions.
+        if (!currentUser || currentUser.role !== "registrar") {
+            showToast("Only the Registrar can approve certificate reprint requests.", "error");
+            return;
+        }
         reprintRequests = reprintRequests.map(r => r.id === id ? { ...r, status: "Approved" } : r);
         renderReprintRequests();
         showToast("Certificate reprint request approved.", "success");

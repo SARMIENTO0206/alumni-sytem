@@ -253,7 +253,7 @@
             "verification", "academic-records"
         ],
         alumni: [
-            "dashboard", "idcard", "profile", "job-opportunities", "transcript", 
+            "dashboard", "profile", "job-opportunities", "transcript", 
             "reprint", "tracking", "events", "reunions", "donor", "newsletter", "feedback"
         ],
         registrar: [

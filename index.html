@@ -437,7 +437,7 @@
                 </button>
 
                 <button onclick="switchView('transcript')" id="nav-transcript" class="sidebar-link">
-                    <i class="fa-solid fa-file-invoice"></i><span>Transcript Requests</span>
+                    <i class="fa-solid fa-magnifying-glass-chart"></i><span>Document Request Monitor</span>
                 </button>
 
                 <button onclick="switchView('reprint')" id="nav-reprint" class="sidebar-link">
@@ -487,10 +487,6 @@
                     <i class="fa-solid fa-chart-line"></i><span>Alumni Dashboard</span>
                 </button>
 
-                <button onclick="switchView('idcard')" id="alumni-nav-idcard" class="sidebar-link">
-                    <i class="fa-solid fa-id-card"></i><span>Digital Alumni ID</span>
-                </button>
-
                 <button onclick="switchView('profile')" id="alumni-nav-profile" class="sidebar-link">
                     <i class="fa-solid fa-user-circle"></i><span>My Profile</span>
                 </button>
@@ -508,7 +504,7 @@
                 </button>
 
                 <button onclick="switchView('tracking')" id="alumni-nav-tracking" class="sidebar-link">
-                    <i class="fa-solid fa-briefcase"></i><span>Employment Update</span>
+                    <i class="fa-solid fa-briefcase"></i><span>Graduate Tracking</span>
                 </button>
 
                 <button onclick="switchView('events')" id="alumni-nav-events" class="sidebar-link">
@@ -644,34 +640,43 @@
                      ================================================= -->
                 <div id="view-dashboard" class="space-y-6 fade-in">
 
-                    <!-- Welcome Card -->
-                    <div class="gradient-card rounded-2xl p-6 sm:p-8 shadow-md flex flex-col md:flex-row items-center justify-between">
-                        <div class="relative z-10 md:w-2/3">
-                            <span class="inline-block px-3 py-1 rounded-full bg-white/15 text-pink-200 text-xs font-bold tracking-wider uppercase mb-3 backdrop-blur-sm border border-white/10">
-                                SAA Alumni Network
-                            </span>
-                            <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                                Welcome back, <span id="welcomeName" class="text-pink-200">Admin</span>!
-                            </h2>
-                            <p class="text-pink-100/90 text-sm mt-2 max-w-xl">
-                                St. Agnes Academy of Caloocan continues to celebrate the accomplishments and milestones of our graduates worldwide.
-                            </p>
-                            <div class="mt-4 flex flex-wrap gap-2.5">
-                                <button onclick="switchView('transcript')" class="btn btn-secondary text-xs px-3.5 py-2 font-bold shadow-xs">
-                                    <i class="fa-solid fa-file-lines text-brand-magenta"></i>
-                                    <span>Transcript Portal</span>
+                    <!-- PAGE TITLE BAND (portal style) -->
+                    <section class="page-band">
+                        <nav class="breadcrumb" aria-label="Breadcrumb">Dashboard</nav>
+                        <h1>Announcements</h1>
+                        <p>Welcome back, <span id="welcomeName" class="font-extrabold text-brand-magenta">Admin</span> — latest notices from the Alumni Relations Office.</p>
+                    </section>
+
+                    <!-- ALUMNI RECORD & ADVISER CARDS (portal style) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        <div class="app-card p-5 sm:p-6">
+                            <div class="record-head">
+                                <div class="record-avatar" id="dashRecordAvatar">AD</div>
+                                <div class="min-w-0">
+                                    <p class="text-base font-extrabold text-slate-800 truncate" id="dashRecordName">Alumni Name</p>
+                                    <p class="text-[11px] font-semibold text-slate-400" id="dashRecordSubtitle">Alumnus</p>
+                                </div>
+                            </div>
+                            <div class="record-list" id="dashRecordRows"></div>
+                            <div class="record-foot">
+                                <button id="dashRecordEditBtn" onclick="switchView('profile')" class="btn btn-primary text-xs px-3.5 py-2 font-bold">
+                                    <i class="fa-solid fa-pen-to-square"></i><span>Update My Record</span>
                                 </button>
-                                <button onclick="switchView('events')" class="btn btn-outline-magenta text-xs px-3.5 py-2 font-bold bg-white/10 text-white border-white/30 hover:bg-white/20">
-                                    <i class="fa-regular fa-calendar-check"></i>
-                                    <span>View Events</span>
+                                <button id="dashTrackingBtn" onclick="switchView('tracking')" class="btn btn-secondary text-xs px-3.5 py-2 font-bold">
+                                    <i class="fa-solid fa-briefcase text-brand-magenta"></i><span>Graduate Tracking</span>
                                 </button>
                             </div>
                         </div>
-                        <div class="md:w-1/3 flex justify-end mt-6 md:mt-0 relative">
-                            <div class="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center">
-                                <p class="serif-tagline text-xl italic text-white font-bold">"Caritas et Scientia"</p>
-                                <p class="text-[10px] text-pink-200 uppercase tracking-widest mt-1">Class of Continuous Excellence</p>
+
+                        <div class="app-card p-5 sm:p-6">
+                            <div class="record-head">
+                                <div class="record-avatar record-avatar-alt"><i class="fa-regular fa-user"></i></div>
+                                <div class="min-w-0">
+                                    <p class="adviser-title" id="dashAdviserLabel">Alumni Adviser</p>
+                                    <p class="text-[11px] font-semibold text-slate-400" id="dashAdviserNote">For enrolment, clearance and alumni concerns</p>
+                                </div>
                             </div>
+                            <div class="record-list" id="dashAdviserRows"></div>
                         </div>
                     </div>
 
@@ -718,235 +723,38 @@
                         </div>
                     </div>
 
-                    <!-- ANALYTICS & ACTIVITIES -->
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Chart Card -->
-                        <div class="app-card p-6 lg:col-span-2">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                                <div>
-                                    <h3 class="font-extrabold text-slate-800 text-base">Alumni Community Growth</h3>
-                                    <p class="text-xs text-slate-400 font-medium">Historical graduation and registration trends</p>
-                                </div>
-                                <span class="status-badge status-verified text-xs">
-                                    <i class="fa-solid fa-arrow-trend-up"></i> +14% this year
-                                </span>
-                            </div>
-                            <div class="h-64 relative">
-                                <canvas id="growthChart"></canvas>
-                            </div>
-                        </div>
-
-                        <!-- Recent Activities Feed -->
-                        <div class="app-card p-6 flex flex-col justify-between">
-                            <div>
-                                <h3 class="font-extrabold text-slate-800 text-base mb-4">Recent Activities</h3>
-                                <div class="space-y-3.5">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 text-xs font-bold">
-                                            <i class="fa-regular fa-user"></i>
-                                        </div>
-                                        <div>
-                                            <p class="font-bold text-slate-800 text-xs">New Alumni Record Added</p>
-                                            <p class="text-[11px] text-slate-500 font-medium">Maria Clara D. Santos (Batch 2024)</p>
-                                            <span class="text-[10px] text-slate-400">10 mins ago</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex items-start space-x-3">
-                                        <div class="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 text-xs font-bold">
-                                            <i class="fa-regular fa-file-lines"></i>
-                                        </div>
-                                        <div>
-                                            <p class="font-bold text-slate-800 text-xs">Transcript Requested</p>
-                                            <p class="text-[11px] text-slate-500 font-medium">Juan Miguel R. Reyes</p>
-                                            <span class="text-[10px] text-slate-400">1 hour ago</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex items-start space-x-3">
-                                        <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 text-xs font-bold">
-                                            <i class="fa-solid fa-briefcase"></i>
-                                        </div>
-                                        <div>
-                                            <p class="font-bold text-slate-800 text-xs">Placement Logged</p>
-                                            <p class="text-[11px] text-slate-500 font-medium">Angela K. Mendoza at FinanceHub</p>
-                                            <span class="text-[10px] text-slate-400">Yesterday</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button onclick="switchView('tracking')" class="mt-4 w-full py-2 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 text-xs font-bold transition flex items-center justify-center gap-1">
-                                <span>View Tracking Report</span>
-                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    <!-- ANNOUNCEMENTS FEED (portal style, paginated) -->
+                    <section class="app-card p-5 sm:p-6">
+                        <div class="feed-head">
+                            <h3 class="flex items-center gap-2 font-extrabold text-slate-800 text-base">
+                                <i class="fa-solid fa-thumbtack text-brand-magenta"></i> Announcements
+                            </h3>
+                            <button id="dashNewsletterLinkBtn" onclick="switchView('newsletter')" class="text-xs text-brand-magenta font-bold hover:underline">
+                                View Newsletter Archive
                             </button>
                         </div>
-                    </div>
 
-                    <!-- UPCOMING EVENTS & MOTTO HIGHLIGHT -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="app-card p-6">
-                            <div class="flex items-center justify-between mb-4">
-                                <h3 class="font-extrabold text-slate-800 text-base">Upcoming Alumni Events</h3>
-                                <button onclick="switchView('events')" class="text-xs text-brand-magenta font-bold hover:underline">
-                                    View All
-                                </button>
-                            </div>
-                            <div class="space-y-3">
-                                <div class="flex items-center p-3.5 border border-slate-100 rounded-xl bg-slate-50/60 hover:bg-pink-50/40 transition">
-                                    <div class="bg-pink-100 text-brand-magenta font-extrabold rounded-lg p-2.5 text-center min-w-[52px]">
-                                        <p class="text-[10px] uppercase tracking-wider">Jun</p>
-                                        <p class="text-lg leading-tight">15</p>
-                                    </div>
-                                    <div class="ml-4 min-w-0">
-                                        <h4 class="font-bold text-slate-800 text-xs sm:text-sm truncate">Agnesian Grand Homecoming 2024</h4>
-                                        <p class="text-[11px] text-slate-400 font-medium mt-0.5">
-                                            <i class="fa-regular fa-clock mr-1"></i> 9:00 AM | SAA Main Campus Grounds
-                                        </p>
-                                    </div>
-                                </div>
+                        <div id="announcementFeed" class="feed-list"></div>
 
-                                <div class="flex items-center p-3.5 border border-slate-100 rounded-xl bg-slate-50/60 hover:bg-indigo-50/40 transition">
-                                    <div class="bg-indigo-100 text-indigo-700 font-extrabold rounded-lg p-2.5 text-center min-w-[52px]">
-                                        <p class="text-[10px] uppercase tracking-wider">Jul</p>
-                                        <p class="text-lg leading-tight">20</p>
-                                    </div>
-                                    <div class="ml-4 min-w-0">
-                                        <h4 class="font-bold text-slate-800 text-xs sm:text-sm truncate">Batch 2014 Decennial Reunion</h4>
-                                        <p class="text-[11px] text-slate-400 font-medium mt-0.5">
-                                            <i class="fa-regular fa-clock mr-1"></i> 6:00 PM | SAA Multi-purpose Hall
-                                        </p>
-                                    </div>
-                                </div>
+                        <div class="feed-toolbar">
+                            <label class="feed-size" for="announcementPageSize">
+                                Items per page:
+                                <select id="announcementPageSize" onchange="changeAnnouncementPageSize(this.value)" class="form-select text-xs py-1 px-2 w-auto">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                </select>
+                            </label>
+                            <span id="announcementRange" class="feed-range">0–0 of 0</span>
+                            <div class="feed-pager">
+                                <button id="announcementFirstBtn" onclick="goToAnnouncementPage('first')" class="feed-page-btn" title="First page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
+                                <button id="announcementPrevBtn" onclick="goToAnnouncementPage('prev')" class="feed-page-btn" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-angle-left"></i></button>
+                                <button id="announcementNextBtn" onclick="goToAnnouncementPage('next')" class="feed-page-btn" title="Next page" aria-label="Next page"><i class="fa-solid fa-angle-right"></i></button>
+                                <button id="announcementLastBtn" onclick="goToAnnouncementPage('last')" class="feed-page-btn" title="Last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
                             </div>
                         </div>
-
-                        <!-- Academy Heritage Card -->
-                        <div class="app-card bg-brand-dark p-6 text-white flex flex-col justify-between relative overflow-hidden">
-                            <div>
-                                <div class="flex items-center justify-between">
-                                    <span class="bg-pink-950 text-pink-300 text-[10px] font-extrabold tracking-widest uppercase px-3 py-1 rounded-full border border-pink-500/20">
-                                        Academy Heritage
-                                    </span>
-                                    <i class="fa-solid fa-award text-pink-400 text-lg"></i>
-                                </div>
-                                <h4 class="serif-tagline text-2xl italic mt-4 text-pink-100 font-bold">
-                                    "Caritas et Scientia"
-                                </h4>
-                                <p class="text-xs text-pink-300 uppercase tracking-widest mt-1 font-semibold">
-                                    Love and Knowledge
-                                </p>
-                                <p class="text-xs text-pink-200/80 mt-4 leading-relaxed">
-                                    St. Agnes Academy of Caloocan instills in every alumnus the enduring values of compassion, scholarly excellence, integrity, and active service to community and nation.
-                                </p>
-                            </div>
-                            <div class="mt-6 pt-4 border-t border-rose-950 flex items-center justify-between text-xs text-pink-300">
-                                <span>Official Alumni Association</span>
-                                <span class="font-semibold text-white">SAA Caloocan</span>
-                            </div>
-                        </div>
-                    </div>
+                    </section>
                 </div>
-
-
-                <!-- =================================================
-                     VIEW: DIGITAL ALUMNI ID CARD (ALUMNI)
-                     ================================================= -->
-                <div id="view-idcard" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6 sm:p-8 max-w-2xl mx-auto">
-                        <div class="text-center mb-6">
-                            <span class="status-badge status-verified mb-1">Official Digital Credential</span>
-                            <h3 class="text-2xl font-extrabold text-slate-800">Digital Alumni Identification Card</h3>
-                            <p class="text-xs text-slate-400 font-medium mt-1">Official authenticated identification for campus entry, alumni discounts, and library access.</p>
-                        </div>
-
-                        <!-- 3D Flippable Card Container -->
-                        <div class="id-card-wrapper my-6">
-                            <div class="id-card-inner" id="digitalIdCard">
-                                <!-- FRONT OF CARD -->
-                                <div class="id-card-face id-card-front">
-                                    <!-- Top Header -->
-                                    <div class="flex items-center justify-between border-b border-pink-400/20 pb-2">
-                                        <div class="flex items-center space-x-2">
-                                            <img src="logo.jpeg" alt="Logo" class="w-8 h-8 rounded-full bg-white p-0.5 object-contain" onerror="this.src='https://via.placeholder.com/50?text=SAA'">
-                                            <div>
-                                                <p class="text-[11px] font-extrabold tracking-wider leading-tight text-white">ST. AGNES ACADEMY</p>
-                                                <p class="text-[8px] text-pink-300 font-semibold tracking-widest uppercase">OF CALOOCAN • ALUMNI ID</p>
-                                            </div>
-                                        </div>
-                                        <span class="px-2 py-0.5 rounded-full bg-white/20 text-white font-extrabold text-[9px] border border-white/30 tracking-wider">
-                                            VERIFIED
-                                        </span>
-                                    </div>
-
-                                    <!-- Middle Body -->
-                                    <div class="flex items-center space-x-4 my-2">
-                                        <div class="w-20 h-20 rounded-2xl bg-white text-brand-magenta font-extrabold text-2xl flex items-center justify-center shadow-md border-2 border-pink-300 ring-2 ring-white/40 flex-shrink-0 overflow-hidden" id="idCardAvatar">
-                                            MS
-                                        </div>
-                                        <div class="min-w-0 flex-grow">
-                                            <p class="text-sm font-extrabold text-white truncate" id="idCardName">Maria Clara Santos</p>
-                                            <p class="text-[11px] text-pink-200 font-semibold mt-0.5 truncate" id="idCardProgram">BS Information Technology</p>
-                                            <div class="flex items-center gap-3 mt-2 text-[10px] text-pink-100">
-                                                <span><b>Batch:</b> <span id="idCardBatch">2024</span></span>
-                                                <span><b>ID No:</b> <span id="idCardNumber">SAA-2024-0089</span></span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Bottom Footer -->
-                                    <div class="flex items-center justify-between pt-2 border-t border-pink-400/20 text-[9px]">
-                                        <div>
-                                            <p class="text-pink-300">Valid Through</p>
-                                            <p class="font-bold text-white tracking-wider">LIFETIME MEMBERSHIP</p>
-                                        </div>
-                                        <div class="w-8 h-8 rounded-full gold-hologram-seal flex items-center justify-center font-extrabold text-[8px]" title="SAA Official Hologram Seal">
-                                            SAA
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- BACK OF CARD -->
-                                <div class="id-card-face id-card-back">
-                                    <div class="magnetic-strip"></div>
-
-                                    <div class="flex items-start justify-between gap-3 my-1">
-                                        <div class="flex-grow">
-                                            <p class="text-[9px] text-slate-300 uppercase font-semibold">Authorized Signature</p>
-                                            <div class="signature-strip mt-1" id="idCardSignature">
-                                                Maria Clara Santos
-                                            </div>
-                                            <p class="text-[8px] text-slate-400 mt-2 leading-tight">
-                                                This credential certifies that the bearer is a bonafide graduate of St. Agnes Academy of Caloocan.
-                                            </p>
-                                        </div>
-                                        <div class="w-20 h-20 bg-white p-1.5 rounded-xl flex items-center justify-center flex-shrink-0 shadow-inner" id="idCardQRCode">
-                                            <!-- Dynamic QR injected here -->
-                                        </div>
-                                    </div>
-
-                                    <div class="pt-2 border-t border-slate-700/80 flex items-center justify-between text-[8px] text-slate-400">
-                                        <span>Tel: (02) 8288-1234</span>
-                                        <span class="font-cinzel text-pink-300 font-bold">Caritas et Scientia</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Card Action Buttons -->
-                        <div class="flex flex-wrap items-center justify-center gap-3 mt-6">
-                            <button onclick="flipIdCard()" class="btn btn-secondary text-xs px-4 py-2 font-bold shadow-xs">
-                                <i class="fa-solid fa-arrows-rotate text-brand-magenta"></i>
-                                <span>Flip Card (Front / Back)</span>
-                            </button>
-                            <button onclick="window.print()" class="btn btn-primary text-xs px-4 py-2 font-bold">
-                                <i class="fa-solid fa-print"></i>
-                                <span>Print / Download ID</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
 
                 <!-- =================================================
                      VIEW: ALUMNI DATABASE (ADMIN)
@@ -1097,6 +905,14 @@
                                 <label class="form-label" for="profileJobTitle">Current Job Position / Title</label>
                                 <input id="profileJobTitle" type="text" class="form-input text-sm" placeholder="e.g. Software Engineer">
                             </div>
+                            <div>
+                                <label class="form-label" for="profileAdviser">Batch Adviser</label>
+                                <input id="profileAdviser" type="text" class="form-input text-sm" placeholder="e.g. Ms. Wendyli P. Ojastro">
+                            </div>
+                            <div>
+                                <label class="form-label" for="profileSection">Section / Block</label>
+                                <input id="profileSection" type="text" class="form-input text-sm" placeholder="e.g. BSIT 4102">
+                            </div>
                         </div>
 
                         <!-- Career Resume & Document Credentials -->
@@ -1235,15 +1051,42 @@
                      ================================================= -->
                 <div id="view-transcript" class="hidden space-y-6 fade-in">
                     <div class="app-card p-6">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                             <div>
-                                <h3 class="text-lg font-extrabold text-slate-800">Transcript & Academic Records Requests</h3>
-                                <p class="text-xs text-slate-400 font-medium">Official requests for Transcript of Records (TOR) and grade certifications.</p>
+                                <h3 id="transcriptViewTitle" class="text-lg font-extrabold text-slate-800">Transcript & Academic Records Requests</h3>
+                                <p id="transcriptViewSubtitle" class="text-xs text-slate-400 font-medium">Official requests for Transcript of Records (TOR) and grade certifications.</p>
+                                <p id="transcriptRoleNotice" class="text-[11px] font-bold mt-2"></p>
                             </div>
-                            <button onclick="openRequestDocModal('Transcript of Records')" class="btn btn-primary text-xs">
+                            <button id="transcriptRequestBtn" onclick="openRequestDocModal('Transcript of Records')" class="btn btn-primary text-xs">
                                 <i class="fa-solid fa-plus"></i>
                                 <span>Request New Transcript</span>
                             </button>
+                        </div>
+
+                        <!-- Administrator: view-only oversight of all document request transactions.
+                             Approval / rejection is performed by the Registrar only. -->
+                        <div id="transcriptMonitorBar" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                            <div class="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Transactions</p>
+                                <p class="text-xl font-extrabold text-slate-800 mt-0.5" id="transcriptMonitorTotal">0</p>
+                            </div>
+                            <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80">
+                                <p class="text-[10px] text-amber-700 font-bold uppercase tracking-wider">Awaiting Registrar</p>
+                                <p class="text-xl font-extrabold text-amber-900 mt-0.5" id="transcriptMonitorPending">0</p>
+                            </div>
+                            <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                                <p class="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Approved</p>
+                                <p class="text-xl font-extrabold text-emerald-900 mt-0.5" id="transcriptMonitorApproved">0</p>
+                            </div>
+                            <div class="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80">
+                                <p class="text-[10px] text-rose-700 font-bold uppercase tracking-wider">Rejected</p>
+                                <p class="text-xl font-extrabold text-rose-900 mt-0.5" id="transcriptMonitorRejected">0</p>
+                            </div>
+                            <p class="col-span-2 lg:col-span-4 text-[11px] font-semibold text-slate-500">
+                                <i class="fa-solid fa-circle-info mr-1 text-slate-400"></i>
+                                Monitoring only — approval, rejection and release are performed by the Registrar.
+                                <button onclick="switchView('reports')" class="text-[#801235] font-bold hover:underline ml-1">Open Document Request Reports</button>
+                            </p>
                         </div>
 
                         <div class="data-table-container">
@@ -1254,7 +1097,7 @@
                                         <th>Request Date</th>
                                         <th>Purpose</th>
                                         <th>Status</th>
-                                        <th class="text-right">Actions</th>
+                                        <th id="transcriptActionsHeader" class="text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="transcriptTableBody">
@@ -1276,7 +1119,7 @@
                                 <h3 class="text-lg font-extrabold text-slate-800">Certificate & Diploma Reprint Requests</h3>
                                 <p class="text-xs text-slate-400 font-medium">Official reprint applications for diplomas, graduation certificates, and awards.</p>
                             </div>
-                            <button onclick="openRequestDocModal('Diploma / Certificate Reprint')" class="btn btn-primary text-xs">
+                            <button id="reprintRequestBtn" onclick="openRequestDocModal('Diploma / Certificate Reprint')" class="btn btn-primary text-xs">
                                 <i class="fa-solid fa-plus"></i>
                                 <span>Request Certificate Reprint</span>
                             </button>

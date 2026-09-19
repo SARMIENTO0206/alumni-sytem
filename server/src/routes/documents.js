@@ -39,8 +39,13 @@ router.post('/transcripts', (req, res) => {
   res.status(201).json({ request: mapTranscript(row) });
 });
 
-/** PUT /api/transcripts/:id/status - advance a request (admin / registrar). */
-router.put('/transcripts/:id/status', requireRole('admin', 'registrar'), (req, res) => {
+/**
+ * PUT /api/transcripts/:id/status - review / approve / reject / release.
+ *
+ * Registrar-only. The Administrator monitors document request transactions and
+ * reports, but does not approve them.
+ */
+router.put('/transcripts/:id/status', requireRole('registrar'), (req, res) => {
   const id = Number(req.params.id);
   const { status } = req.body || {};
   const allowed = ['Pending', 'Approved', 'Rejected', 'Released'];
@@ -70,8 +75,8 @@ router.post('/reprints', (req, res) => {
   res.status(201).json({ reprint: mapReprint(row) });
 });
 
-/** PUT /api/reprints/:id/status - approve/reject reprint (admin / registrar). */
-router.put('/reprints/:id/status', requireRole('admin', 'registrar'), (req, res) => {
+/** PUT /api/reprints/:id/status - approve/reject a reprint (registrar only). */
+router.put('/reprints/:id/status', requireRole('registrar'), (req, res) => {
   const id = Number(req.params.id);
   const { status } = req.body || {};
   const allowed = ['Pending', 'Approved', 'Rejected'];

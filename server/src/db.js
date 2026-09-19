@@ -37,7 +37,8 @@ export function initDb() {
     CREATE TABLE IF NOT EXISTS sessions (
       token      TEXT PRIMARY KEY,
       user_id    INTEGER NOT NULL,
-      created_at TEXT DEFAULT (datetime('now'))
+      created_at TEXT DEFAULT (datetime('now')),
+      expires_at INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS alumni (
@@ -135,7 +136,19 @@ export function initDb() {
       recipient  TEXT DEFAULT '',
       subject    TEXT DEFAULT '',
       message    TEXT DEFAULT '',
+      status     TEXT DEFAULT 'QUEUED',
       created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS message_replies (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      notification_id INTEGER,
+      channel         TEXT DEFAULT '',
+      sender          TEXT DEFAULT '',
+      message         TEXT NOT NULL,
+      status          TEXT DEFAULT 'RECEIVED',
+      created_at      TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (notification_id) REFERENCES notifications(id)
     );
 
     CREATE TABLE IF NOT EXISTS academic_records (
@@ -146,9 +159,85 @@ export function initDb() {
       gwa            REAL DEFAULT 0,
       status         TEXT DEFAULT 'Active'
     );
-  `);
 
+    CREATE TABLE IF NOT EXISTS job_postings (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      title           TEXT NOT NULL,
+      company         TEXT NOT NULL,
+      location        TEXT DEFAULT '',
+      category        TEXT DEFAULT 'General',
+      employment_type TEXT DEFAULT 'Full-Time',
+      description     TEXT DEFAULT '',
+      status          TEXT DEFAULT 'Open',
+      posted_by       INTEGER,
+      created_at      TEXT DEFAULT (datetime('now')),
+      updated_at      TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (posted_by) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS job_applications (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id          INTEGER NOT NULL,
+      applicant_user_id INTEGER,
+      name            TEXT NOT NULL,
+      email           TEXT NOT NULL,
+      resume          TEXT DEFAULT 'Standard Profile Application',
+      cover_message   TEXT DEFAULT '',
+      status          TEXT DEFAULT 'Submitted',
+      applied_at      TEXT DEFAULT (datetime('now')),
+      updated_at      TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (job_id) REFERENCES job_postings(id) ON DELETE CASCADE,
+      FOREIGN KEY (applicant_user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS outbound_messages (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      channel         TEXT NOT NULL,
+      recipient       TEXT NOT NULL,
+      subject         TEXT DEFAULT '',
+      body            TEXT NOT NULL,
+      status          TEXT DEFAULT 'Queued',
+      related_type    TEXT DEFAULT '',
+      related_id      INTEGER,
+      created_by      INTEGER,
+      created_at      TEXT DEFAULT (datetime('now')),
+      sent_at         TEXT,
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS inbound_replies (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      outbound_message_id INTEGER,
+      channel         TEXT NOT NULL,
+      sender          TEXT NOT NULL,
+      body            TEXT NOT NULL,
+      received_at     TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (outbound_message_id) REFERENCES outbound_messages(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS message_status_history (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      outbound_message_id INTEGER NOT NULL,
+      status          TEXT NOT NULL,
+      detail          TEXT DEFAULT '',
+      created_at      TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (outbound_message_id) REFERENCES outbound_messages(id) ON DELETE CASCADE
+    );
+  `);
+  const notificationColumns = db.prepare('PRAGMA table_info(notifications)').all();
+  if (!notificationColumns.some(column => column.name === 'status')) {
+    db.exec("ALTER TABLE notifications ADD COLUMN status TEXT DEFAULT 'QUEUED'");
+  }
+
+  const sessionColumns = db.prepare('PRAGMA table_info(sessions)').all();
+  if (!sessionColumns.some(column => column.name === 'expires_at')) {
+    db.exec('ALTER TABLE sessions ADD COLUMN expires_at INTEGER NOT NULL DEFAULT 0');
+    db.prepare('UPDATE sessions SET expires_at = ? WHERE expires_at = 0')
+      .run(Date.now() + sessionTtlMs());
+  }
   seedIfEmpty();
+  seedJobFlowIfEmpty();
+  migrateLegacyJobApplications();
 }
 
 /* ------------------------------------------------------------------ *
@@ -197,7 +286,8 @@ export function mapAlumni(row) {
  * ------------------------------------------------------------------ */
 export function createSession(userId) {
   const token = randomBytes(32).toString('hex');
-  db.prepare('INSERT INTO sessions (token, user_id) VALUES (?, ?)').run(token, userId);
+  db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)')
+    .run(token, userId, Date.now() + sessionTtlMs());
   return token;
 }
 
@@ -207,9 +297,15 @@ export function destroySession(token) {
 
 export function findByToken(token) {
   const row = db.prepare(
-    'SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?'
-  ).get(token);
+    'SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?'
+  ).get(token, Date.now());
+  if (!row) db.prepare('DELETE FROM sessions WHERE token = ? AND expires_at <= ?').run(token, Date.now());
   return mapUser(row);
+}
+
+function sessionTtlMs() {
+  const hours = Number(process.env.SESSION_TTL_HOURS) || 12;
+  return Math.max(1, hours) * 60 * 60 * 1000;
 }
 
 /* ------------------------------------------------------------------ *
@@ -219,15 +315,29 @@ function seedIfEmpty() {
   const count = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
   if (count > 0) return;
 
+  const passwords = {
+    admin: process.env.SEED_ADMIN_PASSWORD || (!isProduction() ? 'admin123' : ''),
+    alumni: process.env.SEED_ALUMNI_PASSWORD || (!isProduction() ? 'alumni123' : ''),
+    registrar: process.env.SEED_REGISTRAR_PASSWORD || (!isProduction() ? 'registrar123' : '')
+  };
+  /* The 12-character rule only applies to production, where the seed
+   * credentials MUST come from the environment. In development the documented
+   * demo passwords (admin123 / alumni123 / registrar123) are used instead, so
+   * this check must not reject them - otherwise a fresh database can never be
+   * created and the server cannot start. */
+
+  if (isProduction() && Object.values(passwords).some(password => password.length < 12)) {
+    throw new Error('Production seed passwords must be set and at least 12 characters long.');
+  }
   const hash = (pw) => bcrypt.hashSync(pw, 10);
   const insertUser = db.prepare(
     `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
-  insertUser.run('admin', hash('admin123'), 'admin', 'Administrator', 'System Administrator', 'AD', 'SAA-ADMIN-01', '2015', 'Administration', '', 'admin@stagnes.edu.ph', '(02) 8361-2345');
-  insertUser.run('alumni', hash('alumni123'), 'alumni', 'Maria Clara Santos', 'Alumna (Batch 2024)', 'MS', 'SAA-2024-0089', '2024', 'BS Information Technology', '', 'maria.santos@example.com', '+63 917 123 4567');
-  insertUser.run('registrar', hash('registrar123'), 'registrar', 'Registrar Office', 'School Registrar', 'RO', 'SAA-REG-01', '2010', 'Registrar Records', '', 'registrar@stagnes.edu.ph', '(02) 8288-1234');
+  insertUser.run('admin', hash(passwords.admin), 'admin', 'Administrator', 'System Administrator', 'AD', 'SAA-ADMIN-01', '2015', 'Administration', '', 'admin@stagnes.edu.ph', '(02) 8361-2345');
+  insertUser.run('alumni', hash(passwords.alumni), 'alumni', 'Maria Clara Santos', 'Alumna (Batch 2024)', 'MS', 'SAA-2024-0089', '2024', 'BS Information Technology', '', 'maria.santos@example.com', '+63 917 123 4567');
+  insertUser.run('registrar', hash(passwords.registrar), 'registrar', 'Registrar Office', 'School Registrar', 'RO', 'SAA-REG-01', '2010', 'Registrar Records', '', 'registrar@stagnes.edu.ph', '(02) 8288-1234');
 
   const insertAlumni = db.prepare(
     `INSERT INTO alumni (name, batch, program, status, company, job_title, contact, relevance, time_to_first, location, student_id, last_updated)
@@ -296,4 +406,114 @@ function seedIfEmpty() {
   insertAcademic.run(6, 'BS Accountancy', '2023', 1.6, 'Active');
 
   console.log('[db] Seeded fresh database with demo users, alumni, requests and campaigns.');
+}
+
+function isProduction() {
+  return process.env.NODE_ENV === 'production';
+}
+
+function seedJobFlowIfEmpty() {
+  const count = db.prepare('SELECT COUNT(*) AS n FROM job_postings').get().n;
+  if (count > 0) return;
+
+  const insert = db.prepare(
+    `INSERT INTO job_postings
+     (title, company, location, category, employment_type, description, status, posted_by)
+     VALUES (?, ?, ?, ?, ?, ?, 'Open', (SELECT id FROM users WHERE username = 'admin'))`
+  );
+  insert.run(
+    'IT Support & Systems Specialist', 'Nexus Technology Corp.', 'Quezon City, Metro Manila',
+    'IT / Tech', 'Full-Time',
+    'Responsible for computer infrastructure, network diagnostics, and end-user hardware troubleshooting.'
+  );
+  insert.run(
+    'Frontend Web Developer', 'PixelCraft Interactive', 'Ortigas, Pasig',
+    'Software', 'Hybrid',
+    'Build intuitive and responsive user interfaces using HTML, CSS, JavaScript, and modern frontend frameworks.'
+  );
+  insert.run(
+    'Administrative Coordinator', 'Caloocan Medical Diagnostics', 'Monumento, Caloocan',
+    'Administration', 'Full-Time',
+    'Manage official correspondences, records scheduling, document filings, and client relations.'
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * One-off migration: canonicalise the `job_applications` table.
+ *
+ * Earlier builds shipped a duplicate legacy job subsystem (a `jobs`
+ * table plus a `job_applications` table keyed on `applicant_id`). Because
+ * that legacy CREATE TABLE ran first, the canonical definition used by
+ * src/routes/jobs.js was silently ignored on existing databases, so
+ * GET /applications and PUT /applications/:id/status failed at runtime
+ * with "no such column". Rebuild the table in place, then drop the dead
+ * legacy `jobs` table.
+ * ------------------------------------------------------------------ */
+function migrateLegacyJobApplications() {
+  const columns = db.prepare('PRAGMA table_info(job_applications)').all()
+    .map(column => column.name);
+
+  if (!columns.includes('applicant_user_id')) {
+    db.exec(`
+      ALTER TABLE job_applications RENAME TO job_applications_legacy;
+
+      CREATE TABLE job_applications (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_id            INTEGER NOT NULL,
+        applicant_user_id INTEGER,
+        name              TEXT NOT NULL,
+        email             TEXT NOT NULL,
+        resume            TEXT DEFAULT 'Standard Profile Application',
+        cover_message     TEXT DEFAULT '',
+        status            TEXT DEFAULT 'Submitted',
+        applied_at        TEXT DEFAULT (datetime('now')),
+        updated_at        TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (job_id) REFERENCES job_postings(id) ON DELETE CASCADE,
+        FOREIGN KEY (applicant_user_id) REFERENCES users(id)
+      );
+    `);
+
+    /* Legacy applications referenced the old `jobs` table; remap each row to
+     * the equivalent `job_postings` row (matched on title + company). */
+    const hasLegacyJobs = Boolean(db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'jobs'")
+      .get());
+    const matchPosting = hasLegacyJobs
+      ? db.prepare(
+        `SELECT p.id FROM jobs j
+         JOIN job_postings p ON p.title = j.title AND p.company = j.company
+         WHERE j.id = ?`
+      )
+      : null;
+    const postingExists = db.prepare('SELECT id FROM job_postings WHERE id = ?');
+    const fallbackPostingId = db.prepare('SELECT MIN(id) AS id FROM job_postings').get()?.id ?? null;
+    const statusMap = {
+      SUBMITTED: 'Submitted', REVIEWING: 'Under Review', SHORTLISTED: 'Shortlisted',
+      REJECTED: 'Rejected', ACCEPTED: 'Hired', HIRED: 'Hired'
+    };
+    const insert = db.prepare(
+      `INSERT INTO job_applications
+         (id, job_id, applicant_user_id, name, email, resume, cover_message, status, applied_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+
+    for (const row of db.prepare('SELECT * FROM job_applications_legacy').all()) {
+      const matched = matchPosting ? (matchPosting.get(row.job_id)?.id ?? null) : null;
+      const jobId = (matched && postingExists.get(matched)) ? matched
+        : (postingExists.get(row.job_id) ? row.job_id : fallbackPostingId);
+      if (!jobId) continue; /* there is no job posting to attach the application to */
+      const applied = row.created_at || row.applied_at
+        || new Date().toISOString().slice(0, 19).replace('T', ' ');
+      insert.run(
+        row.id, jobId, row.applicant_id ?? null, row.name, row.email || '',
+        row.resume || '', '', statusMap[row.status] || row.status || 'Submitted', applied, applied
+      );
+    }
+
+    db.exec('DROP TABLE job_applications_legacy');
+    console.log('[db] Migrated job_applications to the canonical jobs schema.');
+  }
+
+  /* The legacy `jobs` table is no longer referenced by any route. */
+  db.exec('DROP TABLE IF EXISTS jobs');
 }

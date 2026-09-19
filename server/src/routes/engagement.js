@@ -147,7 +147,7 @@ router.get('/notifications', requireRole('admin', 'registrar'), (req, res) => {
   ).all(limit);
   res.json({ notifications: rows.map(n => ({
     id: n.id, channel: n.channel, recipient: n.recipient, subject: n.subject,
-    message: n.message, createdAt: n.created_at
+    message: n.message, status: n.status || 'QUEUED', createdAt: n.created_at
   })) });
 });
 
@@ -158,10 +158,10 @@ router.post('/notifications', (req, res) => {
     return res.status(400).json({ error: 'channel, recipient and subject are required.' });
   }
   const info = db.prepare(
-    'INSERT INTO notifications (channel, recipient, subject, message) VALUES (?, ?, ?, ?)'
+    "INSERT INTO notifications (channel, recipient, subject, message, status) VALUES (?, ?, ?, ?, 'QUEUED')"
   ).run(channel, recipient, subject, message || '');
 
-  res.status(201).json({ notification: { id: info.lastInsertRowid, channel, recipient, subject, message: message || '' } });
+  res.status(201).json({ notification: { id: info.lastInsertRowid, channel, recipient, subject, message: message || '', status: 'QUEUED' } });
 });
 
 export default router;

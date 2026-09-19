@@ -92,7 +92,6 @@
 
     let currentUser = null;
     let currentSortDirection = true;
-    let growthChartInstance = null;
     let empChartInstance = null;
     let indChartInstance = null;
 

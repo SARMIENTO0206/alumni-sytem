@@ -586,39 +586,6 @@
 /* Source: index.html lines 5376-5476 */
 /* ------------------------------------------------------------------------- */
     /* Charts */
-    function renderGrowthChart() {
-        const canvas = document.getElementById("growthChart");
-        if (!canvas) return;
-        if (growthChartInstance) growthChartInstance.destroy();
-
-        growthChartInstance = new Chart(canvas.getContext("2d"), {
-            type: "line",
-            data: {
-                labels: ["2019", "2020", "2021", "2022", "2023", "2024"],
-                datasets: [{
-                    label: "Registered Alumni",
-                    data: [2100, 2650, 3200, 3950, 4600, 5246],
-                    borderColor: "#b91c56",
-                    backgroundColor: "rgba(185, 28, 86, 0.08)",
-                    fill: true,
-                    tension: 0.35,
-                    borderWidth: 2.5,
-                    pointBackgroundColor: "#b91c56",
-                    pointRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { grid: { color: "#f1f5f9" } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-    }
-
     function renderTrackingCharts() {
         setTimeout(() => {
             const pieCanvas = document.getElementById("employmentPieChart");

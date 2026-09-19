@@ -579,14 +579,67 @@
         showToast("Resume attachment removed.", "info");
     }
 
-    function applyJobOpportunity(jobTitle, company) {
-        openJobApplyModal(jobTitle, company);
+    let currentJobApplicationId = null;
+    let jobBoardCache = [];
+
+    const fallbackJobOpportunities = [
+        { id: 1, title: "IT Support & Systems Specialist", company: "Nexus Technology Corp.", location: "Quezon City, Metro Manila", category: "IT / Tech", employmentType: "Full-Time", description: "Responsible for computer infrastructure, network diagnostics, and end-user hardware troubleshooting." },
+        { id: 2, title: "Frontend Web Developer", company: "PixelCraft Interactive", location: "Ortigas, Pasig", category: "Software", employmentType: "Hybrid", description: "Build intuitive and responsive user interfaces using HTML, CSS, JavaScript, and modern frontend frameworks." },
+        { id: 3, title: "Administrative Coordinator", company: "Caloocan Medical Diagnostics", location: "Monumento, Caloocan", category: "Administration", employmentType: "Full-Time", description: "Manage official correspondences, records scheduling, document filings, and client relations." }
+    ];
+
+    async function renderJobBoard() {
+        const container = document.getElementById("jobsGridContainer");
+        if (!container) return;
+        let jobs = fallbackJobOpportunities;
+        if (typeof SAA_API !== "undefined") {
+            try {
+                const data = await SAA_API.request("/api/jobs");
+                if (Array.isArray(data.jobs)) jobs = data.jobs;
+            } catch (error) {
+                // Keep the built-in preview jobs available when the API is offline.
+            }
+        }
+        jobBoardCache = jobs;
+        container.innerHTML = jobs.map(job => `
+            <div class="app-card app-card-hover p-5 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="status-badge status-freelance text-[10px]">${job.employmentType || "Open Position"}</span>
+                        <span class="text-xs font-bold text-slate-400">${job.category || "General"}</span>
+                    </div>
+                    <h4 class="font-extrabold text-slate-800 text-sm">${escapeHtml(job.title)}</h4>
+                    <p class="text-xs text-brand-magenta font-semibold mt-0.5">${escapeHtml(job.company)}</p>
+                    <p class="text-xs text-slate-400 mt-2 flex items-center gap-1"><i class="fa-solid fa-location-dot"></i> ${escapeHtml(job.location || "Location not specified")}</p>
+                    <p class="text-xs text-slate-500 mt-3 line-clamp-2">${escapeHtml(job.description || "")}</p>
+                </div>
+                <button onclick="openJobApplyModalById(${Number(job.id)})" class="btn btn-primary w-full text-xs mt-4">
+                    <i class="fa-solid fa-paper-plane text-[10px]"></i> Quick Apply
+                </button>
+            </div>
+        `).join("");
     }
 
-    function openJobApplyModal(jobTitle, company) {
-        document.getElementById("jobApplyTitle").value = jobTitle;
-        document.getElementById("jobApplyCompany").value = company;
-        document.getElementById("jobApplyModalTitle").textContent = `Apply: ${jobTitle}`;
+    function openJobApplyModalById(id) {
+        const job = jobBoardCache.find(item => Number(item.id) === Number(id));
+        if (job) openJobApplyModal(job);
+    }
+
+    function escapeHtml(value) {
+        return String(value || "").replace(/[&<>"']/g, char => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[char]));
+    }
+
+    function applyJobOpportunity(jobTitle, company) {
+        openJobApplyModal({ title: jobTitle, company });
+    }
+
+    function openJobApplyModal(job) {
+        currentJobApplicationId = job.id || null;
+        document.getElementById("jobApplyTitle").value = job.title || "";
+        document.getElementById("jobApplyCompany").value = job.company || "";
+        document.getElementById("jobApplyModalTitle").textContent = `Apply: ${job.title || "Position"}`;
         document.getElementById("jobApplicantName").value = currentUser ? currentUser.name : "Maria Clara Santos";
         document.getElementById("jobApplicantEmail").value = currentUser ? (currentUser.email || "alumni@stagnes.edu.ph") : "alumni@stagnes.edu.ph";
         renderResumeUI();
@@ -597,7 +650,7 @@
         document.getElementById("jobApplyModal").classList.remove("active");
     }
 
-    function submitJobApplication(event) {
+    async function submitJobApplication(event) {
         event.preventDefault();
         const title = document.getElementById("jobApplyTitle").value;
         const company = document.getElementById("jobApplyCompany").value;
@@ -605,6 +658,17 @@
         const email = document.getElementById("jobApplicantEmail").value;
         const resume = currentAttachedResume ? currentAttachedResume.name : "Standard Profile Application";
 
+        if (currentJobApplicationId && typeof SAA_API !== "undefined") {
+            try {
+                await SAA_API.request(`/api/jobs/${currentJobApplicationId}/applications`, {
+                    method: "POST",
+                    body: JSON.stringify({ name, email, resume })
+                });
+            } catch (error) {
+                showToast(error.message || "Could not submit the job application.", "error");
+                return;
+            }
+        }
         closeJobApplyModal();
         showToast(`Application submitted for "${title}" at ${company}!`, "success");
 
@@ -625,7 +689,7 @@
             subject: "Transcript Approved",
             message: "Good news! Your TOR request has been approved by the Registrar Office. Claiming window 2.",
             date: "2026-09-03 14:00",
-            status: "DELIVERED"
+            status: "QUEUED"
         },
         {
             id: 2,
@@ -634,7 +698,7 @@
             subject: "RSVP Confirmed - Grand Homecoming 2024",
             message: "Thank you for confirming your RSVP for Agnesian Grand Homecoming 2024. See you on June 15!",
             date: "2026-09-03 12:30",
-            status: "DELIVERED"
+            status: "QUEUED"
         }
     ];
 
@@ -655,7 +719,19 @@
 
         // Mirror the notification server-side (fire-and-forget; ignored when the API is offline).
         if (typeof SAA_API !== "undefined") {
-            SAA_API.logNotification({ channel, recipient: newNotif.recipient, subject, message });
+            SAA_API.request("/api/notifications", {
+                method: "POST",
+                body: JSON.stringify({ channel, recipient: newNotif.recipient, subject, message })
+            }).then(data => {
+                newNotif.id = data.notification.id;
+                newNotif.status = data.notification.status || "QUEUED";
+                localStorage.setItem("saaNotifications", JSON.stringify(notificationsList));
+                renderNotificationLogs();
+            }).catch(() => {
+                newNotif.status = "OFFLINE";
+                localStorage.setItem("saaNotifications", JSON.stringify(notificationsList));
+                renderNotificationLogs();
+            });
         }
 
         showToast(`[${channel} ALERT] ${subject}`, "info");
@@ -688,7 +764,7 @@
                 <p class="text-[11px] text-slate-600 leading-relaxed">${n.message}</p>
                 <div class="pt-1.5 flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-100">
                     <span>Recipient: <b class="text-slate-700">${n.recipient}</b></span>
-                    <span class="status-badge status-approved text-[9px]">DELIVERED</span>
+                    <span class="status-badge ${n.status === 'OFFLINE' ? 'status-rejected' : 'status-pending'} text-[9px]">${n.status || 'QUEUED'}</span>
                 </div>
             </div>
         `).join("");
@@ -945,9 +1021,6 @@
         if (q.includes("photo") || q.includes("picture") || q.includes("avatar") || q.includes("upload")) {
             return `You can upload and update your profile photo anytime by going to <strong>My Profile</strong> and clicking your avatar!`;
         }
-        if (q.includes("id") || q.includes("digital id") || q.includes("card")) {
-            return `Alumni can access their <strong>Digital Alumni ID Card</strong> with dynamic QR verification in the <em>Digital Alumni ID</em> module!`;
-        }
         if (q.includes("transcript") || q.includes("record")) {
             const pending = transcriptRequests.filter(r => r.status === "Pending").length;
             return `There are <strong>${pending} pending</strong> transcript requests. You can submit or track your requests in the <em>Transcript Request Portal</em>.`;
@@ -968,6 +1041,5 @@
             return `Hello! How can I assist you with your St. Agnes Academy alumni records, transcripts, or events today?`;
         }
 
-        return `I can help you look up <strong>Alumni Counts</strong>, <strong>Profile Photos</strong>, <strong>Digital ID Cards</strong>, <strong>Transcript Requests</strong>, <strong>Upcoming Events</strong>, and <strong>Job Postings</strong>.`;
+        return `I can help you look up <strong>Alumni Counts</strong>, <strong>Profile Photos</strong>, <strong>Transcript Requests</strong>, <strong>Upcoming Events</strong>, and <strong>Job Postings</strong>.`;
     }
-
