@@ -9,7 +9,7 @@ a **React front-end** (`client/`) and a **Node.js + Express + SQLite REST API** 
 | ---------- | ----------- |
 | `client/`  | **React front-end (Vite + hand-written CSS)** — the application UI |
 | `server/`  | **Node.js + Express + SQLite REST API** — 41 endpoints, bcrypt hashing, OpenAI API routes |
-| `scripts/` | Verification scripts (`test-api.ps1`, `test-render.ps1`) |
+| `scripts/` | Verification scripts (`run-check.ps1`, `test-api.ps1`, `test-render.ps1`) |
 
 ## 🧩 Technology stack (per project manuscript)
 
@@ -50,6 +50,8 @@ are API-only until their React views are added.
 
 ### 1. Install & build the React front-end
 
+**Requirements:** Node.js **≥ 22.5** (the API uses the built-in `node:sqlite` module; developed on Node 24).
+
 ```bash
 cd client
 npm install
@@ -75,6 +77,12 @@ npm run dev        # => http://localhost:5173  (proxies /api to :3000)
 
 > If `client/dist` is missing the server responds with a reminder to run the
 > build; the API at `/api/*` works regardless.
+
+### Verify the setup
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/run-check.ps1   # starts the server, checks the UI + login, then stops it
+```
 
 ### Demo accounts
 
