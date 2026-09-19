@@ -39,9 +39,9 @@ try {
     $alumni = Invoke-RestMethod 'http://localhost:3000/api/alumni' -Headers $headers
     ShowResponse 'GET /api/alumni (count)' @{ total = $alumni.alumni.Count }
 
-    ShowResponse 'POST /api/alumni (create, admin)' (
-        Invoke-RestMethod 'http://localhost:3000/api/alumni' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"Test Graduate","batch":"2025","program":"BS Psychology","status":"Employed","company":"ACME Corp","title":"HR Associate"}'
-    )
+    $created = Invoke-RestMethod 'http://localhost:3000/api/alumni' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"Test Graduate","batch":"2025","program":"BS Psychology","status":"Employed","company":"ACME Corp","title":"HR Associate"}'
+    $newAlumniId = $created.alumni.id
+    ShowResponse 'POST /api/alumni (create, admin)' @{ id = $newAlumniId; name = $created.alumni.name }
 
     ShowResponse 'GET /api/reports/summary' (Invoke-RestMethod 'http://localhost:3000/api/reports/summary' -Headers $headers)
 
@@ -91,7 +91,64 @@ try {
         (Invoke-WebRequest 'http://localhost:3000/api/reports/tracer-study/download' -Headers $headers -UseBasicParsing).Content.Substring(0, 220)
     )
 
-    Write-Host 'Total documented endpoints: auth(3) + alumni(5) + documents(8) + tracking(5) + engagement(11) + reports(4) + health(1) = 37.'
+    ShowResponse 'GET /api/alumni/:id' @{
+        status = (Invoke-WebRequest ("http://localhost:3000/api/alumni/$newAlumniId") -Headers $headers -UseBasicParsing).StatusCode
+    }
+
+    ShowResponse 'PUT /api/alumni/:id (admin)' (
+        Invoke-RestMethod ("http://localhost:3000/api/alumni/$newAlumniId") -Method Put -Headers $headers -ContentType 'application/json' -Body '{"status":"Unemployed"}'
+    )
+
+    ShowResponse 'DELETE /api/alumni/:id (admin)' @{
+        status = (Invoke-WebRequest ("http://localhost:3000/api/alumni/$newAlumniId") -Method Delete -Headers $headers -UseBasicParsing).StatusCode
+    }
+
+    ShowResponse 'GET /api/events' @{
+        total = (Invoke-RestMethod 'http://localhost:3000/api/events' -Headers $headers).events.Count
+    }
+
+    ShowResponse 'POST /api/events (admin)' (
+        Invoke-RestMethod 'http://localhost:3000/api/events' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"title":"API Test Event","date":"2026-01-10","location":"SAA Gym"}'
+    )
+
+    ShowResponse 'POST /api/reprints' (
+        Invoke-RestMethod 'http://localhost:3000/api/reprints' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"Test Graduate","type":"Diploma Copy"}'
+    )
+
+    ShowResponse 'PUT /api/reprints/1/status' (
+        Invoke-RestMethod 'http://localhost:3000/api/reprints/1/status' -Method Put -Headers $headers -ContentType 'application/json' -Body '{"status":"Approved"}'
+    )
+
+    ShowResponse 'POST /api/placements (admin)' (
+        Invoke-RestMethod 'http://localhost:3000/api/placements' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"alumni":"Test Graduate","company":"ACME Corp","title":"HR Associate"}'
+    )
+
+    ShowResponse 'GET/POST /api/reunions' @{
+        total = (Invoke-RestMethod 'http://localhost:3000/api/reunions' -Headers $headers).reunions.Count
+        created = [bool](Invoke-RestMethod 'http://localhost:3000/api/reunions' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"batch":"Batch Test","date":"2026-02-01","venue":"SAA Hall","coordinators":"QA"}')
+    }
+
+    ShowResponse 'GET/POST /api/donations' @{
+        total = (Invoke-RestMethod 'http://localhost:3000/api/donations' -Headers $headers).donations.Count
+        created = [bool](Invoke-RestMethod 'http://localhost:3000/api/donations' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"campaign":"API Test Fund","donor":"QA","amount":1000}')
+    }
+
+    ShowResponse 'GET/POST /api/newsletters' @{
+        total = (Invoke-RestMethod 'http://localhost:3000/api/newsletters' -Headers $headers).newsletters.Count
+        created = [bool](Invoke-RestMethod 'http://localhost:3000/api/newsletters' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"subject":"API Test Newsletter","body":"Verification body"}')
+    }
+
+    ShowResponse 'GET/POST /api/feedback' @{
+        total = (Invoke-RestMethod 'http://localhost:3000/api/feedback' -Headers $headers).feedback.Count
+        created = [bool](Invoke-RestMethod 'http://localhost:3000/api/feedback' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"QA","rating":5,"category":"Systems","message":"API verification"}')
+    }
+
+    ShowResponse 'POST /api/auth/register (self-registration)' (
+        Invoke-RestMethod 'http://localhost:3000/api/auth/register' -Method Post -ContentType 'application/json' -Body ("{""username"":""qa" + (Get-Random -Minimum 1000 -Maximum 9999) + """,""password"":""secret123"",""name"":""QA Registrant"",""batch"":""2026""}")
+    )
+
+    Write-Host 'Total API endpoints: ai(6) + alumni(5) + auth(4) + documents(8) + engagement(13) + reports(4) + tracking(4) + health(1) = 45.'
+    Write-Host 'AI endpoints are covered in detail by scripts/test-ai.ps1.'
 }
 finally {
     Stop-Job $job -ErrorAction SilentlyContinue
