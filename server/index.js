@@ -23,6 +23,7 @@ import { mailAndSmsHealth } from './src/notify.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..');
 const PORT = Number(process.env.PORT) || 3000;
+const APP_BUILD = '2026-09-20-live';
 
 const app = express();
 /* PayMongo webhook must read the raw body for HMAC verification. */
@@ -104,6 +105,8 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: sqliteOk,
     service: 'SAA Alumni Management System API',
+    build: APP_BUILD,
+    demoData: false,
     time: new Date().toISOString(),
     ai: { configured: isAiConfigured(), model: isAiConfigured() ? aiModel() : null },
     sqlite: { connected: sqliteOk },
@@ -137,10 +140,12 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal Server Error.' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log('  ');
   console.log('  St. Agnes Academy of Caloocan - Alumni Management System');
-  console.log(`  API + Site running at  http://localhost:${PORT}`);
+  console.log(`  Build:          ${APP_BUILD} (no demo records)`);
+  console.log(`  API + Site:     http://localhost:${PORT}`);
+  console.log('  Shared copy:    https://github.com/SARMIENTO0206/alumni-sytem');
   const payments = paymongoConfig();
   console.log(
     isAiConfigured()

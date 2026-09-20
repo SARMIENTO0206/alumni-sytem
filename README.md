@@ -3,6 +3,11 @@
 A web-based Alumni Management System for St. Agnes Academy of Caloocan Inc. with
 automated text-message flows and OpenAI API integration.
 
+**Latest shared copy:** https://github.com/SARMIENTO0206/alumni-sytem  
+Do not use `SoloLevelings/nicose-sarmiento` — that repository is outdated and still
+contains the old demo seed. There is no demo mode. Other devices must clone this
+repo, delete any old `server/data/saa.db`, then run `npm start` in `server/`.
+
 | Layer | Technology |
 | ----- | ---------- |
 | Front-end | HTML5 + Tailwind CSS (CDN) + modular JavaScript (`js/`) |
@@ -30,7 +35,7 @@ automated text-message flows and OpenAI API integration.
 
 | File            | Responsibility |
 | --------------- | -------------- |
-| `config.js`     | Global state + seed data (loaded first) |
+| `config.js`     | Global state (lists start empty; filled from the API) |
 | `api.js`        | REST client (`SAA_API`): health probe, auth headers, error handling |
 | `utils.js`      | Toast notifications, localStorage sync |
 | `auth.js`       | Login/registration (bcrypt via API), roles, session handling |
@@ -76,11 +81,11 @@ automated communication flows and AI features:
 | `ERR_UNKNOWN_BUILTIN_MODULE: node:sqlite` | Node is older than 22.5 — upgrade Node.js |
 | `EADDRINUSE: address already in use :::3000` | A previous server is still running. Stop it, or run:<br>`Get-NetTCPConnection -LocalPort 3000 -State Listen \| ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }` |
 | `SQLite is an experimental feature` (warning) | Harmless Node notice for `node:sqlite` — the system runs normally |
-| Login says *"Invalid username or password"* | Use one of the demo accounts below; the database seeds itself on first run |
+| Login says *"Invalid username or password"* | Start `npm start` in `server/`, then use a registered account. Do not open `index.html` from disk. |
 | AI panel shows *"Built-in AI fallback"* | Expected without a key — see the OpenAI section to enable the API |
 | AI panel shows *"API server offline"* | Start the backend (`cd server; npm start`) before using the AI tools |
 | Need a different port | `set PORT=4000` (Windows) or `export PORT=4000`, then `npm start` |
-| Reset all data | Stop the server, delete `server/data/saa.db`, start again (re-seeds automatically) |
+| Reset all data | Stop the server, delete `server/data/saa.db`, start again (system logins only; module tables stay empty) |
 
 ## 🚀 Quick start
 
@@ -101,12 +106,14 @@ npm install
 npm start          # => http://localhost:3000
 ```
 
-Open **http://localhost:3000** in your browser.
+Open **http://localhost:3000** in the browser. Do **not** open `index.html` from
+disk — there is no offline demo mode.
 
-> The SQLite database (`server/data/saa.db`) is created and seeded with demo data
-> automatically on first run — no migration or seed step required.
+> First run creates `server/data/saa.db` with **system login accounts only**.
+> Alumni, requests, events, and jobs start empty. On another device that still
+> shows old demo records, delete `server/data/saa.db` and start the server again.
 
-### Demo accounts
+### First-run logins (not sample alumni data)
 
 | Role      | Username    | Password      |
 | --------- | ----------- | ------------- |
@@ -114,10 +121,8 @@ Open **http://localhost:3000** in your browser.
 | Alumni    | `alumni`    | `alumni123`   |
 | Registrar | `registrar` | `registrar123`|
 
-Passwords are verified server-side with **bcrypt** hashes. The demo credentials
-above are only duplicated in `js/config.js` as an **offline fallback** (they are
-never persisted to localStorage). If the API isn't running you can still explore
-the UI in "demo mode" by opening `index.html` directly from disk.
+Passwords are verified server-side with **bcrypt**. Clone
+**https://github.com/SARMIENTO0206/alumni-sytem** (not `SoloLevelings/nicose-sarmiento`).
 
 ## 🔌 API
 
@@ -204,7 +209,7 @@ Then restart the server. The startup banner confirms which engine is active:
 >
 > **No key?** Every AI endpoint still responds using the built-in fallback
 > (live alumni counts, pending requests, events, computed survey statistics and
-> rule-based dashboard insights), so the UI keeps working for demos.
+> rule-based dashboard insights) from the real database.
 
 Verify the AI features:
 

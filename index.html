@@ -4,13 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>St. Agnes Academy of Caloocan - Web-Based Alumni Management System with Automated Text Message Flows using OpenAI API</title>
+    <script>
+        if (location.protocol === "file:") {
+            document.addEventListener("DOMContentLoaded", function () {
+                document.body.innerHTML = '<div style="font-family:Georgia,serif;max-width:40rem;margin:4rem auto;padding:2rem;color:#3f1a24;"><h1 style="font-size:1.4rem;">This is not demo mode</h1><p>Do not open <code>index.html</code> from a folder. Start the Node server and open <a href="http://localhost:3000">http://localhost:3000</a>.</p><p>Use the latest copy: <a href="https://github.com/SARMIENTO0206/alumni-sytem">github.com/SARMIENTO0206/alumni-sytem</a></p></div>';
+            });
+        }
+    </script>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- QRCode.js for Dynamic QR Verification (local copy first, CDN fallback) -->
-    <script src="js/vendor/qrcode.min.js"></script>
+    <script src="js/vendor/qrcode.min.js?v=20260920"></script>
     <script>
         if (typeof QRCode === "undefined") {
             document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
@@ -19,7 +26,7 @@
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom Design System Stylesheet -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260920">
 </head>
 
 <body class="min-h-screen flex flex-col relative overflow-x-hidden bg-slate-50">
@@ -302,6 +309,9 @@
                     </h3>
                     <p class="text-slate-500 text-sm mt-1">
                         Sign in to access your designated portal
+                    </p>
+                    <p class="text-[11px] text-slate-400 mt-2">
+                        Live system · 20 Sep 2026 build · no demo records
                     </p>
                 </div>
 
@@ -3440,15 +3450,15 @@
          ========================================================= -->
 
     <!-- Modular JavaScript (split from the original monolith) -->
-    <script src="js/config.js"></script>
-    <script src="js/env.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/access.js"></script>
-    <script src="js/navigation.js"></script>
-    <script src="js/records.js"></script>
-    <script src="js/engagement.js"></script>
-    <script src="js/reports.js"></script>
+    <script src="js/config.js?v=20260920"></script>
+    <script src="js/env.js?v=20260920"></script>
+    <script src="js/api.js?v=20260920"></script>
+    <script src="js/utils.js?v=20260920"></script>
+    <script src="js/auth.js?v=20260920"></script>
+    <script src="js/access.js?v=20260920"></script>
+    <script src="js/navigation.js?v=20260920"></script>
+    <script src="js/records.js?v=20260920"></script>
+    <script src="js/engagement.js?v=20260920"></script>
+    <script src="js/reports.js?v=20260920"></script>
 </body>
 </html>
