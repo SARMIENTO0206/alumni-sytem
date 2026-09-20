@@ -131,7 +131,7 @@ serves both the website and `/api`.
 
 1. Open [https://dashboard.render.com](https://dashboard.render.com) and sign in with GitHub.
 2. **New** → **Blueprint** (or **Web Service**) → connect `SARMIENTO0206/alumni-sytem`.
-3. If asked for commands:
+3. If asked for commands, leave **Root Directory empty** (do not set it to `server`):
    - **Build:** `npm install --prefix server`
    - **Start:** `node server/index.js`
    - **Node version:** `22`

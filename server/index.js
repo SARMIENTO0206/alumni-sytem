@@ -1,5 +1,6 @@
 import './src/load-env.js';
 import express from 'express';
+import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { db, initDb } from './src/db.js';
@@ -21,7 +22,20 @@ import { paymongoConfig } from './src/paymongo.js';
 import { mailAndSmsHealth } from './src/notify.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = join(__dirname, '..');
+
+function resolveProjectRoot() {
+  const candidates = [
+    join(__dirname, '..'),
+    process.cwd(),
+    join(process.cwd(), '..')
+  ];
+  for (const dir of candidates) {
+    if (existsSync(join(dir, 'index.html')) && existsSync(join(dir, 'js'))) return dir;
+  }
+  return join(__dirname, '..');
+}
+
+const PROJECT_ROOT = resolveProjectRoot();
 const PORT = Number(process.env.PORT) || 3000;
 const APP_BUILD = '2026-09-20-live';
 
@@ -135,6 +149,16 @@ app.use('/api', requireAuth, engagementRoutes);     // /events, /reunions, /dona
 /* Serve the SPA (index.html + js/ + style.css + logo.jpeg). */
 app.use(express.static(PROJECT_ROOT, { index: 'index.html' }));
 
+app.get('/', (req, res) => {
+  const indexFile = join(PROJECT_ROOT, 'index.html');
+  if (!existsSync(indexFile)) {
+    return res.status(500).type('html').send(
+      '<h1>Site files not found</h1><p>On Render, leave Root Directory empty (repository root). Build: <code>npm install --prefix server</code>. Start: <code>node server/index.js</code>.</p>'
+    );
+  }
+  res.sendFile(indexFile);
+});
+
 app.use((err, req, res, next) => {
   console.error('[api] Unhandled error:', err);
   res.status(err.status || 500).json({ error: err.message || 'Internal Server Error.' });
@@ -145,6 +169,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('  St. Agnes Academy of Caloocan - Alumni Management System');
   console.log(`  Build:          ${APP_BUILD} (no demo records)`);
   console.log(`  API + Site:     http://localhost:${PORT}`);
+  console.log(`  Site files:     ${PROJECT_ROOT}`);
   console.log('  Shared copy:    https://github.com/SARMIENTO0206/alumni-sytem');
   const payments = paymongoConfig();
   console.log(
