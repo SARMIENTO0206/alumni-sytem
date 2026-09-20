@@ -1,6 +1,16 @@
 import { Router } from 'express';
 import { db } from '../db.js';
-import { ask, aiProvider, isAiConfigured, aiModel } from '../ai.js';
+import { ask, chat, aiProvider, isAiConfigured, aiModel } from '../ai.js';
+import {
+  buildAssistantSystemPrompt,
+  buildUserContext,
+  conversationTitle,
+  detectIntent,
+  detectLanguage,
+  detectTopic,
+  generateConversationalReply,
+  isFollowUp
+} from '../assistant.js';
 
 const router = Router();
 
@@ -51,42 +61,118 @@ router.get('/status', (req, res) => {
   });
 });
 
+function getOwnedConversation(userId, conversationId) {
+  if (!conversationId) return null;
+  return db.prepare('SELECT * FROM ai_conversations WHERE id = ? AND user_id = ?').get(Number(conversationId), userId);
+}
+
+function recentMessages(conversationId, limit = 12) {
+  return db.prepare(
+    'SELECT role, content, intent, topic, language, created_at FROM ai_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ?'
+  ).all(Number(conversationId), limit).reverse();
+}
+
+function saveMessage(conversationId, userId, role, content, intent, topic, language) {
+  db.prepare(
+    `INSERT INTO ai_messages (conversation_id, user_id, role, content, intent, topic, language)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(conversationId, userId || 0, role, content, intent || '', topic || '', language || 'en');
+}
+
+function ensureConversation(user, conversationId, firstMessage) {
+  const existing = getOwnedConversation(user.id, conversationId);
+  if (existing) return existing;
+  const info = db.prepare(
+    `INSERT INTO ai_conversations (user_id, title, topic, language) VALUES (?, ?, '', 'en')`
+  ).run(user.id, conversationTitle(firstMessage));
+  return db.prepare('SELECT * FROM ai_conversations WHERE id = ?').get(info.lastInsertRowid);
+}
+
+router.get('/conversations', (req, res) => {
+  const rows = db.prepare(
+    'SELECT id, title, topic, language, updated_at FROM ai_conversations WHERE user_id = ? ORDER BY id DESC LIMIT 20'
+  ).all(req.user.id);
+  res.json({ conversations: rows });
+});
+
+router.post('/conversations', (req, res) => {
+  const info = db.prepare(
+    `INSERT INTO ai_conversations (user_id, title, topic, language) VALUES (?, 'New conversation', '', 'en')`
+  ).run(req.user.id);
+  res.status(201).json({ conversation: db.prepare('SELECT * FROM ai_conversations WHERE id = ?').get(info.lastInsertRowid) });
+});
+
+router.get('/conversations/:id', (req, res) => {
+  const row = getOwnedConversation(req.user.id, req.params.id);
+  if (!row) return res.status(404).json({ error: 'Conversation not found.' });
+  res.json({ conversation: row, messages: recentMessages(row.id, 50) });
+});
+
+router.delete('/conversations/:id', (req, res) => {
+  const row = getOwnedConversation(req.user.id, req.params.id);
+  if (!row) return res.status(404).json({ error: 'Conversation not found.' });
+  db.prepare('DELETE FROM ai_messages WHERE conversation_id = ?').run(row.id);
+  db.prepare("UPDATE ai_conversations SET topic = '', title = 'New conversation', updated_at = datetime('now') WHERE id = ?").run(row.id);
+  res.json({ ok: true, conversationId: row.id });
+});
+
 /* ------------------------------------------------------------------ *
- * POST /api/ai/assistant - AI Chat Support
+ * POST /api/ai/assistant - contextual AI Chat Support
  * ------------------------------------------------------------------ */
 router.post('/assistant', async (req, res) => {
-  const { query } = req.body || {};
+  const query = String((req.body || {}).query || '').trim();
   if (!query) return res.status(400).json({ error: 'Query is required.' });
 
-  const reply = await ask(String(query), '', { maxTokens: 300, temperature: 0.7 });
-  if (reply) return res.json({ response: reply, provider: aiProvider('chat') });
+  const conversation = ensureConversation(req.user, req.body.conversationId, query);
+  const history = recentMessages(conversation.id, 12);
+  const previousTopic = conversation.topic || [...history].reverse().find((m) => m.topic)?.topic || '';
+  const previousLang = conversation.language || 'en';
+  const language = detectLanguage(query, previousLang);
+  const topic = detectTopic(query, isFollowUp(query) ? previousTopic : previousTopic);
+  const resolvedTopic = topic || previousTopic;
+  const intent = detectIntent(query, resolvedTopic);
+  const context = buildUserContext(req.user);
 
-  /* Built-in fallback: keyword routing over live database figures. */
-  const s = stats();
-  const q = String(query).toLowerCase();
-  let fallback = 'I can help you look up <strong>Alumni Records</strong>, <strong>Transcript Requests</strong>, <strong>Graduate Tracking</strong>, <strong>Events</strong>, <strong>Reunions</strong> and <strong>Job Opportunities</strong>.';
+  saveMessage(conversation.id, req.user.id, 'user', query, intent, resolvedTopic, language);
+  db.prepare(
+    "UPDATE ai_conversations SET topic = ?, language = ?, title = ?, updated_at = datetime('now') WHERE id = ?"
+  ).run(resolvedTopic, language, conversation.title === 'New conversation' ? conversationTitle(query) : conversation.title, conversation.id);
 
-  if (q.includes('count') || q.includes('total') || q.includes('how many')) {
-    fallback = `The alumni registry currently holds <strong>${s.alumni.toLocaleString()}</strong> records.`;
-  } else if (q.includes('photo') || q.includes('picture') || q.includes('avatar') || q.includes('upload')) {
-    fallback = 'You can upload or update your profile photo in <strong>My Profile</strong> by clicking your avatar.';
-  } else if (q.includes('transcript') || q.includes('tor') || q.includes('record') || q.includes('certificate')) {
-    fallback = `There are <strong>${s.pendingRequests} pending</strong> document requests and <strong>${s.releasedRequests} released</strong>. Submit or track requests in the <em>Transcript Request Portal</em>.`;
-  } else if (q.includes('event') || q.includes('homecoming')) {
-    fallback = `The system currently lists <strong>${s.events} events</strong>. Open the <em>Alumni Events</em> module to view details and confirm your RSVP.`;
-  } else if (q.includes('reunion')) {
-    fallback = `There are <strong>${s.reunions} batch reunions</strong> organized in the system.`;
-  } else if (q.includes('verify') || q.includes('verification')) {
-    fallback = 'Registrars can verify official alumni records in the <strong>Alumni Record Verification</strong> module.';
-  } else if (q.includes('job') || q.includes('career') || q.includes('employ')) {
-    fallback = `Alumni can browse vacancies in the <strong>Job Opportunities</strong> board. <strong>${s.employed} graduates</strong> are recorded as employed.`;
-  } else if (q.includes('sms') || q.includes('message') || q.includes('text') || q.includes('notify')) {
-    fallback = 'The system sends <strong>Automated Text Message Flows</strong> for event invitations, reminders, document releases and profile-update prompts.';
-  } else if (q.includes('hello') || q.includes('hi') || q.includes('hey')) {
-    fallback = 'Hello! I am the Agnesian AI Assistant. Ask me about your records, transcript requests, graduate tracking or school activities.';
+  const fallback = generateConversationalReply({
+    user: req.user,
+    text: query,
+    language,
+    topic: resolvedTopic,
+    intent,
+    context
+  });
+
+  let reply = fallback;
+  let usedModel = false;
+  if (isAiConfigured()) {
+    const system = buildAssistantSystemPrompt(req.user, context, language);
+    const messages = [
+      { role: 'system', content: system },
+      ...history.slice(-10).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+      { role: 'user', content: query }
+    ];
+    const modelReply = await chat(messages, { maxTokens: 420, temperature: 0.4 });
+    if (modelReply) {
+      reply = modelReply;
+      usedModel = true;
+    }
   }
 
-  res.json({ response: fallback, provider: aiProvider('chat fallback') });
+  saveMessage(conversation.id, req.user.id, 'assistant', reply, intent, resolvedTopic, language);
+  res.json({
+    response: reply.replace(/\n/g, '<br>'),
+    text: reply,
+    conversationId: conversation.id,
+    topic: resolvedTopic,
+    intent,
+    language,
+    provider: aiProvider(usedModel ? 'chat' : 'chat fallback')
+  });
 });
 
 /* ------------------------------------------------------------------ *

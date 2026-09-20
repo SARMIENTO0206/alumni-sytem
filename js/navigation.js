@@ -1,78 +1,404 @@
-/* navigation.js - View routing (switchView), counters, profile and page navigation. */
+/* navigation.js - View routing (switchView), counters, digital ID, profile and page navigation. */
 
 /* ------------------------------------------------------------------------- */
-/* Source: index.html lines 3337-3612 */
+/* Hash history router for the existing vanilla SPA views.                   */
+/* Path-style URLs like /alumni would 404 on XAMPP refresh, so routes live  */
+/* in the hash: #/dashboard, #/alumni, #/events, etc.                       */
 /* ------------------------------------------------------------------------- */
-    /* Navigation Controller */
-    function switchView(viewId) {
-        const allowed = rolePermissions[currentUser ? currentUser.role : "admin"];
-        if (allowed && !allowed.includes(viewId)) {
-            showToast("You do not have permission to access that section.", "error");
+
+    const APP_VIEWS = [
+        "dashboard", "idcard", "database", "profile", "job-opportunities", "transcript", "reprint",
+        "tracking", "placement", "events", "reunions", "donor", "newsletter", "feedback",
+        "reports", "verification", "request-approval", "document-processing", "release-claiming",
+        "request-history", "registrar-reports", "academic-records", "users", "settings",
+        "announcements", "notifications", "sms", "gmail", "ai-chat", "request-status",
+        "applications", "unauthorized", "payment-return", "payment", "payment-history", "payment-receipt"
+    ];
+
+    const VIEW_TO_HASH = {
+        dashboard: "/dashboard",
+        database: "/alumni",
+        tracking: "/graduate-tracking",
+        transcript: "/transcript-requests",
+        reprint: "/certificate-requests",
+        events: "/events",
+        reunions: "/batch-reunions",
+        donor: "/donor-campaigns",
+        newsletter: "/newsletter",
+        feedback: "/surveys",
+        "job-opportunities": "/jobs",
+        reports: "/reports",
+        profile: "/profile",
+        idcard: "/idcard",
+        placement: "/placement",
+        verification: "/verification",
+        "request-approval": "/request-approval",
+        "document-processing": "/document-processing",
+        "release-claiming": "/release-claiming",
+        "academic-records": "/academic-records",
+        "request-history": "/request-history",
+        "registrar-reports": "/registrar-reports",
+        users: "/users",
+        settings: "/settings",
+        announcements: "/announcements",
+        notifications: "/notifications",
+        sms: "/sms",
+        gmail: "/gmail",
+        "ai-chat": "/ai-chat",
+        "request-status": "/request-status",
+        applications: "/applications",
+        unauthorized: "/unauthorized",
+        "payment-return": "/payment-return",
+        payment: "/payment",
+        "payment-history": "/payments",
+        "payment-receipt": "/payment-receipt"
+    };
+
+    const HASH_TO_VIEW = {
+        "": "home",
+        home: "home",
+        login: "login",
+        dashboard: "dashboard",
+        alumni: "database",
+        database: "database",
+        "graduate-tracking": "tracking",
+        tracking: "tracking",
+        "transcript-requests": "transcript",
+        transcript: "transcript",
+        "certificate-requests": "reprint",
+        reprint: "reprint",
+        events: "events",
+        "batch-reunions": "reunions",
+        reunions: "reunions",
+        "donor-campaigns": "donor",
+        donor: "donor",
+        newsletter: "newsletter",
+        announcements: "announcements",
+        surveys: "feedback",
+        feedback: "feedback",
+        jobs: "job-opportunities",
+        "job-opportunities": "job-opportunities",
+        reports: "reports",
+        profile: "profile",
+        idcard: "idcard",
+        placement: "placement",
+        verification: "verification",
+        "request-approval": "request-approval",
+        "document-processing": "document-processing",
+        "release-claiming": "release-claiming",
+        "academic-records": "academic-records",
+        "request-history": "request-history",
+        "registrar-reports": "registrar-reports",
+        notifications: "notifications",
+        users: "users",
+        settings: "settings",
+        sms: "sms",
+        gmail: "gmail",
+        email: "gmail",
+        "ai-chat": "ai-chat",
+        "request-status": "request-status",
+        applications: "applications",
+        unauthorized: "unauthorized",
+        "payment-return": "payment",
+        payment: "payment",
+        payments: "payment-history",
+        "payment-history": "payment-history",
+        "payment-receipt": "payment-receipt"
+    };
+
+    let currentAppView = "dashboard";
+    let currentDetailId = null;
+    let isApplyingHistory = false;
+
+    function isAuthenticated() {
+        if (!currentUser) {
+            try {
+                const saved = sessionStorage.getItem("currentUser");
+                if (saved) currentUser = JSON.parse(saved);
+            } catch (e) {
+                currentUser = null;
+            }
+        }
+        return !!(currentUser && (currentUser.username || currentUser.role));
+    }
+
+    function allowedViewsFor(role) {
+        const key = (typeof normalizeRole === "function") ? normalizeRole(role) : role;
+        return (typeof rolePermissions !== "undefined" && rolePermissions[key]) ? rolePermissions[key] : [];
+    }
+
+    function parseAppLocation() {
+        const raw = String(location.hash || "").replace(/^#/, "");
+        const parts = raw.split("/").filter(Boolean);
+        const first = (parts[0] || "").toLowerCase();
+        const viewId = HASH_TO_VIEW.hasOwnProperty(first) ? HASH_TO_VIEW[first] : (first || "home");
+        const detailId = parts[1] || null;
+        return { viewId, detailId, first };
+    }
+
+    function hashForView(viewId, detailId) {
+        const base = VIEW_TO_HASH[viewId] || ("/" + viewId);
+        return "#" + (detailId ? `${base}/${detailId}` : base);
+    }
+
+    function showPublicScreen(which) {
+        const homePage = document.getElementById("homePage");
+        const loginPage = document.getElementById("loginPage");
+        const dashboardPage = document.getElementById("dashboardPage");
+        if (homePage) homePage.classList.toggle("hidden", which !== "home");
+        if (loginPage) loginPage.classList.toggle("hidden", which !== "login");
+        if (dashboardPage) dashboardPage.classList.add("hidden");
+        if (typeof closeChat === "function") closeChat();
+        window.scrollTo(0, 0);
+    }
+
+    function showDashboardScreen() {
+        const homePage = document.getElementById("homePage");
+        const loginPage = document.getElementById("loginPage");
+        const dashboardPage = document.getElementById("dashboardPage");
+        if (homePage) homePage.classList.add("hidden");
+        if (loginPage) loginPage.classList.add("hidden");
+        if (dashboardPage) dashboardPage.classList.remove("hidden");
+    }
+
+    function syncHistory(viewId, detailId, mode) {
+        if (isApplyingHistory || mode === "skip") return;
+        const nextHash = hashForView(viewId, detailId);
+        const state = { viewId, detailId: detailId || null, auth: true };
+        if (mode === "replace" || location.hash === nextHash) {
+            history.replaceState(state, "", nextHash);
+        } else {
+            history.pushState(state, "", nextHash);
+        }
+    }
+
+    function hideDetailPanels() {
+        const alumniList = document.getElementById("alumniListPanel");
+        const alumniDetail = document.getElementById("alumniDetailPanel");
+        const transcriptList = document.getElementById("transcriptListPanel");
+        const transcriptDetail = document.getElementById("transcriptDetailPanel");
+        const eventsList = document.getElementById("eventsListPanel");
+        const eventsDetail = document.getElementById("eventDetailPanel");
+        const reprintList = document.getElementById("reprintListPanel");
+        const reprintDetail = document.getElementById("reprintDetailPanel");
+        const jobsList = document.getElementById("jobsListPanel");
+        const jobsDetail = document.getElementById("jobDetailPanel");
+        if (alumniList) alumniList.classList.remove("hidden");
+        if (alumniDetail) alumniDetail.classList.add("hidden");
+        if (transcriptList) transcriptList.classList.remove("hidden");
+        if (transcriptDetail) transcriptDetail.classList.add("hidden");
+        if (eventsList) eventsList.classList.remove("hidden");
+        if (eventsDetail) eventsDetail.classList.add("hidden");
+        if (reprintList) reprintList.classList.remove("hidden");
+        if (reprintDetail) reprintDetail.classList.add("hidden");
+        if (jobsList) jobsList.classList.remove("hidden");
+        if (jobsDetail) jobsDetail.classList.add("hidden");
+    }
+
+    async function applyDetailPanel(viewId, detailId) {
+        hideDetailPanels();
+        if (!detailId) return;
+        if (viewId === "database" && typeof showAlumniDetails === "function") {
+            await showAlumniDetails(detailId, true);
+        } else if (viewId === "transcript" && typeof showTranscriptDetails === "function") {
+            await showTranscriptDetails(detailId, true);
+        } else if (viewId === "events" && typeof showEventDetails === "function") {
+            await showEventDetails(detailId, true);
+        } else if (viewId === "reprint" && typeof showReprintDetails === "function") {
+            await showReprintDetails(detailId, true);
+        } else if (viewId === "job-opportunities" && typeof showJobDetails === "function") {
+            await showJobDetails(detailId, true);
+        } else if (viewId === "announcements" && typeof showAnnouncementDetails === "function") {
+            showAnnouncementDetails(detailId, true);
+        } else if (viewId === "notifications" && typeof showNotificationDetail === "function") {
+            const note = (notificationsList || []).find((n) => String(n.id) === String(detailId));
+            if (note) showNotificationDetail(note);
+        }
+    }
+
+    function updateSidebarActive(viewId) {
+        document.querySelectorAll(".sidebar-link").forEach((link) => link.classList.remove("active"));
+        const ids = [`nav-${viewId}`, `alumni-nav-${viewId}`, `registrar-nav-${viewId}`, `staff-nav-${viewId}`];
+        ids.forEach((id) => {
+            const btn = document.getElementById(id);
+            if (btn && !btn.closest(".hidden")) btn.classList.add("active");
+        });
+        const fallback = document.getElementById(`nav-${viewId}`) ||
+            document.getElementById(`alumni-nav-${viewId}`) ||
+            document.getElementById(`registrar-nav-${viewId}`) ||
+            document.getElementById(`staff-nav-${viewId}`);
+        if (fallback) fallback.classList.add("active");
+        if (typeof openSidebarGroupsFor === "function") openSidebarGroupsFor(viewId);
+    }
+
+    function renderOpenedView(viewId) {
+        if (viewId === "dashboard") {
+            if (typeof renderGrowthChart === "function") renderGrowthChart();
+            if (typeof renderDashboardUpcomingEvents === "function") renderDashboardUpcomingEvents();
+            if (typeof renderDashboardActivity === "function") renderDashboardActivity();
+            if (typeof renderRoleDashboard === "function") renderRoleDashboard();
+        }
+        if (viewId === "idcard" && typeof renderDigitalIdCard === "function") renderDigitalIdCard();
+        if (viewId === "profile" && typeof loadAlumniProfile === "function") loadAlumniProfile();
+        if (viewId === "database" && typeof renderAlumniTable === "function") renderAlumniTable();
+        if (viewId === "transcript" && typeof renderTranscriptRequests === "function") renderTranscriptRequests();
+        if (viewId === "reprint" && typeof renderReprintRequests === "function") renderReprintRequests();
+        if (viewId === "tracking") {
+            if (typeof renderTrackingCharts === "function") renderTrackingCharts();
+            if (typeof renderOutdatedProfilesTable === "function") renderOutdatedProfilesTable();
+        }
+        if (viewId === "placement" && typeof renderPlacementLogs === "function") renderPlacementLogs();
+        if (viewId === "job-opportunities" && typeof renderJobsGrid === "function") renderJobsGrid();
+        if (viewId === "events" && typeof renderEventsGrid === "function") renderEventsGrid();
+        if (viewId === "reunions" && typeof renderReunionsGrid === "function") renderReunionsGrid();
+        if (viewId === "newsletter" && typeof renderNewsletterArchive === "function") renderNewsletterArchive();
+        if (viewId === "donor" && typeof renderDonorProgress === "function") renderDonorProgress();
+        if (viewId === "academic-records" && typeof renderAcademicRecords === "function") renderAcademicRecords();
+        if (viewId === "reports") {
+            if (typeof updateReports === "function") updateReports();
+            if (typeof refreshAiStatus === "function") refreshAiStatus();
+        }
+        if (viewId === "request-approval" && typeof renderRequestApproval === "function") renderRequestApproval();
+        if (viewId === "document-processing" && typeof renderDocumentPreparation === "function") renderDocumentPreparation();
+        if (viewId === "release-claiming" && typeof renderReleaseClaiming === "function") renderReleaseClaiming();
+        if (viewId === "request-history" && typeof renderRequestHistory === "function") renderRequestHistory();
+        if (viewId === "registrar-reports" && typeof updateRegistrarReports === "function") updateRegistrarReports();
+        if (viewId === "users" && typeof loadUsersView === "function") loadUsersView();
+        if (viewId === "settings" && typeof loadSettingsView === "function") loadSettingsView();
+        if (viewId === "announcements" && typeof renderAnnouncementsView === "function") renderAnnouncementsView();
+        if (viewId === "notifications" && typeof renderNotificationsPage === "function") {
+            renderNotificationsPage();
+            if (currentDetailId && typeof showNotificationDetail === "function") {
+                const note = (notificationsList || []).find((n) => String(n.id) === String(currentDetailId));
+                if (note) showNotificationDetail(note);
+            }
+        }
+        if ((viewId === "sms" || viewId === "gmail") && typeof loadMessageConfigStatus === "function") loadMessageConfigStatus();
+        if (viewId === "request-status" && typeof renderRequestStatusView === "function") renderRequestStatusView();
+        if (viewId === "applications" && typeof loadApplicationsView === "function") loadApplicationsView();
+        if (viewId === "ai-chat" && typeof loadAiChatView === "function") loadAiChatView();
+        if (viewId === "unauthorized" && typeof renderUnauthorizedView === "function") renderUnauthorizedView();
+        if ((viewId === "payment" || viewId === "payment-return") && typeof renderPaymentQrPage === "function") renderPaymentQrPage();
+        if (viewId === "payment-history" && typeof renderPaymentHistory === "function") renderPaymentHistory();
+        if (viewId === "payment-receipt" && typeof renderPaymentReceiptPage === "function") renderPaymentReceiptPage();
+        if (viewId === "profile" && typeof applyRoleChrome === "function") applyRoleChrome();
+    }
+
+    function switchView(viewId, options) {
+        if (options && typeof options !== "object") options = { detailId: options };
+        options = options || {};
+
+        if (!isAuthenticated()) {
+            goToLoginPage(true);
             return;
         }
 
-        // Hide all views
-        const views = [
-            "dashboard", "database", "profile", "job-opportunities", "transcript", "reprint",
-            "tracking", "placement", "events", "reunions", "donor", "newsletter", "feedback", 
-            "reports", "verification", "request-approval", "document-processing", "release-claiming", 
-            "request-history", "registrar-reports", "academic-records"
-        ];
+        const allowed = allowedViewsFor(currentUser.role);
+        if (allowed.length && !allowed.includes(viewId)) {
+            showToast("You do not have permission to access that section.", "error");
+            viewId = "unauthorized";
+        }
 
-        views.forEach(v => {
+        const targetView = document.getElementById(`view-${viewId}`);
+        if (!targetView) {
+            showToast("That page is not available.", "error");
+            return;
+        }
+
+        APP_VIEWS.forEach((v) => {
             const el = document.getElementById(`view-${v}`);
             if (el) el.classList.add("hidden");
         });
+        targetView.classList.remove("hidden");
 
-        const targetView = document.getElementById(`view-${viewId}`);
-        if (targetView) targetView.classList.remove("hidden");
+        currentAppView = viewId;
+        currentDetailId = options.detailId || null;
+        updateSidebarActive(viewId);
 
-        // Update active class on nav links
-        const navLinks = document.querySelectorAll(".sidebar-link");
-        navLinks.forEach(l => l.classList.remove("active"));
-
-        const activeNavBtn = document.getElementById(`nav-${viewId}`) ||
-                             document.getElementById(`alumni-nav-${viewId}`) ||
-                             document.getElementById(`registrar-nav-${viewId}`);
-        if (activeNavBtn) activeNavBtn.classList.add("active");
-
-        document.getElementById("currentViewTitle").textContent = formatViewTitle(viewId);
+        const titleEl = document.getElementById("currentViewTitle");
+        if (titleEl) titleEl.textContent = formatViewTitle(viewId);
 
         if (window.innerWidth < 768) {
-            document.getElementById("sidebarDrawer").classList.add("-translate-x-full");
-            document.getElementById("drawerOverlay").classList.add("hidden");
+            const sidebar = document.getElementById("sidebarDrawer");
+            const overlay = document.getElementById("drawerOverlay");
+            if (sidebar) sidebar.classList.add("-translate-x-full");
+            if (overlay) overlay.classList.add("hidden");
         }
 
-        // Trigger view renderers
-        if (viewId === "dashboard") renderDashboardPanels();
-        if (viewId === "profile") loadAlumniProfile();
-        if (viewId === "job-opportunities" && typeof renderJobBoard === "function") renderJobBoard();
-        if (viewId === "database") renderAlumniTable();
-        if (viewId === "transcript") renderTranscriptRequests();
-        if (viewId === "reprint") renderReprintRequests();
-        if (viewId === "tracking") {
-            renderTrackingCharts();
-            renderOutdatedProfilesTable();
-        }
-        if (viewId === "placement") renderPlacementLogs();
-        if (viewId === "events") renderEventsGrid();
-        if (viewId === "reunions") renderReunionsGrid();
-        if (viewId === "newsletter") renderNewsletterArchive();
-        if (viewId === "academic-records") renderAcademicRecords();
-        if (viewId === "reports") {
-            updateReports();
-            if (typeof refreshAiStatus === "function") refreshAiStatus();
-        }
-        if (viewId === "request-approval") renderRequestApproval();
-        if (viewId === "document-processing") renderDocumentPreparation();
-        if (viewId === "release-claiming") renderReleaseClaiming();
-        if (viewId === "request-history") renderRequestHistory();
-        if (viewId === "registrar-reports") updateRegistrarReports();
+        const main = document.getElementById("mainContentContainer");
+        if (main && !currentDetailId) main.scrollTop = 0;
+
+        renderOpenedView(viewId);
+        void applyDetailPanel(viewId, currentDetailId);
+        syncHistory(viewId, currentDetailId, options.replace ? "replace" : (options.skipHistory ? "skip" : "push"));
     }
+
+    function openDashboardModule(kind) {
+        const role = (typeof normalizeRole === "function")
+            ? normalizeRole(currentUser && currentUser.role)
+            : (currentUser && currentUser.role);
+        const map = {
+            alumni: { admin: "database", alumni: "profile", staff: "database" },
+            tracking: { admin: "tracking", alumni: "tracking", staff: "tracking" },
+            events: { admin: "events", alumni: "events", staff: "events" },
+            transcript: { admin: "transcript", alumni: "transcript", staff: "transcript" },
+            jobs: { admin: "placement", alumni: "job-opportunities", staff: "placement" }
+        };
+        const viewId = (map[kind] && map[kind][role]) || "dashboard";
+        switchView(viewId);
+    }
+
+    function goAppBack() {
+        if (currentDetailId) {
+            history.back();
+            return;
+        }
+        if (window.history.length > 1) history.back();
+        else switchView("dashboard", { replace: true });
+    }
+
+    function restoreRouteFromLocation() {
+        const parsed = parseAppLocation();
+        if (!isAuthenticated()) {
+            if (parsed.viewId === "home") {
+                showPublicScreen("home");
+                return;
+            }
+            showPublicScreen("login");
+            if (location.hash !== "#/login") history.replaceState({ auth: "logged-out" }, "", "#/login");
+            return;
+        }
+
+        showDashboardScreen();
+        if (parsed.viewId === "login" || parsed.viewId === "home") {
+            switchView("dashboard", { replace: true });
+            return;
+        }
+        switchView(parsed.viewId, { detailId: parsed.detailId, skipHistory: true });
+    }
+
+    let lastHistorySync = 0;
+
+    function handleAppPopState() {
+        isApplyingHistory = true;
+        lastHistorySync = Date.now();
+        try {
+            restoreRouteFromLocation();
+        } finally {
+            isApplyingHistory = false;
+        }
+    }
+
+    window.addEventListener("popstate", handleAppPopState);
+    window.addEventListener("hashchange", () => {
+        if (isApplyingHistory || Date.now() - lastHistorySync < 80) return;
+        handleAppPopState();
+    });
 
     function formatViewTitle(id) {
         const titles = {
             dashboard: "Dashboard Overview",
+            idcard: "Digital Alumni Identification",
             database: "Alumni Records Database",
             profile: "My Alumni Profile",
             "job-opportunities": "Job Opportunities Board",
@@ -92,7 +418,21 @@
             "release-claiming": "Release & Claiming Records",
             "request-history": "Request History Log",
             "registrar-reports": "Registrar Processing Reports",
-            "academic-records": "Academic Records"
+            "academic-records": "Academic Records",
+            users: "User & Access Management",
+            settings: "Settings",
+            announcements: "Announcements",
+            notifications: "Notifications",
+            sms: "SMS",
+            gmail: "Gmail / Email",
+            "ai-chat": "AI Chat Support",
+            "request-status": "Request Status",
+            applications: "Applications / Referrals",
+            unauthorized: "Access Denied",
+            "payment-return": "Payment",
+            payment: "Payment",
+            "payment-history": "Payment History",
+            "payment-receipt": "Payment Receipt"
         };
         return titles[id] || "Alumni Portal";
     }
@@ -100,14 +440,96 @@
     /* Counters */
     function updateStatCounters() {
         const totalEl = document.getElementById("stat-total");
-        if (totalEl) totalEl.textContent = (alumniList.length + 5240).toLocaleString();
+        if (totalEl) totalEl.textContent = String(alumniList.length);
 
-        const empCount = alumniList.filter(a => a.status === "Employed").length + 1890;
+        const recentBatch = String(new Date().getFullYear());
+        const recentEl = document.getElementById("stat-graduates");
+        if (recentEl) recentEl.textContent = String(alumniList.filter(a => String(a.batch) === recentBatch).length);
+
+        const empCount = alumniList.filter(a => a.status === "Employed" || a.status === "Freelance").length;
         const empEl = document.getElementById("stat-employed");
-        if (empEl) empEl.textContent = empCount.toLocaleString();
+        if (empEl) empEl.textContent = String(empCount);
 
         const eventsEl = document.getElementById("stat-events");
-        if (eventsEl) eventsEl.textContent = eventsList.length;
+        if (eventsEl) eventsEl.textContent = String(eventsList.length);
+
+        if (typeof renderDashboardActivity === "function") renderDashboardActivity();
+    }
+
+    function renderDashboardActivity() {
+        const box = document.getElementById("recentActivityList");
+        if (!box) return;
+        const items = [];
+        if (alumniList[0]) items.push({ title: "Latest alumni record", detail: alumniList[0].name + (alumniList[0].batch ? ` (Batch ${alumniList[0].batch})` : "") });
+        if (transcriptRequests[0]) items.push({ title: "Latest transcript request", detail: transcriptRequests[0].name + " • " + (transcriptRequests[0].status || "") });
+        if (placementLogs[0]) items.push({ title: "Latest placement", detail: placementLogs[0].alumni + " • " + (placementLogs[0].company || "") });
+        if (eventsList[0]) items.push({ title: "Latest event", detail: eventsList[0].title });
+
+        if (!items.length) {
+            box.innerHTML = `<p class="text-xs text-slate-400 font-medium py-6 text-center">No activity yet. Add alumni, events, or requests to see them here.</p>`;
+            return;
+        }
+        box.innerHTML = items.map(item => `
+            <div class="flex items-start space-x-3">
+                <div class="w-8 h-8 rounded-full bg-slate-50 text-brand-magenta flex items-center justify-center flex-shrink-0 text-xs font-bold">
+                    <i class="fa-regular fa-bell"></i>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800 text-xs">${item.title}</p>
+                    <p class="text-[11px] text-slate-500 font-medium">${item.detail}</p>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    /* Digital Alumni ID */
+    function renderDigitalIdCard() {
+        if (!currentUser) return;
+        const match = alumniList.find(a =>
+            currentUser && (
+                (currentUser.studentId && a.studentId === currentUser.studentId) ||
+                (a.name && currentUser.name && a.name.toLowerCase() === currentUser.name.toLowerCase())
+            )
+        ) || {};
+        const name = currentUser.name || match.name || "Alumni";
+        const program = currentUser.program || match.program || "—";
+        const batch = currentUser.batch || match.batch || "—";
+        const studentId = currentUser.studentId || match.studentId || "—";
+        const photoUrl = currentUser.photoUrl || JSON.parse(localStorage.getItem("alumniProfile") || "{}").photoUrl || "";
+
+        document.getElementById("idCardName").textContent = name;
+        document.getElementById("idCardProgram").textContent = program;
+        document.getElementById("idCardBatch").textContent = batch;
+        document.getElementById("idCardNumber").textContent = studentId;
+        document.getElementById("idCardSignature").textContent = name;
+
+        const avatarEl = document.getElementById("idCardAvatar");
+        if (avatarEl) {
+            if (photoUrl) {
+                avatarEl.innerHTML = `<img src="${photoUrl}" class="avatar-img">`;
+            } else {
+                avatarEl.textContent = currentUser.avatar || "AL";
+            }
+        }
+
+        // Generate QR code for ID Card
+        const qrContainer = document.getElementById("idCardQRCode");
+        if (qrContainer && typeof QRCode !== 'undefined') {
+            qrContainer.innerHTML = "";
+            new QRCode(qrContainer, {
+                text: `https://stagnes.edu.ph/verify?id=${studentId}&name=${encodeURIComponent(name)}`,
+                width: 68,
+                height: 68,
+                colorDark: "#4a0422",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+    }
+
+    function flipIdCard() {
+        const card = document.getElementById("digitalIdCard");
+        if (card) card.classList.toggle("flipped");
     }
 
     /* Alumni Profile Photo Upload */
@@ -177,22 +599,40 @@
     }
 
     /* Profile Functions */
-    function loadAlumniProfile() {
-        const saved = JSON.parse(localStorage.getItem("alumniProfile") || "{}");
-        const name = saved.name || currentUser.name || "Maria Clara Santos";
-        const photoUrl = saved.photoUrl || currentUser.photoUrl || "";
+    async function loadAlumniProfile() {
+        let user = currentUser || {};
+        let alumni = alumniList.find(a =>
+            currentUser && (
+                (currentUser.studentId && a.studentId === currentUser.studentId) ||
+                (currentUser.alumniId && a.id === currentUser.alumniId) ||
+                (a.name && currentUser.name && a.name.toLowerCase() === currentUser.name.toLowerCase())
+            )
+        ) || {};
+        if (typeof SAA_API !== "undefined") {
+            try {
+                const data = await SAA_API.request("/api/auth/me");
+                user = data.user || user;
+                alumni = data.alumni || alumni;
+                currentUser = Object.assign({}, currentUser || {}, user);
+                sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
+            } catch (e) { /* keep last known session user */ }
+        }
+        const name = user.name || "";
+        const photoUrl = user.photoUrl || "";
 
-        document.getElementById("profileName").value = name;
-        document.getElementById("profileHeadingName").textContent = name;
-        document.getElementById("profileEmail").value = saved.email || currentUser.email || "alumni@stagnes.edu.ph";
-        document.getElementById("profileContact").value = saved.contact || "+63 917 888 9999";
-        document.getElementById("profileBatch").value = saved.batch || currentUser.batch || "2024";
-        document.getElementById("profileProgram").value = saved.program || currentUser.program || "BS Information Technology";
-        document.getElementById("profileEmployment").value = saved.employment || "Employed";
-        document.getElementById("profileCompany").value = saved.company || "TechSolutions Inc.";
-        document.getElementById("profileJobTitle").value = saved.jobTitle || "Software Engineer";
-        document.getElementById("profileAdviser").value = saved.adviser || "";
-        document.getElementById("profileSection").value = saved.section || "";
+        const setVal = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ""; };
+        setVal("profileName", name);
+        const heading = document.getElementById("profileHeadingName");
+        if (heading) heading.textContent = name || "My Profile";
+        setVal("profileEmail", user.email || "");
+        setVal("profileContact", user.contact || alumni.contact || "");
+        setVal("profileAddress", user.address || alumni.address || "");
+        setVal("profileAlumniId", user.studentId || alumni.studentId || "");
+        setVal("profileBatch", user.batch || alumni.batch || "");
+        setVal("profileProgram", user.program || alumni.program || "");
+        setVal("profileEmployment", alumni.status || "Employed");
+        setVal("profileCompany", alumni.company || "");
+        setVal("profileJobTitle", alumni.title || alumni.jobTitle || "");
 
         const avatarEl = document.getElementById("alumniProfileAvatar");
         const removeBtn = document.getElementById("removePhotoBtn");
@@ -207,40 +647,38 @@
         }
     }
 
-    function saveAlumniProfile() {
-        const savedProfile = JSON.parse(localStorage.getItem("alumniProfile") || "{}");
+    async function saveAlumniProfile() {
         const profile = {
             name: document.getElementById("profileName").value.trim() || currentUser.name,
             email: document.getElementById("profileEmail").value.trim(),
             contact: document.getElementById("profileContact").value.trim(),
+            address: (document.getElementById("profileAddress") || {}).value || "",
             batch: document.getElementById("profileBatch").value,
             program: document.getElementById("profileProgram").value.trim(),
             employment: document.getElementById("profileEmployment").value,
             company: document.getElementById("profileCompany").value.trim(),
             jobTitle: document.getElementById("profileJobTitle").value.trim(),
-            adviser: document.getElementById("profileAdviser").value.trim(),
-            section: document.getElementById("profileSection").value.trim(),
-            photoUrl: currentUser.photoUrl || savedProfile.photoUrl || ""
+            photoUrl: currentUser.photoUrl || ""
         };
 
-        localStorage.setItem("alumniProfile", JSON.stringify(profile));
-        currentUser.name = profile.name;
-        currentUser.batch = profile.batch;
-        currentUser.program = profile.program;
-        currentUser.email = profile.email;
-        currentUser.photoUrl = profile.photoUrl;
-
-        sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
-        if (accounts[currentUser.username]) {
-            accounts[currentUser.username] = { ...accounts[currentUser.username], ...profile };
+        try {
+            if (typeof SAA_API === "undefined") throw new Error("The server is offline.");
+            const data = await SAA_API.request("/api/auth/profile", {
+                method: "PUT",
+                body: JSON.stringify(profile)
+            });
+            currentUser = Object.assign({}, currentUser, data.user || profile);
+            sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
+            if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
+            document.getElementById("headerUserName").textContent = currentUser.name;
+            const welcome = document.getElementById("welcomeName");
+            if (welcome) welcome.textContent = currentUser.name;
+            document.getElementById("profileHeadingName").textContent = currentUser.name;
+            showToast("Profile details saved to the database.", "success");
+            loadAlumniProfile();
+        } catch (err) {
+            showToast(err.message || "Unable to save profile to the database.", "error");
         }
-        updateLocalStorage();
-
-        document.getElementById("headerUserName").textContent = profile.name;
-        document.getElementById("welcomeName").textContent = profile.name;
-        document.getElementById("profileHeadingName").textContent = profile.name;
-        renderDashboardRecordCard();
-        showToast("Profile details successfully updated.", "success");
     }
 
 /* ------------------------------------------------------------------------- */
@@ -254,17 +692,23 @@
      * Navigate from homepage to login page
      * Hides homepage, shows login form
      */
-    function goToLoginPage() {
-        const homePage = document.getElementById("homePage");
-        const loginPage = document.getElementById("loginPage");
-        const dashboardPage = document.getElementById("dashboardPage");
-        
-        if (homePage) homePage.classList.add("hidden");
-        if (loginPage) loginPage.classList.remove("hidden");
-        if (dashboardPage) dashboardPage.classList.add("hidden");
-        
+    function goToLoginPage(fromGuard) {
+        if (isAuthenticated()) {
+            showDashboardScreen();
+            switchView(currentAppView || "dashboard", { replace: true });
+            return;
+        }
+        showPublicScreen("login");
+        const nextHash = "#/login";
+        if (fromGuard) {
+            history.replaceState({ auth: "logged-out" }, "", nextHash);
+        } else if (location.hash !== nextHash) {
+            history.pushState({ auth: "logged-out" }, "", nextHash);
+        } else {
+            history.replaceState({ auth: "logged-out" }, "", nextHash);
+        }
         window.scrollTo(0, 0);
-        showToast("Welcome to SAA Alumni Management System! Please sign in.", "info");
+        if (!fromGuard) showToast("Welcome to SAA Alumni Management System! Please sign in.", "info");
     }
 
     /**
@@ -292,335 +736,29 @@
      * Return to homepage from any page
      */
     function goBackToHomepage() {
-        const homePage = document.getElementById("homePage");
-        const loginPage = document.getElementById("loginPage");
-        const dashboardPage = document.getElementById("dashboardPage");
-        
-        if (homePage) homePage.classList.remove("hidden");
-        if (loginPage) loginPage.classList.add("hidden");
-        if (dashboardPage) dashboardPage.classList.add("hidden");
-        
-        closeSelfRegisterModal();
-        closeOfficialCertModal();
-        closeClaimStubModal();
+        if (typeof closeSelfRegisterModal === "function") closeSelfRegisterModal();
+        if (typeof closeOfficialCertModal === "function") closeOfficialCertModal();
+        if (typeof closeClaimStubModal === "function") closeClaimStubModal();
+        if (isAuthenticated()) {
+            showDashboardScreen();
+            switchView("dashboard");
+            return;
+        }
+        showPublicScreen("home");
+        history.pushState({ viewId: "home" }, "", "#/home");
         window.scrollTo(0, 0);
     }
 
-/* ------------------------------------------------------------------------- */
-/* Portal-style dashboard: record / adviser cards + paginated announcements   */
-/* ------------------------------------------------------------------------- */
+    function scrollHomeSection(sectionId) {
+        const el = document.getElementById(sectionId);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 
-    /* Notices shown when the newsletter archive has no published entries yet. */
-    const dashboardAnnouncements = [
-        {
-            title: "Alumni Homecoming 2026: Save the Date",
-            date: "June 2026",
-            author: "Alumni Relations Office",
-            body: "The Agnesian Grand Homecoming returns to the SAA Main Campus Grounds. Batch coordinators are requested to submit their attendance mastersheets early so that reunion tables and kits can be prepared. Pre-registration is open in the Alumni Events section of this portal."
-        },
-        {
-            title: "CHED Tracer Study: Update Your Employment Status",
-            date: "May 2026",
-            author: "Graduate Tracking Unit",
-            body: "All graduates of the last five years are requested to update their employment details in Graduate Tracking. The consolidated CHED tracer report is generated from these records, so kindly confirm your employer, job title and industry before the end of the month."
-        },
-        {
-            title: "Transcript and Diploma Requests: Online Processing",
-            date: "April 2026",
-            author: "Office of the Registrar",
-            body: "Official transcripts of records and diploma reprints can now be requested online. Submit the request through the Transcript Request or Certificate Reprint page, wait for the approval notification, then claim the document at the registrar releasing window."
-        },
-        {
-            title: "Scholarship Endowment Drive for Agnesian Scholars",
-            date: "March 2026",
-            author: "Alumni Relations Office",
-            body: "The alumni association is raising funds for the endowment programme that supports deserving students. Small recurring pledges are welcome, and every donation is acknowledged in the annual alumni report and in the donor honour roll."
-        },
-        {
-            title: "Career Fair 2026: Partner Companies Now Hiring",
-            date: "February 2026",
-            author: "Career Placement Center",
-            body: "Alumni who are hiring are invited to post vacancies on the Job Board. Graduates looking for new opportunities may submit applications online and upload an updated resume through their alumni profile page."
-        },
-        {
-            title: "Alumni ID and Discount Card Renewal",
-            date: "January 2026",
-            author: "Alumni Relations Office",
-            body: "Renewal of the alumni identification and partner discount card is open at the alumni desk. Present proof of graduation and one valid government identification. Renewed cards are released within five working days."
-        },
-        {
-            title: "Batch Reunion Committee: Call for Volunteers",
-            date: "December 2025",
-            author: "Batch Reunions Committee",
-            body: "Batch representatives from the silver, ruby and golden jubilee batches are needed to coordinate reunion programmes, venue arrangements and memorabilia. Register your interest at the alumni desk or through the Batch Reunions page."
+    window.addEventListener("DOMContentLoaded", () => {
+        const parsed = parseAppLocation();
+        if (isAuthenticated()) return;
+        if (parsed.viewId && parsed.viewId !== "home" && parsed.viewId !== "login") {
+            goToLoginPage(true);
         }
-    ];
+    });
 
-    /* Pagination and expansion state of the dashboard announcement feed. */
-    const dashboardFeed = {
-        page: 1,
-        pageSize: 10,
-        items: [],
-        expanded: {},
-        serverItems: [],
-        serverLoaded: false
-    };
-
-    /** Escapes announcement text so published newsletters cannot inject markup. */
-    function escapeAnnouncementText(value) {
-        return String(value === null || value === undefined ? "" : value)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
-    }
-
-    /** Formats a newsletter timestamp (e.g. "2026-09-19 10:58:11") for display. */
-    function formatAnnouncementDate(value) {
-        if (!value) return "Recent";
-        const parsed = new Date(String(value).replace(" ", "T"));
-        if (isNaN(parsed.getTime())) return String(value);
-        return parsed.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-    }
-
-    /** Normalises API and local newsletter shapes into one announcement shape. */
-    function normaliseAnnouncement(raw, source) {
-        const item = raw || {};
-        return {
-            title: item.subject || item.title || "Untitled announcement",
-            body: item.body || item.snippet || "",
-            date: item.date || formatAnnouncementDate(item.sentAt),
-            author: item.author || "Alumni Relations Office",
-            reads: item.reads || "",
-            source: source
-        };
-    }
-
-    /** Server archive + locally composed newsletters + the built-in notices. */
-    function buildAnnouncementFeed() {
-        const items = [];
-        const seen = {};
-        const add = (item) => {
-            const key = String(item.title || "").toLowerCase();
-            if (!key || seen[key]) return;
-            seen[key] = true;
-            items.push(item);
-        };
-
-        dashboardFeed.serverItems.forEach(n => add(normaliseAnnouncement(n, "server")));
-
-        let local = [];
-        try {
-            local = JSON.parse(localStorage.getItem("saaNewsletters")) || [];
-        } catch (e) {
-            local = [];
-        }
-        local.forEach(n => add(normaliseAnnouncement(n, "local")));
-
-        dashboardAnnouncements.forEach(n => add(normaliseAnnouncement(n, "default")));
-        return items;
-    }
-
-    /** Entry point used by switchView("dashboard"). */
-    function renderDashboardPanels() {
-        renderDashboardRecordCard();
-        renderAnnouncementFeed();
-        loadDashboardAnnouncementsFromServer();
-    }
-
-    /** Fills the left record card and the right adviser / alumni desk card. */
-    function renderDashboardRecordCard() {
-        const saved = JSON.parse(localStorage.getItem("alumniProfile") || "{}");
-        const role = currentUser ? currentUser.role : "alumni";
-        const isAlumni = role === "alumni";
-        const name = (isAlumni && saved.name) || (currentUser && currentUser.name) || "Alumni";
-
-        const nameEl = document.getElementById("dashRecordName");
-        if (nameEl) nameEl.textContent = name;
-
-        const subtitleEl = document.getElementById("dashRecordSubtitle");
-        if (subtitleEl) subtitleEl.textContent = (currentUser && currentUser.title) || (isAlumni ? "Alumnus" : "Staff");
-
-        const avatarEl = document.getElementById("dashRecordAvatar");
-        const photoUrl = (currentUser && currentUser.photoUrl) || saved.photoUrl || "";
-        if (avatarEl) {
-            if (photoUrl) avatarEl.innerHTML = `<img src="${photoUrl}" class="avatar-img" alt="">`;
-            else avatarEl.textContent = initialsFromName(name);
-        }
-
-        if (isAlumni) {
-            fillDashboardRows("dashRecordRows", [
-                ["Course / Program", saved.program || (currentUser && currentUser.program)],
-                ["Batch Year", saved.batch || (currentUser && currentUser.batch)],
-                ["Student ID", currentUser && currentUser.studentId],
-                ["Employment Status", saved.employment],
-                ["Current Position", [saved.jobTitle, saved.company].filter(Boolean).join(" - ")],
-                ["Contact Number", saved.contact || (currentUser && currentUser.contact)]
-            ]);
-        } else {
-            fillDashboardRows("dashRecordRows", [
-                ["Role", currentUser && currentUser.title],
-                ["Username", currentUser && currentUser.username],
-                ["Email Address", currentUser && currentUser.email],
-                ["Portal Access", role === "admin" ? "Full system access" : "Registrar workflows"]
-            ]);
-        }
-
-        const adviserLabelEl = document.getElementById("dashAdviserLabel");
-        const adviserNoteEl = document.getElementById("dashAdviserNote");
-
-        if (isAlumni) {
-            if (adviserLabelEl) adviserLabelEl.textContent = "Alumni Adviser";
-            if (adviserNoteEl) adviserNoteEl.textContent = "For enrolment, clearance and alumni concerns";
-            const program = saved.program || (currentUser && currentUser.program) || "";
-            const batch = saved.batch || (currentUser && currentUser.batch) || "";
-            fillDashboardRows("dashAdviserRows", [
-                ["Name", saved.adviser || "Alumni Relations Office"],
-                ["My Section", saved.section || [program, batch ? "Batch " + batch : ""].filter(Boolean).join(" - ")],
-                ["Office Email", "alumni@stagnes.edu.ph"],
-                ["Telephone", "(02) 8361-2345"]
-            ]);
-        } else {
-            if (adviserLabelEl) adviserLabelEl.textContent = "Alumni Affairs Desk";
-            if (adviserNoteEl) adviserNoteEl.textContent = "Registrar and alumni office coordination";
-            fillDashboardRows("dashAdviserRows", [
-                ["Office", "Alumni Relations Office"],
-                ["Office Email", "alumni@stagnes.edu.ph"],
-                ["Registrar Email", "registrar@stagnes.edu.ph"],
-                ["Telephone", "(02) 8361-2345"]
-            ]);
-        }
-
-        toggleDashboardButton("dashRecordEditBtn", isAlumni);
-        toggleDashboardButton("dashTrackingBtn", role !== "registrar");
-        toggleDashboardButton("dashNewsletterLinkBtn", role !== "registrar");
-    }
-
-    /** Renders labelled rows into one of the dashboard cards. */
-    function fillDashboardRows(containerId, rows) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        container.innerHTML = rows.map(([label, value]) => `
-            <div class="record-row">
-                <span class="record-label">${escapeAnnouncementText(label)}</span>
-                <span class="record-value">${escapeAnnouncementText(value || "-")}</span>
-            </div>
-        `).join("");
-    }
-
-    /** Two-letter initials used when the alumnus has no uploaded photo. */
-    function initialsFromName(name) {
-        const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
-        if (!parts.length) return "AD";
-        return parts.map(w => w[0]).join("").slice(0, 2).toUpperCase();
-    }
-
-    /** Shows / hides a dashboard button according to the signed-in role. */
-    function toggleDashboardButton(id, visible) {
-        const el = document.getElementById(id);
-        if (el) el.classList.toggle("hidden", !visible);
-    }
-
-    /** Renders the current page of the announcement feed plus the pager state. */
-    function renderAnnouncementFeed() {
-        const list = document.getElementById("announcementFeed");
-        if (!list) return;
-
-        dashboardFeed.items = buildAnnouncementFeed();
-
-        const total = dashboardFeed.items.length;
-        const pageSize = dashboardFeed.pageSize;
-        const totalPages = Math.max(1, Math.ceil(total / pageSize));
-        dashboardFeed.page = Math.min(Math.max(1, dashboardFeed.page), totalPages);
-
-        const start = (dashboardFeed.page - 1) * pageSize;
-        const pageItems = dashboardFeed.items.slice(start, start + pageSize);
-
-        list.innerHTML = pageItems.map((item, offset) => {
-            const index = start + offset;
-            const expanded = !!dashboardFeed.expanded[index];
-            const toggleLabel = expanded ? "Collapse announcement" : "Read full announcement";
-            return `
-            <article class="announcement-card">
-                <div class="announcement-poster">
-                    <i class="fa-solid fa-bullhorn"></i>
-                    <h4>${escapeAnnouncementText(item.title)}</h4>
-                </div>
-                <div class="announcement-content">
-                    <p class="announcement-body ${expanded ? "" : "line-clamp-2"}">${escapeAnnouncementText(item.body)}</p>
-                </div>
-                <div class="announcement-foot">
-                    <span class="announcement-meta">
-                        <i class="fa-regular fa-calendar mr-0.5"></i> ${escapeAnnouncementText(item.date)}
-                        <span class="mx-1">|</span>
-                        <i class="fa-regular fa-user mr-0.5"></i> ${escapeAnnouncementText(item.author)}
-                    </span>
-                    <button type="button" onclick="toggleAnnouncement(${index})" class="announcement-toggle" title="${toggleLabel}" aria-label="${toggleLabel}">
-                        <i class="fa-solid ${expanded ? "fa-minus" : "fa-plus"}"></i>
-                    </button>
-                </div>
-            </article>`;
-        }).join("");
-
-        const rangeEl = document.getElementById("announcementRange");
-        if (rangeEl) {
-            rangeEl.textContent = total === 0
-                ? "0 of 0"
-                : `${start + 1}-${start + pageItems.length} of ${total}`;
-        }
-
-        const sizeEl = document.getElementById("announcementPageSize");
-        if (sizeEl) sizeEl.value = String(pageSize);
-
-        const atStart = dashboardFeed.page <= 1;
-        const atEnd = dashboardFeed.page >= totalPages;
-        setDashboardPagerState("announcementFirstBtn", atStart);
-        setDashboardPagerState("announcementPrevBtn", atStart);
-        setDashboardPagerState("announcementNextBtn", atEnd);
-        setDashboardPagerState("announcementLastBtn", atEnd);
-    }
-
-    function setDashboardPagerState(id, disabled) {
-        const el = document.getElementById(id);
-        if (el) el.disabled = disabled;
-    }
-
-    function goToAnnouncementPage(direction) {
-        const totalPages = Math.max(1, Math.ceil(dashboardFeed.items.length / dashboardFeed.pageSize));
-        if (direction === "first") dashboardFeed.page = 1;
-        else if (direction === "prev") dashboardFeed.page -= 1;
-        else if (direction === "next") dashboardFeed.page += 1;
-        else if (direction === "last") dashboardFeed.page = totalPages;
-        renderAnnouncementFeed();
-    }
-
-    function changeAnnouncementPageSize(value) {
-        const size = Number(value);
-        dashboardFeed.pageSize = Number.isFinite(size) && size > 0 ? size : 10;
-        dashboardFeed.page = 1;
-        renderAnnouncementFeed();
-    }
-
-    function toggleAnnouncement(index) {
-        dashboardFeed.expanded[index] = !dashboardFeed.expanded[index];
-        renderAnnouncementFeed();
-    }
-
-    /** Merges published server newsletters into the feed (once per session). */
-    async function loadDashboardAnnouncementsFromServer() {
-        if (dashboardFeed.serverLoaded) return;
-        dashboardFeed.serverLoaded = true;
-        if (typeof SAA_API === "undefined") return;
-        try {
-            const data = await SAA_API.request("/api/newsletters");
-            const rows = (data && data.newsletters) || [];
-            if (rows.length) {
-                dashboardFeed.serverItems = rows;
-                dashboardFeed.page = 1;
-                renderAnnouncementFeed();
-            }
-        } catch (err) {
-            /* Offline or unauthenticated: local archive and built-in notices are used. */
-        }
-    }

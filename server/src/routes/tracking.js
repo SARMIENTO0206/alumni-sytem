@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { db, mapAlumni } from '../db.js';
-import { requireRole } from '../auth.js';
+import { isAlumni, ownsAlumniRecord, requireRole } from '../auth.js';
+import { mirrorUpdate } from '../sync-supabase.js';
+import { dispatchNotification } from '../notify.js';
 
 const router = Router();
 
@@ -8,7 +10,10 @@ const FRESHNESS_MONTHS = 6;
 
 /** GET /api/tracking - graduate tracking summary + employment analytics. */
 router.get('/', (req, res) => {
-  const rows = db.prepare('SELECT * FROM alumni').all();
+  let rows = db.prepare('SELECT * FROM alumni').all();
+  if (isAlumni(req.user)) {
+    rows = rows.filter((row) => ownsAlumniRecord(req.user, row));
+  }
 
   const employmentCounts = rows.reduce((acc, a) => {
     const key = a.status || 'Unknown';
@@ -43,37 +48,52 @@ router.get('/', (req, res) => {
   });
 });
 
-/** PUT /api/tracking/:id/employment - update a graduate's employment/education outcome. */
+/** PUT /api/tracking/:id/employment - alumni may update only their own record. */
 router.put('/:id/employment', (req, res) => {
   const id = Number(req.params.id);
-  const { status, company, title, relevance, timeToFirst, location } = req.body || {};
-  const allowed = ['Employed', 'Unemployed', 'Freelance', 'Further Studies'];
-  if (!allowed.includes(status)) return res.status(400).json({ error: 'Invalid employment status value.' });
+  const existing = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Alumni record not found.' });
+  if (!ownsAlumniRecord(req.user, existing)) {
+    return res.status(403).json({ error: 'You can only update your own graduate tracking information.' });
+  }
+  const { status, company, title, relevance, timeToFirst, location, educationSchool, educationProgram, educationStatus, educationYear } = req.body || {};
+  const allowed = ['Employed', 'Unemployed', 'Freelance', 'Further Studies', 'Post-grad'];
+  if (status && !allowed.includes(status)) return res.status(400).json({ error: 'Invalid employment status value.' });
 
-  const info = db.prepare(
-    `UPDATE alumni SET status = ?, company = ?, job_title = ?, relevance = ?, time_to_first = ?, location = ?, last_updated = ?
+  const nextStatus = status || existing.status;
+  db.prepare(
+    `UPDATE alumni SET status = ?, company = ?, job_title = ?, relevance = ?, time_to_first = ?, location = ?,
+     education_school = ?, education_program = ?, education_status = ?, education_year = ?, last_updated = ?
      WHERE id = ?`
   ).run(
-    status, company || '', title || '', relevance || 'Not Related', timeToFirst || '',
-    location || 'Local', new Date().toISOString().split('T')[0], id
+    nextStatus,
+    company ?? existing.company,
+    title ?? existing.job_title,
+    relevance ?? existing.relevance,
+    timeToFirst ?? existing.time_to_first,
+    location ?? existing.location,
+    educationSchool ?? existing.education_school,
+    educationProgram ?? existing.education_program,
+    educationStatus ?? existing.education_status,
+    educationYear ?? existing.education_year,
+    new Date().toISOString().split('T')[0],
+    id
   );
 
-  if (info.changes === 0) return res.status(404).json({ error: 'Alumni record not found.' });
-
-  // Log a placement when the graduate is employed.
-  if (status === 'Employed' && company && title) {
+  if (nextStatus === 'Employed' && company && title) {
     const row = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
-    db.prepare('INSERT INTO placements (alumni, company, title, date) VALUES (?, ?, ?, ?)').run(
-      row.name, company, title, new Date().toISOString().split('T')[0]
+    db.prepare('INSERT INTO placements (alumni, company, title, date, alumni_id, user_id) VALUES (?, ?, ?, ?, ?, ?)').run(
+      row.name, company, title, new Date().toISOString().split('T')[0], row.id, row.user_id || 0
     );
   }
 
   const row = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
+  mirrorUpdate('alumni', row);
   res.json({ alumni: mapAlumni(row) });
 });
 
 /** GET /api/stale-profiles - alumni with profiles older than the freshness window. */
-router.get('/stale-profiles', (req, res) => {
+router.get('/stale-profiles', requireRole('admin', 'staff'), (req, res) => {
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - FRESHNESS_MONTHS);
 
@@ -87,7 +107,7 @@ router.get('/stale-profiles', (req, res) => {
 });
 
 /** POST /api/reminders/sweep - dispatch SMS reminders to stale profiles (admin only). */
-router.post('/reminders/sweep', requireRole('admin'), (req, res) => {
+router.post('/reminders/sweep', requireRole('admin', 'staff'), (req, res) => {
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - FRESHNESS_MONTHS);
 
@@ -100,13 +120,23 @@ router.post('/reminders/sweep', requireRole('admin'), (req, res) => {
     .map(a => a.name);
 
   for (const name of dispatched) {
-    db.prepare(
-      'INSERT INTO notifications (channel, recipient, subject, message) VALUES (\'SMS\', ?, ?, ?)'
-    ).run(
-      name,
-      'Grad Tracking Update Reminder',
-      'ST. AGNES ACADEMY OF CALOOCAN: Dear Alumni, please update your employment or education status through the Alumni Management System. Your response helps the school improve its graduate tracking program. Thank you.'
-    );
+    const alumni = db.prepare('SELECT * FROM alumni WHERE name = ?').get(name);
+    const user = alumni?.user_id
+      ? db.prepare('SELECT * FROM users WHERE id = ?').get(alumni.user_id)
+      : db.prepare('SELECT * FROM users WHERE LOWER(name) = LOWER(?)').get(name);
+    dispatchNotification({
+      userId: user?.id || 0,
+      alumniId: alumni?.id || 0,
+      recipient: user?.contact || user?.email || name,
+      channel: 'SYSTEM',
+      subject: 'Grad Tracking Update Reminder',
+      message: 'Please update your employment or education status through the Alumni Management System.',
+      relatedType: 'system',
+      relatedId: alumni?.id || '',
+      email: user?.email,
+      phone: user?.contact,
+      sendSms: true
+    }).catch(() => {});
   }
 
   res.json({ ok: true, dispatchedCount: dispatched.length, recipients: dispatched });

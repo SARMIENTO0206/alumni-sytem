@@ -8,13 +8,17 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "test:supabase": "node scripts/test-supabase.js"
   },
   "engines": {
     "node": ">=22.5.0"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "bcryptjs": "^3.0.3",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "nodemailer": "^7.0.9",
+    "qrcode": "^1.5.4"
   }
 }

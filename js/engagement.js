@@ -3,11 +3,84 @@
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 4018-4710 */
 /* ------------------------------------------------------------------------- */
+    async function showJobDetails(id, silent) {
+        let job = (jobsList || []).find((j) => String(j.id) === String(id));
+        if (!job && typeof SAA_API !== "undefined") {
+            try {
+                const data = await SAA_API.request(`/api/jobs/${id}`);
+                job = data.job;
+                if (job && !(jobsList || []).some((j) => String(j.id) === String(job.id))) jobsList.unshift(job);
+            } catch (err) {
+                showToast(err.message || "Unable to open this job.", "error");
+                return;
+            }
+        }
+        const list = document.getElementById("jobsListPanel");
+        const panel = document.getElementById("jobDetailPanel");
+        if (!job) return;
+        if (panel) {
+            if (list) list.classList.add("hidden");
+            panel.classList.remove("hidden");
+            const title = document.getElementById("jobDetailTitle");
+            const company = document.getElementById("jobDetailCompany");
+            const meta = document.getElementById("jobDetailMeta");
+            const body = document.getElementById("jobDetailDescription");
+            const actions = document.getElementById("jobDetailActions");
+            if (title) title.textContent = job.title || "Job";
+            if (company) company.textContent = job.company || "";
+            if (meta) meta.textContent = job.location || "";
+            if (body) body.textContent = job.description || "";
+            if (actions) {
+                actions.innerHTML = `<button type="button" onclick='applyJobOpportunity(${JSON.stringify(String(job.title || ""))}, ${JSON.stringify(String(job.company || ""))})' class="btn btn-primary text-xs">Apply</button>`;
+            }
+        } else {
+            renderJobsGrid();
+            const grid = document.getElementById("jobsGridContainer");
+            if (grid) {
+                const card = grid.querySelector(`[data-job-id="${id}"]`);
+                if (card) {
+                    card.classList.add("ring-2", "ring-[#801235]");
+                    card.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            }
+        }
+        if (!silent) switchView("job-opportunities", { detailId: id });
+    }
+
+    function renderJobsGrid() {
+        const grid = document.getElementById("jobsGridContainer");
+        if (!grid) return;
+        if (!jobsList.length) {
+            grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 font-semibold">No job opportunities yet.</div>`;
+            return;
+        }
+        grid.innerHTML = jobsList.map(job => `
+            <div class="app-card app-card-hover p-5 flex flex-col justify-between" data-job-id="${job.id}">
+                <div>
+                    <button type="button" onclick="switchView('job-opportunities', { detailId: '${job.id}' })" class="text-left">
+                    <h4 class="font-extrabold text-slate-800 text-sm hover:text-brand-magenta">${job.title}</h4>
+                    </button>
+                    <p class="text-xs text-brand-magenta font-semibold mt-0.5">${job.company || ""}</p>
+                    <p class="text-xs text-slate-400 mt-2">${job.location || ""}</p>
+                    <p class="text-xs text-slate-500 mt-3">${job.description || ""}</p>
+                </div>
+                <button type="button" onclick='applyJobOpportunity(${JSON.stringify(String(job.title || ""))}, ${JSON.stringify(String(job.company || ""))})' class="btn btn-primary text-xs mt-4">
+                    Apply
+                </button>
+            </div>
+        `).join("");
+    }
+
     /* Events */
     function renderEventsGrid() {
         const grid = document.getElementById("eventCardsGrid");
         if (!grid) return;
         grid.innerHTML = "";
+
+        if (!eventsList.length) {
+            grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 font-semibold">No events yet. Create an event to get started.</div>`;
+            return;
+        }
 
         eventsList.forEach(ev => {
             const card = document.createElement("div");
@@ -19,7 +92,9 @@
                         <span class="status-badge ${ev.status === 'Completed' ? 'status-approved' : 'status-freelance'} text-[10px]">${ev.status || 'Alumni Event'}</span>
                         <span class="text-xs text-slate-400 font-semibold"><i class="fa-solid fa-users text-pink-500 mr-1"></i> ${ev.rsvps} RSVPs</span>
                     </div>
-                    <h4 class="font-extrabold text-slate-800 text-base">${ev.title}</h4>
+                    <button type="button" onclick="openEventDetails(${ev.id})" class="text-left w-full">
+                        <h4 class="font-extrabold text-slate-800 text-base hover:text-brand-magenta">${ev.title}</h4>
+                    </button>
                     <p class="text-xs text-slate-500 font-medium mt-2">
                         <i class="fa-regular fa-clock text-brand-magenta mr-1"></i> ${ev.date}
                     </p>
@@ -64,44 +139,52 @@
         });
     }
 
-    function toggleEventRSVP(id) {
-        eventsList = eventsList.map(e => {
-            if (e.id === id) {
-                const registered = !e.registered;
-                const rsvps = registered ? e.rsvps + 1 : e.rsvps - 1;
-                const name = currentUser ? currentUser.name : "Maria Clara Santos";
-                const email = currentUser ? (currentUser.email || "alumni@stagnes.edu.ph") : "alumni@stagnes.edu.ph";
-                const contact = currentUser ? (currentUser.contact || "+63 917 888 9999") : "+63 917 888 9999";
+    function openEventDetails(id) {
+        switchView("events", { detailId: id });
+    }
 
-                if (registered) {
-                    // Add alumni to attendees list
-                    const attendees = e.attendees || [];
-                    attendees.push({ name, email, present: false });
-                    
-                    // Send confirmation notifications
-                    triggerNotification(
-                        "EMAIL",
-                        email,
-                        `RSVP Confirmed - ${e.title}`,
-                        `Dear ${name},\n\nThank you for confirming your attendance to ${e.title}!\n\n📅 Date: ${e.date}\n📍 Venue: ${e.location}\n\nWe look forward to seeing you there!\n- St. Agnes Academy Alumni Office`
-                    );
-                    triggerNotification(
-                        "SMS",
-                        contact,
-                        `SAA Event RSVP Confirmed`,
-                        `SAA Alumni: You are registered for ${e.title} on ${e.date} at ${e.location}. See you there!`
-                    );
-                    showToast(`✔ RSVP Confirmed for ${e.title}! Confirmation sent to ${email}`, "success");
-                } else {
-                    showToast(`RSVP cancelled for ${e.title}.`, "info");
-                }
-
-                return { ...e, registered, rsvps, attendees: registered ? attendees : (e.attendees || []).filter(a => a.name !== name) };
+    async function showEventDetails(id, silent) {
+        let ev = eventsList.find((e) => String(e.id) === String(id));
+        if (!ev && typeof SAA_API !== "undefined") {
+            try {
+                const data = await SAA_API.request(`/api/events/${id}`);
+                ev = data.event;
+                if (ev && !eventsList.some((e) => String(e.id) === String(ev.id))) eventsList.unshift(ev);
+            } catch (err) {
+                showToast(err.message || "Unable to open this event.", "error");
+                return;
             }
-            return e;
-        });
-        updateLocalStorage();
-        renderEventsGrid();
+        }
+        const list = document.getElementById("eventsListPanel");
+        const panel = document.getElementById("eventDetailPanel");
+        if (!ev || !panel) return;
+        if (list) list.classList.add("hidden");
+        panel.classList.remove("hidden");
+        document.getElementById("eventDetailTitle").textContent = ev.title || "Event";
+        document.getElementById("eventDetailMeta").textContent = `${ev.date || ""} • ${ev.rsvps || 0} RSVPs`;
+        document.getElementById("eventDetailLocation").textContent = ev.location || "";
+        const actions = document.getElementById("eventDetailActions");
+        if (actions) {
+            actions.innerHTML = `
+                <button type="button" onclick="toggleEventRSVP(${ev.id})" class="btn ${ev.registered ? 'btn-secondary' : 'btn-primary'} text-xs">
+                    ${ev.registered ? "Registered" : "Confirm RSVP Attendance"}
+                </button>
+            `;
+        }
+        if (!silent) switchView("events", { detailId: ev.id });
+    }
+
+    async function toggleEventRSVP(id) {
+        try {
+            const data = await SAA_API.request(`/api/events/${id}/rsvp`, { method: "POST" });
+            await SAA_API.refreshAllData();
+            renderEventsGrid();
+            if (currentDetailId && typeof showEventDetails === "function") showEventDetails(currentDetailId, true);
+            const registered = data && data.event && (data.event.attendees || []).some(a => currentUser && a.name === currentUser.name);
+            showToast(registered ? "RSVP confirmed." : "RSVP cancelled.", registered ? "success" : "info");
+        } catch (err) {
+            showToast(err.message || "Unable to update event registration.", "error");
+        }
     }
 
     /* Event Creation Modal (replaces prompt) */
@@ -113,81 +196,35 @@
         document.getElementById("addEventModal").classList.remove("active");
     }
 
-    function saveNewEvent(event) {
+    async function saveNewEvent(event) {
         event.preventDefault();
         const title = document.getElementById("newEventTitle").value.trim();
         const date = document.getElementById("newEventDate").value.trim();
         const location = document.getElementById("newEventLocation").value.trim();
-        const description = document.getElementById("newEventDescription").value.trim() || "Join us for this special alumni event!";
-        const sendEmail = document.getElementById("sendEmailInvite").checked;
-        const sendSms = document.getElementById("sendSmsInvite").checked;
-
-        const newEvent = {
-            id: Date.now(),
-            title,
-            date,
-            location,
-            description,
-            rsvps: 0,
-            registered: false,
-            status: "Published",
-            attendees: []
-        };
-
-        eventsList.unshift(newEvent);
-        updateLocalStorage();
-        renderEventsGrid();
-        closeAddEventModal();
-        event.target.reset();
-
-        // Auto-send Gmail/SMS invitations
-        if (sendEmail) {
-            triggerNotification(
-                "EMAIL",
-                "all-alumni@stagnes.edu.ph",
-                `New Event Invitation: ${title}`,
-                `Dear Agnesian Alumni,\n\nYou are cordially invited to:\n\n📌 ${title}\n📅 ${date}\n📍 ${location}\n\n${description}\n\nRSVP through the Alumni Management System!\n- St. Agnes Academy Alumni Office`
-            );
+        try {
+            await SAA_API.request("/api/events", {
+                method: "POST",
+                body: JSON.stringify({ title, date, location })
+            });
+            await SAA_API.refreshAllData();
+            renderEventsGrid();
+            closeAddEventModal();
+            event.target.reset();
+            showToast(`"${title}" published.`, "success");
+        } catch (err) {
+            showToast(err.message || "Unable to create event.", "error");
         }
-        if (sendSms) {
-            triggerNotification(
-                "SMS",
-                "All Alumni Contacts",
-                `SAA Event Invitation`,
-                `SAA Alumni: You're invited to ${title} on ${date} at ${location}. Register now in the Alumni System!`
-            );
-        }
-
-        showToast(`🎉 "${title}" published! ${sendEmail ? 'Gmail' : ''}${sendEmail && sendSms ? ' & ' : ''}${sendSms ? 'SMS' : ''} invitations sent.`, "success");
     }
 
     /* Pre-Event Reminder */
-    function sendPreEventReminder(id) {
-        const ev = eventsList.find(e => e.id === id);
-        if (!ev) return;
-
-        const attendees = ev.attendees || [];
-        if (!attendees.length) {
-            showToast(`No registered alumni yet for "${ev.title}".`, "warning");
-            return;
+    async function sendPreEventReminder(id) {
+        try {
+            const data = await SAA_API.request(`/api/events/${id}/remind`, { method: "POST" });
+            if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
+            showToast(`Event reminder recorded for ${data.reminders || 0} registrant(s). Delivery status depends on SMTP/SMS configuration.`, "info");
+        } catch (err) {
+            showToast(err.message || "Unable to send event reminders.", "error");
         }
-
-        attendees.forEach(a => {
-            triggerNotification(
-                "EMAIL",
-                a.email,
-                `Event Reminder: ${ev.title}`,
-                `Dear ${a.name},\n\nThis is a friendly reminder that ${ev.title} is coming up!\n\n📅 Date: ${ev.date}\n📍 Venue: ${ev.location}\n\nWe hope to see you there!\n- St. Agnes Academy Alumni Office`
-            );
-            triggerNotification(
-                "SMS",
-                a.contact || "+63 917 888 9999",
-                `SAA Event Reminder`,
-                `SAA: Don't forget ${ev.title} on ${ev.date} at ${ev.location}. See you there!`
-            );
-        });
-
-        showToast(`📢 Reminders sent to ${attendees.length} registered alumni for "${ev.title}".`, "success");
     }
 
     /* Attendance Monitoring */
@@ -199,8 +236,10 @@
         if (attendee) {
             attendee.present = !attendee.present;
             const presentCount = ev.attendees.filter(a => a.present).length;
-            updateLocalStorage();
-            renderEventsGrid();
+            SAA_API.request("/api/events/" + eventId + "/attendance", {
+                method: "PUT",
+                body: JSON.stringify({ name, present: attendee.present })
+            }).then(() => SAA_API.refreshAllData()).then(() => renderEventsGrid()).catch(() => renderEventsGrid());
             showToast(`${name} marked as ${attendee.present ? 'PRESENT' : 'ABSENT'}. ${presentCount}/${ev.attendees.length} present.`, "info");
         }
     }
@@ -213,6 +252,11 @@
 
         const isAdmin = currentUser?.role === "admin";
         const currentBatch = currentUser?.batch;
+
+        if (!reunionsList.length) {
+            grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 font-semibold">No batch reunions yet.</div>`;
+            return;
+        }
 
         reunionsList.forEach(r => {
             const card = document.createElement("div");
@@ -284,95 +328,37 @@
         document.getElementById("addReunionModal").classList.remove("active");
     }
 
-    function saveNewReunion(event) {
+    async function saveNewReunion(event) {
         event.preventDefault();
         const batch = document.getElementById("reunionBatch").value;
         const label = document.getElementById("reunionLabel").value.trim();
         const date = document.getElementById("reunionDate").value.trim();
         const venue = document.getElementById("reunionVenue").value.trim();
         const coordinator = document.getElementById("reunionCoordinator").value.trim();
-        const sendEmail = document.getElementById("sendReunionEmail").checked;
-        const sendSms = document.getElementById("sendReunionSms").checked;
-
-        const newReunion = {
-            id: Date.now(),
-            batch: `${label} (${batch})`,
-            batchYear: batch,
-            date,
-            venue,
-            coordinators: coordinator,
-            confirmed: false,
-            attendees: []
-        };
-
-        reunionsList.unshift(newReunion);
-        localStorage.setItem("reunionsList", JSON.stringify(reunionsList));
-        renderReunionsGrid();
-        closeAddReunionModal();
-        event.target.reset();
-
-        // Find alumni from target batch
-        const batchAlumni = alumniList.filter(a => String(a.batch) === batch);
-        const count = batchAlumni.length || 5;
-
-        // Send batch-specific Gmail invitations
-        if (sendEmail) {
-            triggerNotification(
-                "EMAIL",
-                `batch-${batch}@stagnes.edu.ph`,
-                `Reunion Invitation: ${label}`,
-                `Dear Batch ${batch} Alumni,\n\nYou are cordially invited to:\n\n🎓 ${label}\n📅 ${date}\n📍 ${venue}\nCoordinator: ${coordinator}\n\nPlease confirm your attendance through the Alumni Management System!\n- St. Agnes Academy Alumni Office`
-            );
+        try {
+            await SAA_API.request("/api/reunions", {
+                method: "POST",
+                body: JSON.stringify({ batch: `${label} (${batch})`, date, venue, coordinators: coordinator })
+            });
+            await SAA_API.refreshAllData();
+            renderReunionsGrid();
+            closeAddReunionModal();
+            event.target.reset();
+            showToast(`"${label}" created.`, "success");
+        } catch (err) {
+            showToast(err.message || "Unable to create reunion.", "error");
         }
-        // Send batch-specific SMS invitations
-        if (sendSms) {
-            triggerNotification(
-                "SMS",
-                `Batch ${batch} Alumni (+63 contacts)`,
-                `SAA Reunion Invitation`,
-                `SAA: Batch ${batch}! You're invited to ${label} on ${date} at ${venue}. Confirm in the Alumni System!`
-            );
-        }
-
-        showToast(`🎓 "${label}" created! Invitations sent to ${count} alumni from Batch ${batch}.`, "success");
     }
 
     /* Alumni Confirms Attendance */
-    function confirmReunionAttendance(id) {
-        const r = reunionsList.find(x => x.id === id);
-        if (!r) return;
-
-        const name = currentUser ? currentUser.name : "Maria Clara Santos";
-        const email = currentUser ? (currentUser.email || "alumni@stagnes.edu.ph") : "alumni@stagnes.edu.ph";
-        const contact = currentUser ? (currentUser.contact || "+63 917 888 9999") : "+63 917 888 9999";
-        const alreadyConfirmed = r.confirmed;
-        const attendees = r.attendees || [];
-
-        if (!alreadyConfirmed) {
-            attendees.push({ name, email, contact, confirmed: true, present: false });
-        }
-
-        r.confirmed = !alreadyConfirmed;
-        r.attendees = alreadyConfirmed ? attendees.filter(a => a.name !== name) : attendees;
-        localStorage.setItem("reunionsList", JSON.stringify(reunionsList));
-        renderReunionsGrid();
-
-        if (!alreadyConfirmed) {
-            triggerNotification(
-                "EMAIL",
-                email,
-                `Reunion Attendance Confirmed - ${r.batch}`,
-                `Dear ${name},\n\nThank you for confirming your attendance to the ${r.batch} reunion!\n\n📅 Date: ${r.date}\n📍 Venue: ${r.venue}\n\nWe look forward to seeing you there!\n- St. Agnes Academy Alumni Office`
-            );
-            triggerNotification(
-                "SMS",
-                contact,
-                `SAA Reunion Confirmed`,
-                `SAA: Your attendance for ${r.batch} on ${r.date} at ${r.venue} is confirmed. See you there!`
-            );
-            showToast(`✔ Attendance confirmed for ${r.batch}! Confirmation sent.`, "success");
-        } else {
-            showToast(`Attendance cancelled for ${r.batch}.`, "info");
+    async function confirmReunionAttendance(id) {
+        try {
+            await SAA_API.request(`/api/reunions/${id}/rsvp`, { method: "POST" });
+            await SAA_API.refreshAllData();
+            renderReunionsGrid();
+            showToast("Attendance updated.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to update reunion attendance.", "error");
         }
     }
 
@@ -385,14 +371,16 @@
         if (a) {
             a.present = !a.present;
             const presentCount = r.attendees.filter(x => x.present).length;
-            localStorage.setItem("reunionsList", JSON.stringify(reunionsList));
-            renderReunionsGrid();
+            SAA_API.request("/api/reunions/" + id + "/attendance", {
+                method: "PUT",
+                body: JSON.stringify({ name, present: a.present })
+            }).then(() => SAA_API.refreshAllData()).then(() => renderReunionsGrid()).catch(() => renderReunionsGrid());
             showToast(`${name} marked ${a.present ? 'PRESENT' : 'ABSENT'}. ${presentCount}/${r.attendees.length} present.`, "info");
         }
     }
 
     /* Reunion Reminders */
-    function sendReunionReminders(id) {
+    async function sendReunionReminders(id) {
         const r = reunionsList.find(x => x.id === id);
         if (!r) return;
         const confirmed = (r.attendees || []).filter(a => a.confirmed);
@@ -400,11 +388,10 @@
             showToast(`No confirmed alumni yet for ${r.batch}.`, "warning");
             return;
         }
-        confirmed.forEach(a => {
-            triggerNotification("EMAIL", a.email, `Reminder: ${r.batch} Reunion`, `Dear ${a.name}, don't forget the ${r.batch} reunion on ${r.date} at ${r.venue}!`);
-            triggerNotification("SMS", a.contact || "+63 917 888 9999", `SAA Reunion Reminder`, `SAA: Reminder for ${r.batch} on ${r.date} at ${r.venue}. See you!`);
-        });
-        showToast(`📢 Reminders sent to ${confirmed.length} confirmed alumni.`, "success");
+        for (const a of confirmed) {
+            if (a.email) await triggerNotification("EMAIL", a.email, `Reminder: ${r.batch} Reunion`, `Dear ${a.name}, don't forget the ${r.batch} reunion on ${r.date} at ${r.venue}!`);
+            if (a.contact) await triggerNotification("SMS", a.contact, `SAA Reunion Reminder`, `SAA: Reminder for ${r.batch} on ${r.date} at ${r.venue}. See you!`);
+        }
     }
 
     /* Generate Attendance Report (CSV) */
@@ -448,75 +435,422 @@
     function submitDonation(event) {
         event.preventDefault();
         const name = document.getElementById("donorName").value.trim();
-        const amount = document.getElementById("donorAmount").value;
-
-        openPaymentGateway(amount, "Alumni Foundation Donation", `Pledge Contribution by ${name}`, (ref) => {
-            showToast(`Thank you, ${name}! Your donation pledge of ₱${Number(amount).toLocaleString()} (${ref}) has been received with gratitude.`, "success");
-            event.target.reset();
+        const amount = Number(document.getElementById("donorAmount").value);
+        const campaign = "Alumni Foundation";
+        if (!name || !Number.isFinite(amount) || amount < 1) {
+            showToast("Enter a valid donor name and amount.", "error");
+            return;
+        }
+        openPaymentGateway({
+            amount,
+            purpose: "Alumni Foundation Donation",
+            detail: `Pledge by ${name}`,
+            relatedType: "donation",
+            campaign,
+            donor: name
         });
     }
 
-    /* Digital Payment Gateway Engine */
-    let pendingPaymentCallback = null;
+    /* PayMongo QR Ph — the browser never marks a payment paid. */
+    let pendingCheckout = null;
+    let paymentReturnTimer = null;
+    let qrCountdownTimer = null;
 
-    function openPaymentGateway(amount, purpose, detail, callback) {
-        document.getElementById("paymentAmountText").textContent = `₱${Number(amount).toFixed(2)}`;
-        document.getElementById("paymentPurposeText").textContent = purpose || "Official Fee Payment";
-        document.getElementById("paymentDetailText").textContent = detail || "SAA Official Transaction";
-        pendingPaymentCallback = callback;
-        document.getElementById("paymentGatewayModal").classList.add("active");
+    function qrStatusCopy(status) {
+        if (status === "paid") return { title: "PAID", message: "Payment confirmed successfully." };
+        if (status === "processing") return { title: "PROCESSING", message: "Your payment is being processed. Please wait." };
+        if (status === "expired") return { title: "EXPIRED", message: "This payment QR has expired. Generate a new payment QR to try again." };
+        if (status === "failed") return { title: "FAILED", message: "The payment could not be completed. Please try again." };
+        if (status === "cancelled") return { title: "CANCELLED", message: "The payment was cancelled. You can generate a new QR to try again." };
+        return { title: "WAITING FOR PAYMENT", message: "Waiting for payment. Scan the QR code using your preferred banking or e-wallet app." };
+    }
+
+    function formatExpiry(iso) {
+        if (!iso) return "—";
+        const ms = new Date(iso).getTime() - Date.now();
+        if (ms <= 0) return "00:00";
+        const mins = Math.floor(ms / 60000);
+        const secs = Math.floor((ms % 60000) / 1000);
+        return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function applyQrPage(payment) {
+        if (!payment) return;
+        const incoming = Object.assign({}, payment);
+        if (!incoming.qrImage && lastVerifiedPayment && lastVerifiedPayment.qrImage && String(lastVerifiedPayment.id) === String(incoming.id)) {
+            incoming.qrImage = lastVerifiedPayment.qrImage;
+        }
+        lastVerifiedPayment = Object.assign({}, lastVerifiedPayment || {}, incoming);
+        payment = lastVerifiedPayment;
+        const copy = qrStatusCopy(payment.status);
+        const amount = `₱${Number(payment.amount || 0).toFixed(2)}`;
+        const purposeEl = document.getElementById("qrPagePurpose");
+        const subtitleEl = document.getElementById("qrPageSubtitle");
+        const requestEl = document.getElementById("qrPageRequestId");
+        const amountEl = document.getElementById("qrPageAmount");
+        const amountRepeatEl = document.getElementById("qrPageAmountRepeat");
+        const methodEl = document.getElementById("qrPageMethod");
+        const statusEl = document.getElementById("qrPageStatus");
+        const messageEl = document.getElementById("qrPageMessage");
+        const refEl = document.getElementById("qrPageRef");
+        const expiryEl = document.getElementById("qrPageExpiry");
+        if (purposeEl) purposeEl.textContent = payment.purpose || "Document Request";
+        if (subtitleEl) subtitleEl.textContent = payment.description || "";
+        if (requestEl) requestEl.textContent = payment.requestCode || "—";
+        if (amountEl) amountEl.textContent = amount;
+        if (amountRepeatEl) amountRepeatEl.textContent = amount;
+        if (methodEl) methodEl.textContent = "QR Ph";
+        if (statusEl) statusEl.textContent = copy.title;
+        if (refEl) refEl.textContent = payment.referenceId || payment.gatewayIntentId || payment.id || "—";
+        if (expiryEl) expiryEl.textContent = formatExpiry(payment.qrExpiresAt);
+        const img = document.getElementById("qrPageImage");
+        const empty = document.getElementById("qrPageEmpty");
+        const generated = document.getElementById("qrPageGenerated");
+        const qrActive = payment.status !== "paid" && payment.status !== "expired" && payment.status !== "failed" && payment.status !== "cancelled";
+        const paymongoQr = payment.qrSource === "paymongo" && payment.qrImage;
+        if (messageEl) {
+            messageEl.textContent = (qrActive && !paymongoQr)
+                ? "PayMongo is not configured, so this QR identifies the request only. Add PAYMONGO_SECRET_KEY in server/.env to display a GCash-payable QR Ph code."
+                : copy.message;
+        }
+        if (qrActive && (payment.qrImage || payment.id)) {
+            if (empty) empty.classList.add("hidden");
+            if (payment.qrImage && img) {
+                img.src = payment.qrImage;
+                img.classList.remove("hidden");
+                if (generated) generated.classList.add("hidden");
+            } else {
+                if (img) {
+                    img.removeAttribute("src");
+                    img.classList.add("hidden");
+                }
+                drawPaymentQr(payment);
+            }
+        } else {
+            if (img) {
+                img.removeAttribute("src");
+                img.classList.add("hidden");
+            }
+            if (generated) {
+                generated.classList.add("hidden");
+                generated.innerHTML = "";
+            }
+            if (empty) {
+                empty.classList.remove("hidden");
+                empty.textContent = payment.status === "paid"
+                    ? "Payment confirmed. The QR is no longer needed."
+                    : "This QR is no longer active.";
+            }
+        }
+        const regen = document.getElementById("qrRegenBtn");
+        const receipt = document.getElementById("qrReceiptBtn");
+        if (regen) regen.classList.toggle("hidden", payment.status === "paid");
+        if (receipt) receipt.classList.toggle("hidden", payment.status !== "paid");
+    }
+
+    function drawPaymentQr(payment) {
+        const box = document.getElementById("qrPageGenerated");
+        if (!box) return;
+        const payload = payment.qrPayload || [
+            payment.requestCode || `PAY-${payment.id}`,
+            `PHP ${Number(payment.amount || 0).toFixed(2)}`,
+            payment.referenceId || payment.gatewayIntentId || `payment-${payment.id}`
+        ].join(" | ");
+        if (box.getAttribute("data-payload") === payload && box.querySelector("canvas, img, table")) {
+            box.classList.remove("hidden");
+            return;
+        }
+        box.innerHTML = "";
+        box.classList.remove("hidden");
+        box.setAttribute("data-payload", payload);
+        const size = 280;
+        const holder = document.createElement("div");
+        holder.style.width = size + "px";
+        holder.style.height = size + "px";
+        box.appendChild(holder);
+        if (typeof QRCode === "undefined") {
+            holder.innerHTML = `<p class="text-xs text-slate-500 px-3">${payload}</p>`;
+            return;
+        }
+        new QRCode(holder, {
+            text: payload,
+            width: size,
+            height: size,
+            colorDark: "#1e293b",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    }
+
+    async function startQrPayment(options) {
+        const data = await SAA_API.request("/api/payments/checkout", {
+            method: "POST",
+            body: JSON.stringify({
+                relatedType: options.relatedType,
+                relatedId: options.relatedId,
+                amount: options.relatedType === "donation" ? options.amount : undefined,
+                campaign: options.campaign || "",
+                donor: options.donor || (currentUser && currentUser.name) || ""
+            })
+        });
+        if (data.error && !data.payment) throw new Error(data.error);
+        if (data.error) showToast(data.error, "warning");
+        lastVerifiedPayment = data.payment;
+        switchView("payment", { detailId: String(data.payment.id) });
+        return data.payment;
+    }
+
+    function openPaymentGateway(options) {
+        pendingCheckout = options || {};
+        startQrPayment(pendingCheckout).catch((err) => {
+            showToast(err.message || "Unable to start QR payment.", "error");
+        });
     }
 
     function closePaymentGatewayModal() {
-        document.getElementById("paymentGatewayModal").classList.remove("active");
-        pendingPaymentCallback = null;
+        const modal = document.getElementById("paymentGatewayModal");
+        if (modal) modal.classList.remove("active");
+        pendingCheckout = null;
     }
 
-    function switchPaymentFields(method) {
-        document.getElementById("paymentEWalletFields").classList.toggle("hidden", !(method === "GCash" || method === "Maya"));
-        document.getElementById("paymentCardFields").classList.toggle("hidden", method !== "Card");
-        document.getElementById("paymentPaypalFields").classList.toggle("hidden", method !== "PayPal");
-    }
+    function switchPaymentFields() { /* QR Ph only */ }
 
     function submitPayment(event) {
         event.preventDefault();
-        const method = document.querySelector('input[name="paymentMethod"]:checked')?.value || "GCash";
-        const amount = document.getElementById("paymentAmountText").textContent;
-        const refNum = `${method.toUpperCase()}-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-        const payer = currentUser ? currentUser.name : "Maria Clara Santos";
+        if (!pendingCheckout) return;
+        startQrPayment(pendingCheckout).finally(closePaymentGatewayModal);
+    }
 
-        document.getElementById("receiptRef").textContent = refNum;
-        document.getElementById("receiptMethod").textContent = method;
-        document.getElementById("receiptPayer").textContent = payer;
-        document.getElementById("receiptAmount").textContent = amount;
+    async function renderPaymentQrPage() {
+        const id = Number(currentDetailId);
+        if (!id) {
+            document.getElementById("qrPageMessage").textContent = "No payment was selected.";
+            return;
+        }
+        if (paymentReturnTimer) clearInterval(paymentReturnTimer);
+        if (qrCountdownTimer) clearInterval(qrCountdownTimer);
+        const refresh = async () => {
+            const data = await SAA_API.request(`/api/payments/${id}/status`);
+            applyQrPage(data.payment);
+            if (data.status === "paid" || data.payment.status === "paid") {
+                clearInterval(paymentReturnTimer);
+                paymentReturnTimer = null;
+                if (typeof SAA_API.refreshAllData === "function") SAA_API.refreshAllData();
+            }
+            if (["expired", "failed", "cancelled"].includes(data.payment.status)) {
+                clearInterval(paymentReturnTimer);
+                paymentReturnTimer = null;
+            }
+        };
+        try {
+            const first = await SAA_API.request(`/api/payments/${id}`);
+            applyQrPage(first.payment);
+            await refresh();
+        } catch (err) {
+            document.getElementById("qrPageMessage").textContent = err.message || "Unable to load this payment.";
+            return;
+        }
+        paymentReturnTimer = setInterval(() => refresh().catch(() => {}), 3000);
+        qrCountdownTimer = setInterval(() => {
+            if (lastVerifiedPayment && lastVerifiedPayment.qrExpiresAt) {
+                document.getElementById("qrPageExpiry").textContent = formatExpiry(lastVerifiedPayment.qrExpiresAt);
+            }
+        }, 1000);
+    }
 
-        closePaymentGatewayModal();
-        document.getElementById("paymentReceiptModal").classList.add("active");
+    function renderPaymentReturnPage() {
+        renderPaymentQrPage();
+    }
 
-        // Trigger Automated Email Receipt Notification
-        triggerNotification(
-            "EMAIL",
-            currentUser ? (currentUser.email || "alumni@stagnes.edu.ph") : "alumni@stagnes.edu.ph",
-            `Official Payment Receipt - ${refNum}`,
-            `Thank you! Your payment of ${amount} via ${method} has been received and verified for reference ${refNum}.`
-        );
-
-        if (pendingPaymentCallback && typeof pendingPaymentCallback === 'function') {
-            pendingPaymentCallback(refNum);
-            pendingPaymentCallback = null;
+    async function checkQrPaymentStatus() {
+        if (!currentDetailId) return;
+        try {
+            const data = await SAA_API.request(`/api/payments/${currentDetailId}/status`);
+            applyQrPage(data.payment);
+            if (data.payment.status === "paid") showToast("Payment confirmed successfully.", "success");
+            else showToast(`Current status: ${data.payment.status}`, "info");
+        } catch (err) {
+            showToast(err.message || "Unable to check payment status.", "error");
         }
     }
 
+    async function regeneratePaymentQr() {
+        if (!currentDetailId) return;
+        try {
+            const data = await SAA_API.request(`/api/payments/${currentDetailId}/qr`, { method: "POST" });
+            lastVerifiedPayment = data.payment;
+            if (data.error) showToast(data.error, "warning");
+            switchView("payment", { detailId: String(data.payment.id), replace: true });
+        } catch (err) {
+            showToast(err.message || "Unable to generate a new QR.", "error");
+        }
+    }
+
+    function openPaymentReceiptView(id) {
+        const paymentId = id || (lastVerifiedPayment && lastVerifiedPayment.id) || currentDetailId;
+        if (!paymentId) return;
+        switchView("payment-receipt", { detailId: String(paymentId) });
+    }
+
+    async function renderPaymentReceiptPage() {
+        const body = document.getElementById("paymentReceiptBody");
+        const printBtn = document.getElementById("receiptPrintOfficialBtn");
+        const dlBtn = document.getElementById("receiptDownloadBtn");
+        if (printBtn) printBtn.disabled = true;
+        if (dlBtn) dlBtn.disabled = true;
+        if (!currentDetailId) {
+            body.innerHTML = `<p class="text-center text-slate-400">No receipt selected.</p>`;
+            return;
+        }
+        try {
+            const data = await SAA_API.request(`/api/payments/${currentDetailId}/receipt`);
+            const p = data.receipt || data.payment;
+            lastVerifiedPayment = p;
+            body.innerHTML = `
+                <div class="flex justify-between"><span class="text-slate-500">Payment Status</span><span class="font-extrabold">${String(p.status || "").toUpperCase()}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Transaction Reference</span><button type="button" class="font-mono font-bold text-[#801235]" onclick="openPaymentReceiptView(${p.id})">${p.referenceId || "—"}</button></div>
+                <div class="flex justify-between"><span class="text-slate-500">Payment ID</span><span class="font-mono">${p.gatewayPaymentId || p.id}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Request ID</span><span class="font-extrabold">${p.requestCode || "—"}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Payment For</span><span>${p.purpose || p.description || "—"}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Paid By</span><span>${p.paidBy || "—"}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Alumni ID</span><span>${p.alumniId || p.studentId || "—"}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Email</span><span>${p.email || "—"}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Mobile Number</span><span>${p.contact || "—"}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Payment Method</span><span>QR Ph</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Institution</span><span>${p.institution || "St. Agnes Academy of Caloocan"}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Amount</span><span class="font-extrabold text-[#801235]">₱${Number(p.amount || 0).toFixed(2)}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Date & Time</span><span>${p.paidAt ? new Date(p.paidAt).toLocaleString() : "—"}</span></div>
+                <p class="text-center text-xs text-emerald-700 font-bold pt-3">Payment confirmed successfully.</p>
+                <p class="text-center text-[11px] text-slate-400">This is a payment confirmation, not an official BIR tax receipt.</p>
+            `;
+            if (printBtn) printBtn.disabled = false;
+            if (dlBtn) dlBtn.disabled = false;
+        } catch (err) {
+            body.innerHTML = `<p class="text-center text-rose-600 text-sm">${err.message || "Receipt is available only after confirmed payment."}</p>`;
+        }
+    }
+
+    async function printServerReceipt() {
+        if (!currentDetailId) return;
+        const token = sessionStorage.getItem("saaToken");
+        const res = await fetch(`${SAA_API.base}/api/payments/${currentDetailId}/receipt.html`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (!res.ok) {
+            showToast("Receipt is available only after confirmed payment.", "error");
+            return;
+        }
+        const html = await res.text();
+        const win = window.open("", "_blank");
+        if (!win) return;
+        win.document.write(html);
+        win.document.close();
+        win.print();
+    }
+
+    async function downloadServerReceipt() {
+        if (!currentDetailId) return;
+        const token = sessionStorage.getItem("saaToken");
+        const res = await fetch(`${SAA_API.base}/api/payments/${currentDetailId}/receipt.pdf`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (!res.ok) {
+            showToast("Receipt is available only after confirmed payment.", "error");
+            return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `payment-receipt-${currentDetailId}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    async function renderPaymentHistory() {
+        const box = document.getElementById("paymentHistoryList");
+        if (!box) return;
+        try {
+            const data = await SAA_API.request("/api/payments");
+            paymentsList = data.payments || [];
+            if (!paymentsList.length) {
+                box.innerHTML = `<p class="text-sm text-slate-400">No payment records yet.</p>`;
+            } else {
+                box.innerHTML = paymentsList.map((p) => {
+                    const paid = p.status === "paid";
+                    const action = paid
+                        ? `<button type="button" onclick="openPaymentReceiptView(${p.id})" class="btn btn-primary text-xs py-1.5">View Receipt</button>`
+                        : `<button type="button" onclick="switchView('payment', { detailId: '${p.id}' })" class="btn btn-secondary text-xs py-1.5">Continue Payment</button>`;
+                    return `<div class="p-4 border border-slate-200 rounded-xl bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <button type="button" class="text-left" onclick="${paid ? `openPaymentReceiptView(${p.id})` : `switchView('payment', { detailId: '${p.id}' })`}">
+                            <p class="font-extrabold text-slate-800">${p.requestCode || ("PAY-" + p.id)}</p>
+                            <p class="text-xs text-slate-500">${p.purpose || p.description || ""}</p>
+                            <p class="text-xs mt-1">₱${Number(p.amount || 0).toFixed(2)} • QR Ph • <span class="font-extrabold uppercase">${p.status}</span></p>
+                            <p class="text-[11px] text-slate-400">${p.paidAt || p.createdAt || ""}</p>
+                        </button>
+                        ${action}
+                    </div>`;
+                }).join("");
+            }
+        } catch (err) {
+            box.innerHTML = `<p class="text-sm text-rose-600">${err.message || "Unable to load payments."}</p>`;
+        }
+        const report = document.getElementById("paymentReportPanel");
+        if (report && typeof isAlumniRole === "function" && !isAlumniRole()) {
+            report.classList.remove("hidden");
+            try {
+                const data = await SAA_API.request("/api/reports/payments");
+                const s = data.summary || {};
+                document.getElementById("paymentReportSummary").innerHTML = [
+                    ["Total", s.total],
+                    ["Paid", s.paid],
+                    ["Pending", s.pending],
+                    ["Failed", s.failed],
+                    ["Cancelled", s.cancelled],
+                    ["Expired", s.expired],
+                    ["Total Paid", `₱${s.totalPaidAmount || "0.00"}`]
+                ].map(([l, v]) => `<div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] uppercase text-slate-400 font-bold">${l}</p><p class="text-lg font-extrabold">${v ?? 0}</p></div>`).join("");
+                document.getElementById("paymentReportTable").innerHTML = (data.payments || []).map((p) => `
+                    <tr>
+                        <td><button type="button" class="text-[#801235] font-bold" onclick="${p.status === "paid" ? `openPaymentReceiptView(${p.id})` : `switchView('payment', { detailId: '${p.id}' })`}">${p.requestCode || p.id}</button></td>
+                        <td>₱${Number(p.amount || 0).toFixed(2)}</td>
+                        <td>${p.method || "qrph"}</td>
+                        <td class="uppercase font-bold">${p.status}</td>
+                        <td class="font-mono text-xs">${p.referenceId || "—"}</td>
+                        <td>${p.paidAt || p.createdAt || ""}</td>
+                    </tr>
+                `).join("") || `<tr><td colspan="6" class="text-center text-slate-400">No payments yet.</td></tr>`;
+            } catch (err) {
+                document.getElementById("paymentReportSummary").innerHTML = `<p class="text-xs text-slate-400">${err.message || ""}</p>`;
+            }
+        } else if (report) {
+            report.classList.add("hidden");
+        }
+    }
+
+    function closePaymentReturnView() {
+        if (paymentReturnTimer) { clearInterval(paymentReturnTimer); paymentReturnTimer = null; }
+        if (qrCountdownTimer) { clearInterval(qrCountdownTimer); qrCountdownTimer = null; }
+        switchView("payment-history");
+    }
+
     function closePaymentReceiptModal() {
-        document.getElementById("paymentReceiptModal").classList.remove("active");
+        const modal = document.getElementById("paymentReceiptModal");
+        if (modal) modal.classList.remove("active");
+    }
+
+    function printPaymentConfirmation() {
+        printServerReceipt();
+    }
+
+    function payDocumentRequest(relatedType, relatedId) {
+        startQrPayment({ relatedType, relatedId }).catch((err) => {
+            showToast(err.message || "Unable to start QR payment.", "error");
+        });
     }
 
     /* Resume & Document Upload Engine */
-    let currentAttachedResume = JSON.parse(localStorage.getItem("attachedResume")) || {
-        name: "Maria_Santos_Resume_2026.pdf",
-        size: "1.2 MB",
-        date: "2026-08-15"
-    };
+    let currentAttachedResume = JSON.parse(localStorage.getItem("attachedResume") || "null");
 
     function triggerResumeUpload() {
         const fileInput = document.getElementById("resumeFileInput");
@@ -579,69 +913,16 @@
         showToast("Resume attachment removed.", "info");
     }
 
-    let currentJobApplicationId = null;
-    let jobBoardCache = [];
-
-    const fallbackJobOpportunities = [
-        { id: 1, title: "IT Support & Systems Specialist", company: "Nexus Technology Corp.", location: "Quezon City, Metro Manila", category: "IT / Tech", employmentType: "Full-Time", description: "Responsible for computer infrastructure, network diagnostics, and end-user hardware troubleshooting." },
-        { id: 2, title: "Frontend Web Developer", company: "PixelCraft Interactive", location: "Ortigas, Pasig", category: "Software", employmentType: "Hybrid", description: "Build intuitive and responsive user interfaces using HTML, CSS, JavaScript, and modern frontend frameworks." },
-        { id: 3, title: "Administrative Coordinator", company: "Caloocan Medical Diagnostics", location: "Monumento, Caloocan", category: "Administration", employmentType: "Full-Time", description: "Manage official correspondences, records scheduling, document filings, and client relations." }
-    ];
-
-    async function renderJobBoard() {
-        const container = document.getElementById("jobsGridContainer");
-        if (!container) return;
-        let jobs = fallbackJobOpportunities;
-        if (typeof SAA_API !== "undefined") {
-            try {
-                const data = await SAA_API.request("/api/jobs");
-                if (Array.isArray(data.jobs)) jobs = data.jobs;
-            } catch (error) {
-                // Keep the built-in preview jobs available when the API is offline.
-            }
-        }
-        jobBoardCache = jobs;
-        container.innerHTML = jobs.map(job => `
-            <div class="app-card app-card-hover p-5 flex flex-col justify-between">
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="status-badge status-freelance text-[10px]">${job.employmentType || "Open Position"}</span>
-                        <span class="text-xs font-bold text-slate-400">${job.category || "General"}</span>
-                    </div>
-                    <h4 class="font-extrabold text-slate-800 text-sm">${escapeHtml(job.title)}</h4>
-                    <p class="text-xs text-brand-magenta font-semibold mt-0.5">${escapeHtml(job.company)}</p>
-                    <p class="text-xs text-slate-400 mt-2 flex items-center gap-1"><i class="fa-solid fa-location-dot"></i> ${escapeHtml(job.location || "Location not specified")}</p>
-                    <p class="text-xs text-slate-500 mt-3 line-clamp-2">${escapeHtml(job.description || "")}</p>
-                </div>
-                <button onclick="openJobApplyModalById(${Number(job.id)})" class="btn btn-primary w-full text-xs mt-4">
-                    <i class="fa-solid fa-paper-plane text-[10px]"></i> Quick Apply
-                </button>
-            </div>
-        `).join("");
-    }
-
-    function openJobApplyModalById(id) {
-        const job = jobBoardCache.find(item => Number(item.id) === Number(id));
-        if (job) openJobApplyModal(job);
-    }
-
-    function escapeHtml(value) {
-        return String(value || "").replace(/[&<>"']/g, char => ({
-            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-        }[char]));
-    }
-
     function applyJobOpportunity(jobTitle, company) {
-        openJobApplyModal({ title: jobTitle, company });
+        openJobApplyModal(jobTitle, company);
     }
 
-    function openJobApplyModal(job) {
-        currentJobApplicationId = job.id || null;
-        document.getElementById("jobApplyTitle").value = job.title || "";
-        document.getElementById("jobApplyCompany").value = job.company || "";
-        document.getElementById("jobApplyModalTitle").textContent = `Apply: ${job.title || "Position"}`;
-        document.getElementById("jobApplicantName").value = currentUser ? currentUser.name : "Maria Clara Santos";
-        document.getElementById("jobApplicantEmail").value = currentUser ? (currentUser.email || "alumni@stagnes.edu.ph") : "alumni@stagnes.edu.ph";
+    function openJobApplyModal(jobTitle, company) {
+        document.getElementById("jobApplyTitle").value = jobTitle;
+        document.getElementById("jobApplyCompany").value = company;
+        document.getElementById("jobApplyModalTitle").textContent = `Apply: ${jobTitle}`;
+        document.getElementById("jobApplicantName").value = currentUser ? currentUser.name : "";
+        document.getElementById("jobApplicantEmail").value = currentUser ? (currentUser.email || "") : "";
         renderResumeUI();
         document.getElementById("jobApplyModal").classList.add("active");
     }
@@ -656,117 +937,82 @@
         const company = document.getElementById("jobApplyCompany").value;
         const name = document.getElementById("jobApplicantName").value;
         const email = document.getElementById("jobApplicantEmail").value;
-        const resume = currentAttachedResume ? currentAttachedResume.name : "Standard Profile Application";
+        const resume = currentAttachedResume ? currentAttachedResume.name : "";
+        const job = jobsList.find((j) => j.title === title && j.company === company);
 
-        if (currentJobApplicationId && typeof SAA_API !== "undefined") {
-            try {
-                await SAA_API.request(`/api/jobs/${currentJobApplicationId}/applications`, {
-                    method: "POST",
-                    body: JSON.stringify({ name, email, resume })
-                });
-            } catch (error) {
-                showToast(error.message || "Could not submit the job application.", "error");
-                return;
-            }
+        try {
+            await SAA_API.request(`/api/jobs/${job ? job.id : "0"}/apply`, {
+                method: "POST",
+                body: JSON.stringify({ name, email, resumeName: resume, title, company })
+            });
+            closeJobApplyModal();
+            if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
+            showToast(`Application submitted for "${title}" at ${company}.`, "success");
+        } catch (err) {
+            showToast(err.message || "Unable to submit job application.", "error");
         }
-        closeJobApplyModal();
-        showToast(`Application submitted for "${title}" at ${company}!`, "success");
-
-        triggerNotification(
-            "EMAIL",
-            email,
-            `Application Confirmation - ${title}`,
-            `Dear ${name}, your job application with resume (${resume}) for ${title} at ${company} has been received.`
-        );
     }
 
     /* Automated Email & SMS Notifications Engine */
-    let notificationsList = JSON.parse(localStorage.getItem("saaNotifications")) || [
-        {
-            id: 1,
-            channel: "SMS",
-            recipient: "+63 917 888 9999",
-            subject: "Transcript Approved",
-            message: "Good news! Your TOR request has been approved by the Registrar Office. Claiming window 2.",
-            date: "2026-09-03 14:00",
-            status: "QUEUED"
-        },
-        {
-            id: 2,
-            channel: "EMAIL",
-            recipient: "alumni@stagnes.edu.ph",
-            subject: "RSVP Confirmed - Grand Homecoming 2024",
-            message: "Thank you for confirming your RSVP for Agnesian Grand Homecoming 2024. See you on June 15!",
-            date: "2026-09-03 12:30",
-            status: "QUEUED"
+
+    async function triggerNotification(channel, recipient, subject, message) {
+        const target = recipient || (currentUser && (currentUser.email || currentUser.contact)) || "";
+        if (!target) {
+            showToast("No recipient email or mobile number is available.", "error");
+            return;
         }
-    ];
-
-    function triggerNotification(channel, recipient, subject, message) {
-        const newNotif = {
-            id: Date.now(),
-            channel: channel,
-            recipient: recipient || (channel === "SMS" ? "+63 917 888 9999" : "alumni@stagnes.edu.ph"),
-            subject: subject,
-            message: message,
-            date: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-            status: "DELIVERED"
-        };
-
-        notificationsList.unshift(newNotif);
-        localStorage.setItem("saaNotifications", JSON.stringify(notificationsList));
-        updateNotificationBadge();
-
-        // Mirror the notification server-side (fire-and-forget; ignored when the API is offline).
-        if (typeof SAA_API !== "undefined") {
-            SAA_API.request("/api/notifications", {
+        try {
+            const data = await SAA_API.request("/api/notifications", {
                 method: "POST",
-                body: JSON.stringify({ channel, recipient: newNotif.recipient, subject, message })
-            }).then(data => {
-                newNotif.id = data.notification.id;
-                newNotif.status = data.notification.status || "QUEUED";
-                localStorage.setItem("saaNotifications", JSON.stringify(notificationsList));
-                renderNotificationLogs();
-            }).catch(() => {
-                newNotif.status = "OFFLINE";
-                localStorage.setItem("saaNotifications", JSON.stringify(notificationsList));
-                renderNotificationLogs();
+                body: JSON.stringify({ channel, recipient: target, subject, message })
             });
+            if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
+            const status = data.deliveryStatus || "";
+            if (status === "accepted") showToast(`${channel} accepted by the provider.`, "success");
+            else if (status === "not_configured") showToast(channel === "SMS" ? "SMS provider is not configured." : "SMTP is not configured. The message was recorded but not sent.", "error");
+            else showToast(`${channel} status: ${status || "recorded"}.`, "info");
+        } catch (err) {
+            showToast(err.message || "Unable to send the notification.", "error");
         }
-
-        showToast(`[${channel} ALERT] ${subject}`, "info");
     }
 
     function updateNotificationBadge() {
         const badge = document.getElementById("notificationBadgeCount");
-        if (badge) badge.textContent = notificationsList.length;
+        const unread = Number(window.notificationUnreadCount || (notificationsList || []).filter((n) => !n.isRead).length);
+        if (badge) {
+            badge.textContent = String(unread);
+            badge.classList.toggle("hidden", unread <= 0);
+        }
+        const unreadLabel = document.getElementById("notificationsUnreadLabel");
+        if (unreadLabel) unreadLabel.textContent = String(unread);
     }
 
     function renderNotificationLogs() {
         const list = document.getElementById("notificationLogsList");
         if (!list) return;
+        updateNotificationBadge();
 
         if (!notificationsList.length) {
-            list.innerHTML = `<div class="p-6 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No notification logs recorded yet.</div>`;
+            list.innerHTML = `<div class="p-6 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No notifications yet.</div>`;
             return;
         }
 
         list.innerHTML = notificationsList.map(n => `
-            <div class="p-3.5 border border-slate-200/80 rounded-xl bg-white space-y-1">
+            <button type="button" onclick="openNotificationRecord(${n.id})" class="w-full text-left p-3.5 border ${n.isRead ? "border-slate-200/80 bg-white" : "border-[#801235]/30 bg-rose-50"} rounded-xl space-y-1">
                 <div class="flex items-center justify-between">
-                    <span class="inline-flex items-center gap-1 font-bold text-xs ${n.channel === 'EMAIL' ? 'text-indigo-600' : 'text-emerald-600'}">
-                        <i class="fa-solid ${n.channel === 'EMAIL' ? 'fa-envelope' : 'fa-comment-sms'}"></i>
-                        ${n.channel} ALERT
+                    <span class="inline-flex items-center gap-1 font-bold text-xs text-[#801235]">
+                        ${n.isRead ? "" : `<span class="w-2 h-2 rounded-full bg-[#801235]"></span>`}
+                        ${n.notificationType || n.channel || "SYSTEM"}
                     </span>
                     <span class="text-[10px] text-slate-400 font-medium">${n.date}</span>
                 </div>
                 <p class="font-extrabold text-slate-800 text-xs">${n.subject}</p>
                 <p class="text-[11px] text-slate-600 leading-relaxed">${n.message}</p>
                 <div class="pt-1.5 flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-100">
-                    <span>Recipient: <b class="text-slate-700">${n.recipient}</b></span>
-                    <span class="status-badge ${n.status === 'OFFLINE' ? 'status-rejected' : 'status-pending'} text-[9px]">${n.status || 'QUEUED'}</span>
+                    <span>${n.isRead ? "Read" : "Unread"}</span>
+                    <span>${n.emailStatus || n.smsStatus || ""}</span>
                 </div>
-            </div>
+            </button>
         `).join("");
     }
 
@@ -783,25 +1029,6 @@
 /* Source: index.html lines 5054-5137 */
 /* ------------------------------------------------------------------------- */
     /* Newsletter & Broadcast System */
-    let newsletterArchive = JSON.parse(localStorage.getItem("saaNewsletters")) || [
-        {
-            id: 1,
-            title: "Agnesian Chronicles: Silver Jubilee & Alumni Legacy Edition",
-            date: "September 2026",
-            snippet: "Celebrating 25 years of educational excellence, campus developments, and outstanding alumni leadership awards across healthcare, technology, and governance.",
-            reads: "1,420 Alumni Read",
-            author: "Alumni Relations Office"
-        },
-        {
-            id: 2,
-            title: "Career Accelerator 2026: Industry Partnerships & Mentorship",
-            date: "July 2026",
-            snippet: "Connecting our recent graduates with top multinational hiring partners, internships, and career development workshops in Caloocan & Metro Manila.",
-            reads: "890 Alumni Read",
-            author: "Career Placement Center"
-        }
-    ];
-
     function openNewsletterComposer() {
         const composer = document.getElementById("newsletterComposer");
         if (composer) composer.classList.remove("hidden");
@@ -815,56 +1042,61 @@
     function renderNewsletterArchive() {
         const list = document.getElementById("newsletterArchiveList");
         if (!list) return;
+        const items = newslettersList || [];
+        if (!items.length) {
+            list.innerHTML = `<div class="p-6 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No newsletters published yet.</div>`;
+            return;
+        }
 
-        list.innerHTML = newsletterArchive.map(n => `
+        list.innerHTML = items.map(n => {
+            const title = n.subject || n.title || "Newsletter";
+            const snippet = (n.body || n.snippet || "").substring(0, 160);
+            const date = n.sentAt || n.date || "";
+            const safeTitle = String(title).replace(/'/g, "\\'");
+            return `
             <div class="p-4 rounded-xl border border-slate-200/80 bg-white hover:border-[#801235]/40 transition shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="flex-1">
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="status-badge status-approved text-[10px]">${n.date}</span>
-                        <span class="text-[10px] text-slate-400 font-medium"><i class="fa-solid fa-eye text-slate-400 mr-0.5"></i> ${n.reads}</span>
+                        <span class="status-badge status-approved text-[10px]">${date || "Published"}</span>
                     </div>
-                    <h5 class="font-extrabold text-slate-800 text-sm hover:text-[#801235] transition cursor-pointer">${n.title}</h5>
-                    <p class="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">${n.snippet}</p>
-                    <p class="text-[10px] text-slate-400 mt-1.5 font-semibold">Published by: <span class="text-slate-600">${n.author}</span></p>
+                    <h5 class="font-extrabold text-slate-800 text-sm hover:text-[#801235] transition cursor-pointer">${title}</h5>
+                    <p class="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">${snippet}</p>
                 </div>
                 <div class="flex sm:flex-col gap-2 flex-shrink-0">
-                    <button onclick="showToast('Reading: ${n.title.replace(/'/g, "\\'")}', 'info')" class="btn btn-secondary text-xs py-1 px-3">
+                    <button onclick="showToast('Reading: ${safeTitle}', 'info')" class="btn btn-secondary text-xs py-1 px-3">
                         <i class="fa-solid fa-book-open"></i> Read
                     </button>
                 </div>
-            </div>
-        `).join("");
+            </div>`;
+        }).join("");
     }
 
-    function sendNewsletter(event) {
+    async function sendNewsletter(event) {
         event.preventDefault();
         const subject = document.getElementById("newsletterSubject").value.trim();
         const body = document.getElementById("newsletterBody").value.trim();
         const sendSms = document.getElementById("sendNewsletterSMS") ? document.getElementById("sendNewsletterSMS").checked : true;
         const sendEmail = document.getElementById("sendNewsletterEmail") ? document.getElementById("sendNewsletterEmail").checked : true;
 
-        newsletterArchive.unshift({
-            id: Date.now(),
-            title: subject,
-            date: "September 2026",
-            snippet: body.substring(0, 160) + (body.length > 160 ? "..." : ""),
-            reads: "1 Alumni Read",
-            author: currentUser ? currentUser.name : "Alumni Relations Office"
-        });
-
-        localStorage.setItem("saaNewsletters", JSON.stringify(newsletterArchive));
-        renderNewsletterArchive();
-        closeNewsletterComposer();
-
-        if (sendEmail) {
-            triggerNotification("EMAIL", "alumni-all@stagnes.edu.ph", subject, `New Agnesian Newsletter: "${subject}" has been published. Read the latest campus updates in your alumni portal.`);
+        try {
+            await SAA_API.request("/api/newsletters", {
+                method: "POST",
+                body: JSON.stringify({ subject, body })
+            });
+            await SAA_API.refreshAllData();
+            renderNewsletterArchive();
+            closeNewsletterComposer();
+            if (sendEmail) {
+                triggerNotification("EMAIL", currentUser && currentUser.email ? currentUser.email : "", subject, "New newsletter published: " + subject);
+            }
+            if (sendSms && currentUser && currentUser.contact) {
+                triggerNotification("SMS", currentUser.contact, subject, "New newsletter published: " + subject);
+            }
+            showToast("Newsletter \"" + subject + "\" published.", "success");
+            event.target.reset();
+        } catch (err) {
+            showToast(err.message || "Unable to publish newsletter.", "error");
         }
-        if (sendSms) {
-            triggerNotification("SMS", "+63 917 123 4567", subject, `ST. AGNES ACADEMY: New newsletter published: "${subject}". Check your portal for details.`);
-        }
-
-        showToast(`Newsletter "${subject}" broadcast successfully!`, "success");
-        event.target.reset();
     }
 
     /**
@@ -921,10 +1153,27 @@
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 5212-5227 */
 /* ------------------------------------------------------------------------- */
-    function submitSurvey(event) {
+    async function submitSurvey(event) {
         event.preventDefault();
-        openFeedbackConfirmationModal();
-        event.target.reset();
+        const category = document.getElementById("surveyCategory") ? document.getElementById("surveyCategory").value : "General";
+        const rating = document.querySelector('input[name="rating"]:checked')?.value || "5";
+        const message = document.getElementById("surveyFeedback") ? document.getElementById("surveyFeedback").value.trim() : "";
+        const improvement = document.getElementById("surveyImprovement") ? document.getElementById("surveyImprovement").value.trim() : "";
+        try {
+            await SAA_API.request("/api/feedback", {
+                method: "POST",
+                body: JSON.stringify({
+                    name: currentUser ? currentUser.name : "Anonymous",
+                    rating: Number(rating),
+                    category,
+                    message: [message, improvement].filter(Boolean).join("\n\n")
+                })
+            });
+            openFeedbackConfirmationModal();
+            event.target.reset();
+        } catch (err) {
+            showToast(err.message || "Unable to save survey response.", "error");
+        }
     }
 
     function openFeedbackConfirmationModal() {
@@ -942,12 +1191,89 @@
 /* Source: index.html lines 5477-5564 */
 /* ------------------------------------------------------------------------- */
     /* AI Chatbot */
+    let chatConversationId = null;
+
     function toggleChatWindow() {
-        document.getElementById("chatWindow").classList.toggle("hidden");
+        const win = document.getElementById("chatWindow");
+        win.classList.toggle("hidden");
+        if (!win.classList.contains("hidden")) {
+            refreshChatEngineLabel();
+            refreshChatHistorySelect();
+        }
     }
 
     function closeChat() {
         document.getElementById("chatWindow").classList.add("hidden");
+    }
+
+    function resetChatMessages(intro) {
+        const box = document.getElementById("chatMessages");
+        if (!box) return;
+        box.innerHTML = `<div class="chat-bubble-assistant">${intro || "Hello. Ask about document requests, status, jobs, events, tracking, or settings. I will remember this conversation."}</div>`;
+    }
+
+    async function startNewChatConversation() {
+        chatConversationId = null;
+        try {
+            if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
+                const data = await SAA_API.request("/api/ai/conversations", { method: "POST", body: JSON.stringify({}) });
+                chatConversationId = data.conversation && data.conversation.id;
+            }
+        } catch (e) { /* offline */ }
+        resetChatMessages();
+        refreshChatHistorySelect();
+    }
+
+    async function clearChatConversation() {
+        if (chatConversationId && typeof SAA_API !== "undefined") {
+            try {
+                await SAA_API.request(`/api/ai/conversations/${chatConversationId}`, { method: "DELETE" });
+            } catch (e) { /* offline */ }
+        }
+        resetChatMessages("Conversation cleared. You can continue here or start a new one.");
+    }
+
+    async function loadChatConversation(id) {
+        if (!id) return;
+        try {
+            const data = await SAA_API.request(`/api/ai/conversations/${id}`);
+            chatConversationId = data.conversation.id;
+            const box = document.getElementById("chatMessages");
+            box.innerHTML = "";
+            (data.messages || []).forEach((m) => appendChatBubble(m.content, m.role === "assistant" ? "assistant" : "user"));
+            if (!(data.messages || []).length) resetChatMessages();
+        } catch (e) {
+            showToast(e.message || "Unable to open that conversation.", "error");
+        }
+    }
+
+    async function refreshChatHistorySelect() {
+        const select = document.getElementById("chatHistorySelect");
+        if (!select || typeof SAA_API === "undefined") return;
+        try {
+            const data = await SAA_API.request("/api/ai/conversations");
+            const current = chatConversationId ? String(chatConversationId) : "";
+            select.innerHTML = `<option value="">Current conversation</option>` +
+                (data.conversations || []).map((c) => `<option value="${c.id}" ${String(c.id) === current ? "selected" : ""}>${escapeChat(c.title || ("Conversation #" + c.id))}</option>`).join("");
+        } catch (e) { /* history is optional */ }
+    }
+
+    async function refreshChatEngineLabel() {
+        const el = document.getElementById("chatEngineLabel");
+        if (!el) return;
+        try {
+            const health = await fetch((window.SAA_API && SAA_API.base ? SAA_API.base : "") + "/api/health").then((r) => r.json());
+            el.textContent = (health.ai && health.ai.configured)
+                ? `OpenAI connected (${health.ai.model})`
+                : "Built-in conversational assistant";
+        } catch (e) {
+            el.textContent = "Built-in conversational assistant";
+        }
+    }
+
+    function escapeChat(value) {
+        return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
     function sendQuickPrompt(text) {
@@ -964,7 +1290,6 @@
         appendChatBubble(msg, "user");
         input.value = "";
 
-        // Show typing indicator
         const messages = document.getElementById("chatMessages");
         const typingEl = document.createElement("div");
         typingEl.id = "typingBubble";
@@ -979,57 +1304,60 @@
             appendChatBubble(reply, "assistant");
         };
 
-        /* Agnesian AI Assistant: prefer the backend (OpenAI API when keyed, else its built-in fallback). */
         const askAssistant = async () => {
             try {
                 if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
                     const data = await SAA_API.request("/api/ai/assistant", {
                         method: "POST",
-                        body: JSON.stringify({ query: msg })
+                        body: JSON.stringify({ query: msg, conversationId: chatConversationId })
                     });
+                    if (data && data.conversationId) chatConversationId = data.conversationId;
+                    refreshChatHistorySelect();
                     if (data && data.response) return data.response;
                 }
-            } catch (e) { /* offline / unreachable - fall back to the local rule-based reply */ }
+            } catch (e) { /* offline */ }
             return getAssistantResponse(msg);
         };
 
-        // Keep the typing dots visible briefly while the API answers.
-        const minDelay = new Promise(r => setTimeout(r, 600));
+        const minDelay = new Promise(r => setTimeout(r, 400));
         Promise.all([askAssistant(), minDelay]).then(([reply]) => finishReply(reply));
     }
 
     function appendChatBubble(text, sender) {
         const container = document.getElementById("chatMessages");
-        const div = document.createElement("div");
-        div.className = sender === "user" ? "flex justify-end" : "flex justify-start";
-
+        const wrap = document.createElement("div");
+        wrap.className = sender === "user" ? "flex justify-end" : "flex justify-start";
         const bubble = document.createElement("div");
         bubble.className = sender === "user" ? "chat-bubble-user" : "chat-bubble-assistant";
-        bubble.innerHTML = text;
-
-        div.appendChild(bubble);
-        container.appendChild(div);
+        if (sender === "user") bubble.textContent = text;
+        else bubble.innerHTML = String(text || "").replace(/\n/g, "<br>");
+        wrap.appendChild(bubble);
+        container.appendChild(wrap);
         container.scrollTop = container.scrollHeight;
     }
 
     function getAssistantResponse(query) {
         const q = query.toLowerCase();
-
-        if (q.includes("count") || q.includes("total") || q.includes("how many")) {
-            return `There are currently <strong>${(alumniList.length + 5240).toLocaleString()}</strong> registered alumni records in the St. Agnes Academy database.`;
+        if (q.includes("saan") || q.includes("where") || q.includes("ano kailangan") || q.includes("processing")) {
+            return `If you mean a transcript request, open Document Requests > Transcript Requests. Certificate reprints are under Document Requests > Certificate Reprints. Processing means staff is already working on the request.`;
         }
         if (q.includes("photo") || q.includes("picture") || q.includes("avatar") || q.includes("upload")) {
             return `You can upload and update your profile photo anytime by going to <strong>My Profile</strong> and clicking your avatar!`;
+        }
+        if (q.includes("id") || q.includes("digital id") || q.includes("card")) {
+            return `Alumni can access their <strong>Digital Alumni ID Card</strong> with dynamic QR verification in the <em>Digital Alumni ID</em> module!`;
         }
         if (q.includes("transcript") || q.includes("record")) {
             const pending = transcriptRequests.filter(r => r.status === "Pending").length;
             return `There are <strong>${pending} pending</strong> transcript requests. You can submit or track your requests in the <em>Transcript Request Portal</em>.`;
         }
         if (q.includes("event") || q.includes("homecoming")) {
-            return `The next grand event is the <strong>Agnesian Grand Homecoming 2024</strong> on June 15, 2024 at the SAA Main Campus Grounds!`;
+            const nextEvent = eventsList[0];
+            if (!nextEvent) return `There are currently <strong>0 events</strong> on record. An administrator can create an event from Alumni Events.`;
+            return `The latest event on record is <strong>${nextEvent.title}</strong>${nextEvent.date ? ` (${nextEvent.date})` : ""}${nextEvent.location ? ` at ${nextEvent.location}` : ""}.`;
         }
         if (q.includes("reunion")) {
-            return `We currently have <strong>${reunionsList.length}</strong> upcoming batch reunions scheduled, including Batch 2014 Decennial Reunion.`;
+            return `There are currently <strong>${reunionsList.length}</strong> batch reunions on record.`;
         }
         if (q.includes("verify") || q.includes("verification")) {
             return `Registrars can verify alumni records and generate Official Authentication Certificates in the <strong>Alumni Record Verification</strong> module.`;
@@ -1041,5 +1369,78 @@
             return `Hello! How can I assist you with your St. Agnes Academy alumni records, transcripts, or events today?`;
         }
 
-        return `I can help you look up <strong>Alumni Counts</strong>, <strong>Profile Photos</strong>, <strong>Transcript Requests</strong>, <strong>Upcoming Events</strong>, and <strong>Job Postings</strong>.`;
+        return `I can help you look up <strong>Alumni Counts</strong>, <strong>Profile Photos</strong>, <strong>Digital ID Cards</strong>, <strong>Transcript Requests</strong>, <strong>Upcoming Events</strong>, and <strong>Job Postings</strong>.`;
     }
+
+    function openAddJobOpportunityModal() {
+        document.getElementById("addJobOpportunityModal").classList.add("active");
+    }
+
+    function closeAddJobOpportunityModal() {
+        document.getElementById("addJobOpportunityModal").classList.remove("active");
+    }
+
+    async function saveNewJobOpportunity(event) {
+        event.preventDefault();
+        const title = document.getElementById("newJobTitle").value.trim();
+        const company = document.getElementById("newJobCompany").value.trim();
+        const location = document.getElementById("newJobLocation").value.trim();
+        const description = document.getElementById("newJobDescription").value.trim();
+        try {
+            await SAA_API.request("/api/jobs", {
+                method: "POST",
+                body: JSON.stringify({ title, company, location, description, status: "Published" })
+            });
+            await SAA_API.refreshAllData();
+            renderJobsGrid();
+            closeAddJobOpportunityModal();
+            event.target.reset();
+            showToast("Job opportunity published.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to publish job opportunity.", "error");
+        }
+    }
+
+    function renderDashboardUpcomingEvents() {
+        const box = document.getElementById("dashboardUpcomingEvents");
+        if (!box) return;
+        if (!eventsList.length) {
+            box.innerHTML = '<p class="text-xs text-slate-400 font-medium py-6 text-center">No upcoming events yet.</p>';
+            return;
+        }
+        box.innerHTML = eventsList.slice(0, 4).map((ev) => {
+            const dateBits = String(ev.date || "").split(/[\s,•]+/).filter(Boolean);
+            const month = (dateBits[0] || "EVT").slice(0, 3);
+            const day = dateBits[1] || "";
+            return `
+            <button type="button" onclick="openDashboardModule('events')" class="flex items-center p-3.5 border border-slate-100 rounded-xl bg-slate-50/60 hover:bg-pink-50/40 transition w-full text-left">
+                <div class="bg-pink-100 text-brand-magenta font-extrabold rounded-lg p-2.5 text-center min-w-[52px]">
+                    <p class="text-[10px] uppercase tracking-wider">${month}</p>
+                    <p class="text-lg leading-tight">${day || "—"}</p>
+                </div>
+                <div class="ml-4 min-w-0">
+                    <h4 class="font-bold text-slate-800 text-xs sm:text-sm truncate">${ev.title || "Event"}</h4>
+                    <p class="text-[11px] text-slate-400 font-medium mt-0.5">
+                        <i class="fa-regular fa-clock mr-1"></i> ${ev.date || ""} ${ev.location ? "| " + ev.location : ""}
+                    </p>
+                </div>
+            </button>`;
+        }).join("");
+    }
+
+    function renderDonorProgress() {
+        const raised = (donationsList || []).reduce((sum, d) => sum + Number(d.amount || 0), 0);
+        const goal = 200000;
+        const pct = Math.max(0, Math.min(100, Math.round((raised / goal) * 100)));
+        const donors = donationsList.length;
+        const label = document.getElementById("donorProgressLabel");
+        const amounts = document.getElementById("donorProgressAmounts");
+        const bar = document.getElementById("donorProgressBar");
+        const count = document.getElementById("donorCountLabel");
+        if (label) label.textContent = raised ? ("Raised: ₱" + Number(raised).toLocaleString()) : "Raised: ₱0";
+        if (amounts) amounts.textContent = "₱" + Number(raised).toLocaleString() + " / ₱" + Number(goal).toLocaleString();
+        if (bar) bar.style.width = pct + "%";
+        if (count) count.textContent = donors + (donors === 1 ? " alumni donor" : " alumni donors");
+    }
+
+

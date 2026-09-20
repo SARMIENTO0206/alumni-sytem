@@ -9,8 +9,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- QRCode.js CDN for Dynamic QR Verification -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- QRCode.js for Dynamic QR Verification (local copy first, CDN fallback) -->
+    <script src="js/vendor/qrcode.min.js"></script>
+    <script>
+        if (typeof QRCode === "undefined") {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
+        }
+    </script>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom Design System Stylesheet -->
@@ -41,18 +46,18 @@
                 </div>
                 
                 <nav class="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-600">
-                    <a href="#" class="hover:text-[#801235] transition">Overview</a>
-                    <a href="#" class="hover:text-[#801235] transition">Services</a>
-                    <a href="#" class="hover:text-[#801235] transition">School Events</a>
-                    <a href="#" class="hover:text-[#801235] transition">How It Connects</a>
-                    <a href="#" class="hover:text-[#801235] transition">Access</a>
-                    <button onclick="goToLoginPage()" class="px-5 py-2 bg-brand-maroon-btn text-white font-bold rounded-full hover:shadow-md transition">Login</button>
+                    <a href="#home-overview" onclick="scrollHomeSection('home-overview'); return false;" class="hover:text-[#801235] transition">Overview</a>
+                    <a href="#home-services" onclick="scrollHomeSection('home-services'); return false;" class="hover:text-[#801235] transition">Services</a>
+                    <a href="#home-events" onclick="scrollHomeSection('home-events'); return false;" class="hover:text-[#801235] transition">School Events</a>
+                    <a href="#home-overview" onclick="scrollHomeSection('home-overview'); return false;" class="hover:text-[#801235] transition">How It Connects</a>
+                    <a href="#/login" onclick="goToLoginPage(); return false;" class="hover:text-[#801235] transition">Access</a>
+                    <button type="button" onclick="goToLoginPage()" class="px-5 py-2 bg-brand-maroon-btn text-white font-bold rounded-full hover:shadow-md transition">Login</button>
                 </nav>
             </div>
         </header>
 
         <!-- HERO SECTION -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        <section id="home-services" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
             <div class="homepage-hero-gradient text-white rounded-3xl p-8 sm:p-12 md:p-14 shadow-xl relative overflow-hidden">
                 <div class="grid md:grid-cols-12 gap-8 items-center">
                     <!-- Left Content -->
@@ -116,7 +121,7 @@
         </section>
 
         <!-- SYSTEM OVERVIEW -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <section id="home-overview" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div class="bg-white rounded-3xl p-8 sm:p-12 shadow-xs border border-slate-200/50">
                 <div class="mb-8">
                     <span class="inline-block text-gold-accent text-xs font-extrabold tracking-widest uppercase mb-1">SYSTEM OVERVIEW</span>
@@ -165,7 +170,7 @@
         </section>
 
         <!-- STATISTICS SECTION -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <section id="home-events" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div class="bg-white rounded-3xl p-8 sm:p-12 shadow-xs border border-slate-200/50">
                 <div class="mb-8">
                     <span class="inline-block text-gold-accent text-xs font-extrabold tracking-widest uppercase mb-1">RELIABLE SYSTEM ACTIVITY</span>
@@ -174,23 +179,23 @@
 
                 <div class="grid md:grid-cols-3 gap-6">
                     <div class="bg-[#f8f4ee] p-6 rounded-2xl border border-amber-900/5">
-                        <div class="text-3xl font-extrabold text-slate-900 mb-1">850+</div>
+                        <div class="text-3xl font-extrabold text-slate-900 mb-1" id="homeStatAlumni">0</div>
                         <p class="text-xs text-slate-500 font-medium">Alumni members on record</p>
                     </div>
                     <div class="bg-[#f8f4ee] p-6 rounded-2xl border border-amber-900/5">
-                        <div class="text-3xl font-extrabold text-slate-900 mb-1">12</div>
+                        <div class="text-3xl font-extrabold text-slate-900 mb-1" id="homeStatEvents">0</div>
                         <p class="text-xs text-slate-500 font-medium">School events on record</p>
                     </div>
                     <div class="bg-[#f8f4ee] p-6 rounded-2xl border border-amber-900/5">
-                        <div class="text-3xl font-extrabold text-slate-900 mb-1">45%</div>
-                        <p class="text-xs text-slate-500 font-medium">Registered network participants</p>
+                        <div class="text-3xl font-extrabold text-slate-900 mb-1" id="homeStatJobs">0</div>
+                        <p class="text-xs text-slate-500 font-medium">Published job opportunities</p>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- CTA SECTION -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12">
+        <section id="home-access" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12">
             <div class="homepage-hero-gradient rounded-3xl p-10 sm:p-14 text-white text-center shadow-xl">
                 <h2 class="text-2xl sm:text-3xl font-extrabold mb-3 text-white">
                     Ready to access the St. Agnes Academy Alumni Management System?
@@ -215,10 +220,10 @@
                 </div>
 
                 <div class="flex items-center gap-6 text-slate-500 font-medium">
-                    <a href="#" class="hover:text-slate-900 transition">Home</a>
-                    <a href="#" class="hover:text-slate-900 transition">Services</a>
-                    <a href="#" class="hover:text-slate-900 transition">School Events</a>
-                    <a href="#" class="hover:text-slate-900 transition">Login</a>
+                    <a href="#homePage" onclick="window.scrollTo({ top: 0, behavior: 'smooth' }); return false;" class="hover:text-slate-900 transition">Home</a>
+                    <a href="#home-services" onclick="scrollHomeSection('home-services'); return false;" class="hover:text-slate-900 transition">Services</a>
+                    <a href="#home-events" onclick="scrollHomeSection('home-events'); return false;" class="hover:text-slate-900 transition">School Events</a>
+                    <a href="#/login" onclick="goToLoginPage(); return false;" class="hover:text-slate-900 transition">Login</a>
                 </div>
 
                 <div class="text-[11px] text-slate-400">
@@ -300,25 +305,6 @@
                     </p>
                 </div>
 
-                <!-- 1-Click Demo Account Switcher -->
-                <div class="mb-6 p-3.5 rounded-xl bg-[#f8f4ee] border border-slate-200/80">
-                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
-                        <span><i class="fa-solid fa-bolt text-amber-500 mr-1"></i> Quick Demo Login:</span>
-                        <span class="text-[10px] text-slate-400 font-normal">Click to fill</span>
-                    </p>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button type="button" onclick="quickFillAccount('admin')" class="role-pill-btn text-center hover:shadow-sm">
-                            <i class="fa-solid fa-user-gear text-[#801235] mr-1"></i> Admin
-                        </button>
-                        <button type="button" onclick="quickFillAccount('alumni')" class="role-pill-btn text-center hover:shadow-sm">
-                            <i class="fa-solid fa-user-graduate text-indigo-500 mr-1"></i> Alumni
-                        </button>
-                        <button type="button" onclick="quickFillAccount('registrar')" class="role-pill-btn text-center hover:shadow-sm">
-                            <i class="fa-solid fa-file-signature text-emerald-500 mr-1"></i> Registrar
-                        </button>
-                    </div>
-                </div>
-
                 <form id="loginForm" class="space-y-4" onsubmit="handleLogin(event)">
                     <div>
                         <label class="form-label" for="username">Username</label>
@@ -376,7 +362,7 @@
                     </button>
                     <p class="text-xs text-slate-400">
                         Need assistance? 
-                        <a href="javascript:void(0)" onclick="showContactRegistrar()" class="text-[#801235] font-semibold hover:underline">Contact Registrar</a>
+                        <a href="#" onclick="showContactRegistrar(); return false;" class="text-[#801235] font-semibold hover:underline">Contact Registrar</a>
                     </p>
                 </div>
             </div>
@@ -391,7 +377,7 @@
 
         <!-- SIDEBAR DRAWER -->
         <aside id="sidebarDrawer"
-            class="w-72 homepage-hero-gradient text-white flex flex-col flex-shrink-0 fixed md:static inset-y-0 left-0 z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none border-r border-white/10">
+            class="w-72 homepage-hero-gradient text-white flex flex-col flex-shrink-0 fixed md:sticky md:top-0 inset-y-0 left-0 z-40 h-screen max-h-screen overflow-hidden transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none border-r border-white/10">
 
             <!-- Sidebar Brand -->
             <div class="p-6 border-b border-white/10 flex flex-col items-center text-center relative">
@@ -424,161 +410,178 @@
 
             <!-- ADMIN SIDEBAR LINKS -->
             <div id="adminSidebar" class="hidden flex-grow overflow-y-auto p-3 space-y-1">
-                <p class="text-[10px] font-extrabold tracking-widest text-gold-accent uppercase px-3 py-2">
-                    Core Modules
-                </p>
-
-                <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link active">
-                    <i class="fa-solid fa-chart-line"></i><span>Dashboard Home</span>
+                <p class="text-[10px] font-extrabold tracking-widest text-gold-accent uppercase px-3 py-2">Modules</p>
+                <button type="button" onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link active">
+                    <i class="fa-solid fa-chart-line"></i><span>Dashboard</span>
                 </button>
-
-                <button onclick="switchView('database')" id="nav-database" class="sidebar-link">
-                    <i class="fa-solid fa-users-viewfinder"></i><span>Alumni Database</span>
-                </button>
-
-                <button onclick="switchView('transcript')" id="nav-transcript" class="sidebar-link">
-                    <i class="fa-solid fa-magnifying-glass-chart"></i><span>Document Request Monitor</span>
-                </button>
-
-                <button onclick="switchView('reprint')" id="nav-reprint" class="sidebar-link">
-                    <i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span>
-                </button>
-
-                <button onclick="switchView('tracking')" id="nav-tracking" class="sidebar-link">
-                    <i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span>
-                </button>
-
-                <button onclick="switchView('placement')" id="nav-placement" class="sidebar-link">
-                    <i class="fa-solid fa-briefcase"></i><span>Job Placement Logs</span>
-                </button>
-
-                <button onclick="switchView('events')" id="nav-events" class="sidebar-link">
-                    <i class="fa-regular fa-calendar-check"></i><span>Alumni Events</span>
-                </button>
-
-                <button onclick="switchView('reunions')" id="nav-reunions" class="sidebar-link">
-                    <i class="fa-solid fa-people-group"></i><span>Batch Reunions</span>
-                </button>
-
-                <button onclick="switchView('donor')" id="nav-donor" class="sidebar-link">
-                    <i class="fa-solid fa-hand-holding-dollar"></i><span>Donor Campaigns</span>
-                </button>
-
-                <button onclick="switchView('newsletter')" id="nav-newsletter" class="sidebar-link">
-                    <i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span>
-                </button>
-
-                <button onclick="switchView('feedback')" id="nav-feedback" class="sidebar-link">
-                    <i class="fa-regular fa-comments"></i><span>Surveys & Feedback</span>
-                </button>
-
-                <button onclick="switchView('reports')" id="nav-reports" class="sidebar-link">
-                    <i class="fa-solid fa-chart-column"></i><span>System Reports</span>
-                </button>
+                <div class="sidebar-group open">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Alumni Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('database')" id="nav-database" class="sidebar-link"><i class="fa-solid fa-users-viewfinder"></i><span>Alumni Database</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('transcript')" id="nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Transcript Requests</span></button>
+                        <button type="button" onclick="switchView('reprint')" id="nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
+                        <button type="button" onclick="switchView('payment-history')" id="nav-payment-history" class="sidebar-link"><i class="fa-solid fa-qrcode"></i><span>Payments</span></button>
+                    </div>
+                </div>
+                <button type="button" onclick="switchView('tracking')" id="nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('placement')" id="nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Job Placement Logs</span></button>
+                        <button type="button" onclick="switchView('job-opportunities')" id="nav-job-opportunities" class="sidebar-link"><i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Opportunities</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Alumni Engagement</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('events')" id="nav-events" class="sidebar-link"><i class="fa-regular fa-calendar-check"></i><span>Alumni Events</span></button>
+                        <button type="button" onclick="switchView('reunions')" id="nav-reunions" class="sidebar-link"><i class="fa-solid fa-people-group"></i><span>Batch Reunions</span></button>
+                        <button type="button" onclick="switchView('donor')" id="nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Donor Campaigns</span></button>
+                        <button type="button" onclick="switchView('newsletter')" id="nav-newsletter" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span></button>
+                        <button type="button" onclick="switchView('feedback')" id="nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Surveys & Feedback</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('announcements')" id="nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
+                        <button type="button" onclick="switchView('notifications')" id="nav-notifications" class="sidebar-link"><i class="fa-regular fa-bell"></i><span>Notifications</span></button>
+                        <button type="button" onclick="switchView('sms')" id="nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
+                        <button type="button" onclick="switchView('gmail')" id="nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Gmail / Email</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>AI Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('ai-chat')" id="nav-ai-chat" class="sidebar-link"><i class="fa-solid fa-comments"></i><span>AI Chat Support</span></button>
+                    </div>
+                </div>
+                <button type="button" onclick="switchView('reports')" id="nav-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>System Reports</span></button>
+                <button type="button" onclick="switchView('users')" id="nav-users" class="sidebar-link"><i class="fa-solid fa-user-shield"></i><span>User & Access Management</span></button>
+                <button type="button" onclick="switchView('profile')" id="nav-profile" class="sidebar-link"><i class="fa-solid fa-user-circle"></i><span>Profile</span></button>
+                <button type="button" onclick="switchView('settings')" id="nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
             </div>
 
             <!-- ALUMNI SIDEBAR LINKS -->
             <div id="alumniSidebar" class="hidden flex-grow overflow-y-auto p-3 space-y-1">
-                <p class="text-[10px] font-extrabold tracking-widest text-gold-accent uppercase px-3 py-2">
-                    Alumni Portal
-                </p>
-
-                <button onclick="switchView('dashboard')" id="alumni-nav-dashboard" class="sidebar-link active">
-                    <i class="fa-solid fa-chart-line"></i><span>Alumni Dashboard</span>
-                </button>
-
-                <button onclick="switchView('profile')" id="alumni-nav-profile" class="sidebar-link">
-                    <i class="fa-solid fa-user-circle"></i><span>My Profile</span>
-                </button>
-
-                <button onclick="switchView('transcript')" id="alumni-nav-transcript" class="sidebar-link">
-                    <i class="fa-solid fa-file-lines"></i><span>Transcript Request</span>
-                </button>
-
-                <button onclick="switchView('reprint')" id="alumni-nav-reprint" class="sidebar-link">
-                    <i class="fa-solid fa-certificate"></i><span>Certificate Reprint</span>
-                </button>
-
-                <button onclick="switchView('job-opportunities')" id="alumni-nav-job-opportunities" class="sidebar-link">
-                    <i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Board</span>
-                </button>
-
-                <button onclick="switchView('tracking')" id="alumni-nav-tracking" class="sidebar-link">
-                    <i class="fa-solid fa-briefcase"></i><span>Graduate Tracking</span>
-                </button>
-
-                <button onclick="switchView('events')" id="alumni-nav-events" class="sidebar-link">
-                    <i class="fa-regular fa-calendar-check"></i><span>Alumni Events</span>
-                </button>
-
-                <button onclick="switchView('reunions')" id="alumni-nav-reunions" class="sidebar-link">
-                    <i class="fa-solid fa-people-group"></i><span>Batch Reunions</span>
-                </button>
-
-                <button onclick="switchView('donor')" id="alumni-nav-donor" class="sidebar-link">
-                    <i class="fa-solid fa-hand-holding-dollar"></i><span>Give Back & Donate</span>
-                </button>
-
-                <button onclick="switchView('newsletter')" id="alumni-nav-newsletter" class="sidebar-link">
-                    <i class="fa-regular fa-envelope"></i><span>News & Announcements</span>
-                </button>
-
-                <button onclick="switchView('feedback')" id="alumni-nav-feedback" class="sidebar-link">
-                    <i class="fa-regular fa-comments"></i><span>Alumni Survey</span>
-                </button>
+                <p class="text-[10px] font-extrabold tracking-widest text-gold-accent uppercase px-3 py-2">Alumni Portal</p>
+                <button type="button" onclick="switchView('dashboard')" id="alumni-nav-dashboard" class="sidebar-link active"><i class="fa-solid fa-chart-line"></i><span>Dashboard</span></button>
+                <button type="button" onclick="switchView('profile')" id="alumni-nav-profile" class="sidebar-link"><i class="fa-solid fa-user-circle"></i><span>My Profile</span></button>
+                <div class="sidebar-group open">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('transcript')" id="alumni-nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-lines"></i><span>Transcript Requests</span></button>
+                        <button type="button" onclick="switchView('reprint')" id="alumni-nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
+                        <button type="button" onclick="switchView('request-status')" id="alumni-nav-request-status" class="sidebar-link"><i class="fa-solid fa-clipboard-list"></i><span>Request Status</span></button>
+                        <button type="button" onclick="switchView('payment-history')" id="alumni-nav-payment-history" class="sidebar-link"><i class="fa-solid fa-qrcode"></i><span>Payments & Receipts</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Graduate Tracking</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('tracking')" id="alumni-nav-tracking" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>My Employment Information</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('job-opportunities')" id="alumni-nav-job-opportunities" class="sidebar-link"><i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Opportunities</span></button>
+                        <button type="button" onclick="switchView('applications')" id="alumni-nav-applications" class="sidebar-link"><i class="fa-solid fa-file-circle-check"></i><span>My Applications / Referrals</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Alumni Engagement</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('events')" id="alumni-nav-events" class="sidebar-link"><i class="fa-regular fa-calendar-check"></i><span>Alumni Events</span></button>
+                        <button type="button" onclick="switchView('reunions')" id="alumni-nav-reunions" class="sidebar-link"><i class="fa-solid fa-people-group"></i><span>Batch Reunions</span></button>
+                        <button type="button" onclick="switchView('donor')" id="alumni-nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Donor Campaigns</span></button>
+                        <button type="button" onclick="switchView('newsletter')" id="alumni-nav-newsletter" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span></button>
+                        <button type="button" onclick="switchView('feedback')" id="alumni-nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Surveys & Feedback</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('announcements')" id="alumni-nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
+                        <button type="button" onclick="switchView('notifications')" id="alumni-nav-notifications" class="sidebar-link"><i class="fa-regular fa-bell"></i><span>Notifications</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>AI Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('ai-chat')" id="alumni-nav-ai-chat" class="sidebar-link"><i class="fa-solid fa-comments"></i><span>AI Chat Support</span></button>
+                    </div>
+                </div>
+                <button type="button" onclick="switchView('settings')" id="alumni-nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
             </div>
 
-            <!-- REGISTRAR SIDEBAR LINKS -->
+            <!-- STAFF SIDEBAR LINKS -->
             <div id="registrarSidebar" class="hidden flex-grow overflow-y-auto p-3 space-y-1">
-                <p class="text-[10px] font-extrabold tracking-widest text-gold-accent uppercase px-3 py-2">
-                    Registrar Records
-                </p>
-
-                <button onclick="switchView('dashboard')" id="registrar-nav-dashboard" class="sidebar-link active">
-                    <i class="fa-solid fa-chart-line"></i><span>Registrar Home</span>
-                </button>
-
-                <button onclick="switchView('verification')" id="registrar-nav-verification" class="sidebar-link">
-                    <i class="fa-solid fa-user-check"></i><span>Alumni Record Verification</span>
-                </button>
-
-                <button onclick="switchView('request-approval')" id="registrar-nav-request-approval" class="sidebar-link">
-                    <i class="fa-solid fa-check-double"></i><span>Request Approval Queue</span>
-                </button>
-
-                <button onclick="switchView('document-processing')" id="registrar-nav-document-processing" class="sidebar-link">
-                    <i class="fa-solid fa-file-circle-check"></i><span>Document Preparation</span>
-                </button>
-
-                <button onclick="switchView('release-claiming')" id="registrar-nav-release-claiming" class="sidebar-link">
-                    <i class="fa-solid fa-box-open"></i><span>Release & Claiming</span>
-                </button>
-
-                <button onclick="switchView('transcript')" id="registrar-nav-transcript" class="sidebar-link">
-                    <i class="fa-solid fa-file-invoice"></i><span>All Transcript Records</span>
-                </button>
-
-                <button onclick="switchView('reprint')" id="registrar-nav-reprint" class="sidebar-link">
-                    <i class="fa-solid fa-certificate"></i><span>Certificate Records</span>
-                </button>
-
-                <button onclick="switchView('academic-records')" id="registrar-nav-academic-records" class="sidebar-link">
-                    <i class="fa-solid fa-book-open"></i><span>Academic Records Master</span>
-                </button>
-
-                <button onclick="switchView('request-history')" id="registrar-nav-request-history" class="sidebar-link">
-                    <i class="fa-solid fa-clock-rotate-left"></i><span>Request History Log</span>
-                </button>
-
-                <button onclick="switchView('registrar-reports')" id="registrar-nav-registrar-reports" class="sidebar-link">
-                    <i class="fa-solid fa-chart-column"></i><span>Registrar Reports</span>
-                </button>
+                <p class="text-[10px] font-extrabold tracking-widest text-gold-accent uppercase px-3 py-2">Registrar Operations</p>
+                <button type="button" onclick="switchView('dashboard')" id="registrar-nav-dashboard" class="sidebar-link active"><i class="fa-solid fa-chart-line"></i><span>Dashboard</span></button>
+                <div class="sidebar-group open">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Alumni Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('database')" id="staff-nav-database" class="sidebar-link"><i class="fa-solid fa-users-viewfinder"></i><span>Alumni Database</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('transcript')" id="registrar-nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Transcript Requests</span></button>
+                        <button type="button" onclick="switchView('reprint')" id="registrar-nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
+                        <button type="button" onclick="switchView('request-approval')" id="registrar-nav-request-approval" class="sidebar-link"><i class="fa-solid fa-check-double"></i><span>Approval Queue</span></button>
+                        <button type="button" onclick="switchView('release-claiming')" id="registrar-nav-release-claiming" class="sidebar-link"><i class="fa-solid fa-box-open"></i><span>Release & Claiming</span></button>
+                        <button type="button" onclick="switchView('payment-history')" id="staff-nav-payment-history" class="sidebar-link"><i class="fa-solid fa-qrcode"></i><span>Payments</span></button>
+                    </div>
+                </div>
+                <button type="button" onclick="switchView('tracking')" id="staff-nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('placement')" id="staff-nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Job Placement Logs</span></button>
+                        <button type="button" onclick="switchView('job-opportunities')" id="staff-nav-job-opportunities" class="sidebar-link"><i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Opportunities</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Alumni Engagement</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('events')" id="staff-nav-events" class="sidebar-link"><i class="fa-regular fa-calendar-check"></i><span>Alumni Events</span></button>
+                        <button type="button" onclick="switchView('reunions')" id="staff-nav-reunions" class="sidebar-link"><i class="fa-solid fa-people-group"></i><span>Batch Reunions</span></button>
+                        <button type="button" onclick="switchView('donor')" id="staff-nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Donor Campaigns</span></button>
+                        <button type="button" onclick="switchView('newsletter')" id="staff-nav-newsletter" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span></button>
+                        <button type="button" onclick="switchView('feedback')" id="staff-nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Surveys & Feedback</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('announcements')" id="staff-nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
+                        <button type="button" onclick="switchView('notifications')" id="staff-nav-notifications" class="sidebar-link"><i class="fa-regular fa-bell"></i><span>Notifications</span></button>
+                        <button type="button" onclick="switchView('sms')" id="staff-nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
+                        <button type="button" onclick="switchView('gmail')" id="staff-nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Gmail / Email</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>AI Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('ai-chat')" id="staff-nav-ai-chat" class="sidebar-link"><i class="fa-solid fa-comments"></i><span>AI Chat Support</span></button>
+                    </div>
+                </div>
+                <button type="button" onclick="switchView('registrar-reports')" id="registrar-nav-registrar-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>Reports</span></button>
+                <button type="button" onclick="switchView('profile')" id="staff-nav-profile" class="sidebar-link"><i class="fa-solid fa-user-circle"></i><span>Profile</span></button>
+                <button type="button" onclick="switchView('settings')" id="staff-nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
             </div>
 
             <!-- Logout Link -->
-            <div class="p-4 border-t border-rose-950/80">
-                <button onclick="handleLogout()"
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-rose-200 hover:bg-rose-900/50 hover:text-white transition">
+            <div class="p-4 border-t border-rose-950/80 flex-shrink-0">
+                <button type="button" onclick="confirmLogout()" id="sidebarLogoutBtn"
+                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-rose-200 hover:bg-rose-900/50 hover:text-white transition relative z-10">
                     <i class="fa-solid fa-right-from-bracket w-5 text-center"></i>
                     <span>Log Out</span>
                 </button>
@@ -594,8 +597,12 @@
             <!-- TOPBAR HEADER -->
             <header class="bg-white border-b border-slate-200/80 h-16 flex items-center justify-between px-4 sm:px-8 z-10 sticky top-0 shadow-xs">
                 <div class="flex items-center space-x-3">
-                    <button onclick="toggleSidebar()" title="Toggle sidebar menu" aria-label="Toggle sidebar menu" class="md:hidden text-slate-600 hover:text-slate-900 p-2 rounded-lg hover:bg-slate-100 transition">
+                    <button type="button" onclick="toggleSidebar()" title="Toggle sidebar menu" aria-label="Toggle sidebar menu" class="md:hidden text-slate-600 hover:text-slate-900 p-2 rounded-lg hover:bg-slate-100 transition">
                         <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <button type="button" id="appBackBtn" onclick="goAppBack()" title="Go back" aria-label="Go back"
+                        class="text-slate-600 hover:text-slate-900 p-2 rounded-lg hover:bg-slate-100 transition">
+                        <i class="fa-solid fa-arrow-left text-lg"></i>
                     </button>
                     <div>
                         <h2 class="text-lg sm:text-xl font-extrabold text-slate-800 tracking-tight" id="currentViewTitle">
@@ -629,6 +636,11 @@
                     <div class="w-10 h-10 rounded-full bg-brand-magenta text-white flex items-center justify-center font-extrabold text-sm shadow-md border-2 border-white ring-2 ring-pink-100 overflow-hidden flex-shrink-0 cursor-pointer" id="headerAvatar" onclick="switchView('profile')" title="View Profile">
                         AD
                     </div>
+                    <button type="button" onclick="confirmLogout()" title="Log Out" aria-label="Log Out"
+                        class="text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-full transition inline-flex items-center gap-1.5">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span class="hidden sm:inline">Log Out</span>
+                    </button>
                 </div>
             </header>
 
@@ -640,127 +652,275 @@
                      ================================================= -->
                 <div id="view-dashboard" class="space-y-6 fade-in">
 
-                    <!-- PAGE TITLE BAND (portal style) -->
-                    <section class="page-band">
-                        <nav class="breadcrumb" aria-label="Breadcrumb">Dashboard</nav>
-                        <h1>Announcements</h1>
-                        <p>Welcome back, <span id="welcomeName" class="font-extrabold text-brand-magenta">Admin</span> — latest notices from the Alumni Relations Office.</p>
-                    </section>
-
-                    <!-- ALUMNI RECORD & ADVISER CARDS (portal style) -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                        <div class="app-card p-5 sm:p-6">
-                            <div class="record-head">
-                                <div class="record-avatar" id="dashRecordAvatar">AD</div>
-                                <div class="min-w-0">
-                                    <p class="text-base font-extrabold text-slate-800 truncate" id="dashRecordName">Alumni Name</p>
-                                    <p class="text-[11px] font-semibold text-slate-400" id="dashRecordSubtitle">Alumnus</p>
-                                </div>
-                            </div>
-                            <div class="record-list" id="dashRecordRows"></div>
-                            <div class="record-foot">
-                                <button id="dashRecordEditBtn" onclick="switchView('profile')" class="btn btn-primary text-xs px-3.5 py-2 font-bold">
-                                    <i class="fa-solid fa-pen-to-square"></i><span>Update My Record</span>
+                    <!-- Welcome Card -->
+                    <div class="gradient-card rounded-2xl p-6 sm:p-8 shadow-md flex flex-col md:flex-row items-center justify-between">
+                        <div class="relative z-10 md:w-2/3">
+                            <span class="inline-block px-3 py-1 rounded-full bg-white/15 text-pink-200 text-xs font-bold tracking-wider uppercase mb-3 backdrop-blur-sm border border-white/10">
+                                SAA Alumni Network
+                            </span>
+                            <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                                Welcome back, <span id="welcomeName" class="text-pink-200">Admin</span>!
+                            </h2>
+                            <p class="text-pink-100/90 text-sm mt-2 max-w-xl">
+                                St. Agnes Academy of Caloocan continues to celebrate the accomplishments and milestones of our graduates worldwide.
+                            </p>
+                            <div class="mt-4 flex flex-wrap gap-2.5">
+                                <button type="button" onclick="openDashboardModule('transcript')" class="btn btn-secondary text-xs px-3.5 py-2 font-bold shadow-xs">
+                                    <i class="fa-solid fa-file-lines text-brand-magenta"></i>
+                                    <span>Transcript Portal</span>
                                 </button>
-                                <button id="dashTrackingBtn" onclick="switchView('tracking')" class="btn btn-secondary text-xs px-3.5 py-2 font-bold">
-                                    <i class="fa-solid fa-briefcase text-brand-magenta"></i><span>Graduate Tracking</span>
+                                <button type="button" onclick="openDashboardModule('events')" class="btn btn-outline-magenta text-xs px-3.5 py-2 font-bold bg-white/10 text-white border-white/30 hover:bg-white/20">
+                                    <i class="fa-regular fa-calendar-check"></i>
+                                    <span>View Events</span>
                                 </button>
                             </div>
                         </div>
-
-                        <div class="app-card p-5 sm:p-6">
-                            <div class="record-head">
-                                <div class="record-avatar record-avatar-alt"><i class="fa-regular fa-user"></i></div>
-                                <div class="min-w-0">
-                                    <p class="adviser-title" id="dashAdviserLabel">Alumni Adviser</p>
-                                    <p class="text-[11px] font-semibold text-slate-400" id="dashAdviserNote">For enrolment, clearance and alumni concerns</p>
-                                </div>
+                        <div class="md:w-1/3 flex justify-end mt-6 md:mt-0 relative">
+                            <div class="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center">
+                                <p class="serif-tagline text-xl italic text-white font-bold">"Caritas et Scientia"</p>
+                                <p class="text-[10px] text-pink-200 uppercase tracking-widest mt-1">Class of Continuous Excellence</p>
                             </div>
-                            <div class="record-list" id="dashAdviserRows"></div>
                         </div>
                     </div>
 
                     <!-- METRICS & STATISTICS GRID -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="stat-card">
+                        <button type="button" class="stat-card text-left w-full" onclick="openDashboardModule('alumni')" title="Open Alumni Database">
                             <div class="stat-icon-wrapper bg-pink-50 text-brand-magenta">
                                 <i class="fa-solid fa-users"></i>
                             </div>
                             <div>
-                                <p class="text-2xl font-extrabold text-slate-800" id="stat-total">5,246</p>
+                                <p class="text-2xl font-extrabold text-slate-800" id="stat-total">0</p>
                                 <p class="text-xs font-semibold text-slate-400">Total Registered Alumni</p>
                             </div>
-                        </div>
+                        </button>
 
-                        <div class="stat-card">
+                        <button type="button" class="stat-card text-left w-full" onclick="openDashboardModule('tracking')" title="Open Graduate Tracking">
                             <div class="stat-icon-wrapper bg-purple-50 text-purple-600">
                                 <i class="fa-solid fa-user-graduate"></i>
                             </div>
                             <div>
-                                <p class="text-2xl font-extrabold text-slate-800" id="stat-graduates">312</p>
+                                <p class="text-2xl font-extrabold text-slate-800" id="stat-graduates">0</p>
                                 <p class="text-xs font-semibold text-slate-400">Recent Batch (2024)</p>
                             </div>
-                        </div>
+                        </button>
 
-                        <div class="stat-card">
+                        <button type="button" class="stat-card text-left w-full" onclick="openDashboardModule('tracking')" title="Open Graduate Tracking">
                             <div class="stat-icon-wrapper bg-emerald-50 text-emerald-600">
                                 <i class="fa-solid fa-briefcase"></i>
                             </div>
                             <div>
-                                <p class="text-2xl font-extrabold text-slate-800" id="stat-employed">1,892</p>
+                                <p class="text-2xl font-extrabold text-slate-800" id="stat-employed">0</p>
                                 <p class="text-xs font-semibold text-slate-400">Employed Alumni</p>
                             </div>
-                        </div>
+                        </button>
 
-                        <div class="stat-card">
+                        <button type="button" class="stat-card text-left w-full" onclick="openDashboardModule('events')" title="Open Alumni Events">
                             <div class="stat-icon-wrapper bg-amber-50 text-amber-600">
                                 <i class="fa-regular fa-calendar-check"></i>
                             </div>
                             <div>
-                                <p class="text-2xl font-extrabold text-slate-800" id="stat-events">3</p>
+                                <p class="text-2xl font-extrabold text-slate-800" id="stat-events">0</p>
                                 <p class="text-xs font-semibold text-slate-400">Upcoming Events</p>
                             </div>
+                        </button>
+                    </div>
+
+                    <div id="alumniDashboardPanel" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="app-card p-6">
+                            <h3 class="font-extrabold text-slate-800 text-base mb-3">My Document Requests</h3>
+                            <div id="alumniDashRequests" class="text-sm text-slate-500">No requests yet.</div>
+                        </div>
+                        <div class="app-card p-6">
+                            <h3 class="font-extrabold text-slate-800 text-base mb-3">Announcements</h3>
+                            <div id="alumniDashAnnouncements" class="text-sm text-slate-500">No announcements yet.</div>
+                        </div>
+                        <div class="app-card p-6">
+                            <h3 class="font-extrabold text-slate-800 text-base mb-3">Open Jobs</h3>
+                            <div id="alumniDashJobs" class="text-sm text-slate-500">No published jobs yet.</div>
                         </div>
                     </div>
 
-                    <!-- ANNOUNCEMENTS FEED (portal style, paginated) -->
-                    <section class="app-card p-5 sm:p-6">
-                        <div class="feed-head">
-                            <h3 class="flex items-center gap-2 font-extrabold text-slate-800 text-base">
-                                <i class="fa-solid fa-thumbtack text-brand-magenta"></i> Announcements
-                            </h3>
-                            <button id="dashNewsletterLinkBtn" onclick="switchView('newsletter')" class="text-xs text-brand-magenta font-bold hover:underline">
-                                View Newsletter Archive
-                            </button>
-                        </div>
-
-                        <div id="announcementFeed" class="feed-list"></div>
-
-                        <div class="feed-toolbar">
-                            <label class="feed-size" for="announcementPageSize">
-                                Items per page:
-                                <select id="announcementPageSize" onchange="changeAnnouncementPageSize(this.value)" class="form-select text-xs py-1 px-2 w-auto">
-                                    <option value="5">5</option>
-                                    <option value="10" selected>10</option>
-                                    <option value="25">25</option>
-                                </select>
-                            </label>
-                            <span id="announcementRange" class="feed-range">0–0 of 0</span>
-                            <div class="feed-pager">
-                                <button id="announcementFirstBtn" onclick="goToAnnouncementPage('first')" class="feed-page-btn" title="First page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
-                                <button id="announcementPrevBtn" onclick="goToAnnouncementPage('prev')" class="feed-page-btn" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-angle-left"></i></button>
-                                <button id="announcementNextBtn" onclick="goToAnnouncementPage('next')" class="feed-page-btn" title="Next page" aria-label="Next page"><i class="fa-solid fa-angle-right"></i></button>
-                                <button id="announcementLastBtn" onclick="goToAnnouncementPage('last')" class="feed-page-btn" title="Last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
+                    <!-- ANALYTICS & ACTIVITIES -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Chart Card -->
+                        <div class="app-card p-6 lg:col-span-2">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                                <div>
+                                    <h3 class="font-extrabold text-slate-800 text-base">Alumni Community Growth</h3>
+                                    <p class="text-xs text-slate-400 font-medium">Historical graduation and registration trends</p>
+                                </div>
+                                <span class="status-badge status-verified text-xs" id="growthChartBadge">
+                                    No records yet
+                                </span>
+                            </div>
+                            <div class="h-64 relative">
+                                <canvas id="growthChart"></canvas>
                             </div>
                         </div>
-                    </section>
+
+                        <!-- Recent Activities Feed -->
+                        <div class="app-card p-6 flex flex-col justify-between">
+                            <div>
+                                <h3 class="font-extrabold text-slate-800 text-base mb-4">Recent Activities</h3>
+                                <div id="recentActivityList" class="space-y-3.5">
+                                    <p class="text-xs text-slate-400 font-medium py-6 text-center">No activity yet. Add alumni, events, or requests to see them here.</p>
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="openDashboardModule('tracking')" class="mt-4 w-full py-2 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 text-xs font-bold transition flex items-center justify-center gap-1">
+                                <span>View Tracking Report</span>
+                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- UPCOMING EVENTS & MOTTO HIGHLIGHT -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="app-card p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-extrabold text-slate-800 text-base">Upcoming Alumni Events</h3>
+                                <button type="button" onclick="openDashboardModule('events')" class="text-xs text-brand-magenta font-bold hover:underline">
+                                    View All
+                                </button>
+                            </div>
+                            <div class="space-y-3" id="dashboardUpcomingEvents">
+                                <p class="text-xs text-slate-400 font-medium py-6 text-center">No upcoming events yet.</p>
+                            </div>
+                        </div>
+
+                        <!-- Academy Heritage Card -->
+                        <div class="app-card bg-brand-dark p-6 text-white flex flex-col justify-between relative overflow-hidden">
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <span class="bg-pink-950 text-pink-300 text-[10px] font-extrabold tracking-widest uppercase px-3 py-1 rounded-full border border-pink-500/20">
+                                        Academy Heritage
+                                    </span>
+                                    <i class="fa-solid fa-award text-pink-400 text-lg"></i>
+                                </div>
+                                <h4 class="serif-tagline text-2xl italic mt-4 text-pink-100 font-bold">
+                                    "Caritas et Scientia"
+                                </h4>
+                                <p class="text-xs text-pink-300 uppercase tracking-widest mt-1 font-semibold">
+                                    Love and Knowledge
+                                </p>
+                                <p class="text-xs text-pink-200/80 mt-4 leading-relaxed">
+                                    St. Agnes Academy of Caloocan instills in every alumnus the enduring values of compassion, scholarly excellence, integrity, and active service to community and nation.
+                                </p>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-rose-950 flex items-center justify-between text-xs text-pink-300">
+                                <span>Official Alumni Association</span>
+                                <span class="font-semibold text-white">SAA Caloocan</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+
+                <!-- =================================================
+                     VIEW: DIGITAL ALUMNI ID CARD (ALUMNI)
+                     ================================================= -->
+                <div id="view-idcard" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6 sm:p-8 max-w-2xl mx-auto">
+                        <div class="text-center mb-6">
+                            <span class="status-badge status-verified mb-1">Official Digital Credential</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800">Digital Alumni Identification Card</h3>
+                            <p class="text-xs text-slate-400 font-medium mt-1">Official authenticated identification for campus entry, alumni discounts, and library access.</p>
+                        </div>
+
+                        <!-- 3D Flippable Card Container -->
+                        <div class="id-card-wrapper my-6">
+                            <div class="id-card-inner" id="digitalIdCard">
+                                <!-- FRONT OF CARD -->
+                                <div class="id-card-face id-card-front">
+                                    <!-- Top Header -->
+                                    <div class="flex items-center justify-between border-b border-pink-400/20 pb-2">
+                                        <div class="flex items-center space-x-2">
+                                            <img src="logo.jpeg" alt="Logo" class="w-8 h-8 rounded-full bg-white p-0.5 object-contain" onerror="this.src='https://via.placeholder.com/50?text=SAA'">
+                                            <div>
+                                                <p class="text-[11px] font-extrabold tracking-wider leading-tight text-white">ST. AGNES ACADEMY</p>
+                                                <p class="text-[8px] text-pink-300 font-semibold tracking-widest uppercase">OF CALOOCAN • ALUMNI ID</p>
+                                            </div>
+                                        </div>
+                                        <span class="px-2 py-0.5 rounded-full bg-white/20 text-white font-extrabold text-[9px] border border-white/30 tracking-wider">
+                                            VERIFIED
+                                        </span>
+                                    </div>
+
+                                    <!-- Middle Body -->
+                                    <div class="flex items-center space-x-4 my-2">
+                                        <div class="w-20 h-20 rounded-2xl bg-white text-brand-magenta font-extrabold text-2xl flex items-center justify-center shadow-md border-2 border-pink-300 ring-2 ring-white/40 flex-shrink-0 overflow-hidden" id="idCardAvatar">
+                                            AL
+                                        </div>
+                                        <div class="min-w-0 flex-grow">
+                                            <p class="text-sm font-extrabold text-white truncate" id="idCardName">Alumni</p>
+                                            <p class="text-[11px] text-pink-200 font-semibold mt-0.5 truncate" id="idCardProgram">—</p>
+                                            <div class="flex items-center gap-3 mt-2 text-[10px] text-pink-100">
+                                                <span><b>Batch:</b> <span id="idCardBatch">—</span></span>
+                                                <span><b>ID No:</b> <span id="idCardNumber">—</span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Bottom Footer -->
+                                    <div class="flex items-center justify-between pt-2 border-t border-pink-400/20 text-[9px]">
+                                        <div>
+                                            <p class="text-pink-300">Valid Through</p>
+                                            <p class="font-bold text-white tracking-wider">LIFETIME MEMBERSHIP</p>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full gold-hologram-seal flex items-center justify-center font-extrabold text-[8px]" title="SAA Official Hologram Seal">
+                                            SAA
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- BACK OF CARD -->
+                                <div class="id-card-face id-card-back">
+                                    <div class="magnetic-strip"></div>
+
+                                    <div class="flex items-start justify-between gap-3 my-1">
+                                        <div class="flex-grow">
+                                            <p class="text-[9px] text-slate-300 uppercase font-semibold">Authorized Signature</p>
+                                            <div class="signature-strip mt-1" id="idCardSignature">
+                                                —
+                                            </div>
+                                            <p class="text-[8px] text-slate-400 mt-2 leading-tight">
+                                                This credential certifies that the bearer is a bonafide graduate of St. Agnes Academy of Caloocan.
+                                            </p>
+                                        </div>
+                                        <div class="w-20 h-20 bg-white p-1.5 rounded-xl flex items-center justify-center flex-shrink-0 shadow-inner" id="idCardQRCode">
+                                            <!-- Dynamic QR injected here -->
+                                        </div>
+                                    </div>
+
+                                    <div class="pt-2 border-t border-slate-700/80 flex items-center justify-between text-[8px] text-slate-400">
+                                        <span>Tel: (02) 8288-1234</span>
+                                        <span class="font-cinzel text-pink-300 font-bold">Caritas et Scientia</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Action Buttons -->
+                        <div class="flex flex-wrap items-center justify-center gap-3 mt-6">
+                            <button onclick="flipIdCard()" class="btn btn-secondary text-xs px-4 py-2 font-bold shadow-xs">
+                                <i class="fa-solid fa-arrows-rotate text-brand-magenta"></i>
+                                <span>Flip Card (Front / Back)</span>
+                            </button>
+                            <button onclick="window.print()" class="btn btn-primary text-xs px-4 py-2 font-bold">
+                                <i class="fa-solid fa-print"></i>
+                                <span>Print / Download ID</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
 
                 <!-- =================================================
                      VIEW: ALUMNI DATABASE (ADMIN)
                      ================================================= -->
                 <div id="view-database" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6">
+                    <div id="alumniListPanel" class="app-card p-6">
                         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                             <div>
                                 <h3 class="text-lg font-extrabold text-slate-800">Alumni Directory & Records</h3>
@@ -822,6 +982,28 @@
                             </table>
                         </div>
                     </div>
+
+                    <div id="alumniDetailPanel" class="hidden app-card p-6 space-y-4">
+                        <button type="button" onclick="goAppBack()" class="btn btn-secondary text-xs">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Back to Alumni Database</span>
+                        </button>
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Alumni Profile</p>
+                                <h3 id="alumniDetailName" class="text-xl font-extrabold text-slate-800">Alumni</h3>
+                                <p id="alumniDetailStudentId" class="text-xs font-mono text-slate-400 mt-1"></p>
+                            </div>
+                            <span id="alumniDetailStatus" class="status-badge status-employed">Employed</span>
+                        </div>
+                        <div class="grid sm:grid-cols-2 gap-3 text-sm">
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Batch</p><p id="alumniDetailBatch" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Program</p><p id="alumniDetailProgram" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Company</p><p id="alumniDetailCompany" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Job Title</p><p id="alumniDetailTitle" class="font-semibold text-slate-800">—</p></div>
+                        </div>
+                        <div id="alumniDetailActions" class="flex flex-wrap gap-2"></div>
+                    </div>
                 </div>
 
 
@@ -850,7 +1032,8 @@
                                 <div>
                                     <span class="status-badge status-verified mb-1">Alumni Verified</span>
                                     <h3 class="text-xl font-extrabold text-slate-800" id="profileHeadingName">Alumni Profile</h3>
-                                    <p class="text-xs text-slate-400 font-medium">Click your avatar or upload button to personalize your profile picture</p>
+                                    <div id="profileRoleMeta" class="hidden mt-2 space-y-0.5 text-xs text-slate-500"></div>
+                                    <p class="text-xs text-slate-400 font-medium mt-1">Click your avatar or upload button to personalize your profile picture</p>
                                     <div class="mt-2 flex items-center gap-3">
                                         <button type="button" onclick="triggerProfilePhotoUpload()" class="text-xs text-brand-magenta font-bold hover:underline flex items-center gap-1">
                                             <i class="fa-solid fa-cloud-arrow-up"></i> Upload Photo
@@ -877,8 +1060,16 @@
                                 <input id="profileEmail" type="email" class="form-input text-sm" placeholder="e.g. alumnus@gmail.com">
                             </div>
                             <div>
-                                <label class="form-label" for="profileContact">Contact Number</label>
-                                <input id="profileContact" type="text" class="form-input text-sm" placeholder="e.g. +63 912 345 6789">
+                                <label class="form-label" for="profileContact">Mobile Number</label>
+                                <input id="profileContact" type="text" class="form-input text-sm" placeholder="09XXXXXXXXX or +639XXXXXXXXX">
+                            </div>
+                            <div>
+                                <label class="form-label" for="profileAddress">Address</label>
+                                <input id="profileAddress" type="text" class="form-input text-sm" placeholder="City / Province">
+                            </div>
+                            <div>
+                                <label class="form-label" for="profileAlumniId">Alumni ID</label>
+                                <input id="profileAlumniId" type="text" class="form-input text-sm bg-slate-50" readonly>
                             </div>
                             <div>
                                 <label class="form-label" for="profileBatch">Batch Year</label>
@@ -905,14 +1096,6 @@
                                 <label class="form-label" for="profileJobTitle">Current Job Position / Title</label>
                                 <input id="profileJobTitle" type="text" class="form-input text-sm" placeholder="e.g. Software Engineer">
                             </div>
-                            <div>
-                                <label class="form-label" for="profileAdviser">Batch Adviser</label>
-                                <input id="profileAdviser" type="text" class="form-input text-sm" placeholder="e.g. Ms. Wendyli P. Ojastro">
-                            </div>
-                            <div>
-                                <label class="form-label" for="profileSection">Section / Block</label>
-                                <input id="profileSection" type="text" class="form-input text-sm" placeholder="e.g. BSIT 4102">
-                            </div>
                         </div>
 
                         <!-- Career Resume & Document Credentials -->
@@ -937,8 +1120,8 @@
                                         <i class="fa-solid fa-file-pdf"></i>
                                     </div>
                                     <div>
-                                        <p class="font-bold text-slate-800 text-xs" id="resumeFileName">Maria_Santos_Resume.pdf</p>
-                                        <p class="text-[10px] text-slate-500" id="resumeFileMeta">Uploaded • 1.2 MB</p>
+                                        <p class="font-bold text-slate-800 text-xs" id="resumeFileName">Resume file</p>
+                                        <p class="text-[10px] text-slate-500" id="resumeFileMeta"></p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
@@ -955,6 +1138,18 @@
                             </div>
                         </div>
 
+                        <div id="profilePasswordBox" class="mt-6 pt-6 border-t border-slate-100 hidden">
+                            <h4 class="font-extrabold text-slate-800 text-sm mb-3">Change Password</h4>
+                            <form onsubmit="changeOwnPassword(event)" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <input id="ownCurrentPassword" type="password" class="form-input text-sm" placeholder="Current password" autocomplete="current-password">
+                                <input id="ownNewPassword" type="password" class="form-input text-sm" placeholder="New password" autocomplete="new-password">
+                                <input id="ownConfirmPassword" type="password" class="form-input text-sm" placeholder="Confirm new password" autocomplete="new-password">
+                                <div class="md:col-span-3 flex justify-end">
+                                    <button type="submit" class="btn btn-secondary text-xs">Update Password</button>
+                                </div>
+                            </form>
+                        </div>
+
                         <div class="mt-6 pt-6 border-t border-slate-100 flex justify-end">
                             <button onclick="saveAlumniProfile()" class="btn btn-primary text-xs px-6 py-2.5">
                                 <i class="fa-solid fa-check"></i>
@@ -969,79 +1164,33 @@
                      VIEW: JOB OPPORTUNITIES (JOB BOARD)
                      ================================================= -->
                 <div id="view-job-opportunities" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6 sm:p-8">
+                    <div id="jobsListPanel" class="app-card p-6 sm:p-8">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div>
                                 <span class="status-badge status-freelance mb-1">Career Services</span>
                                 <h3 class="text-xl font-extrabold text-slate-800">Alumni Career & Job Opportunities</h3>
-                                <p class="text-xs text-slate-400 font-medium">Explore curated job openings from our alumni network and industry partners.</p>
+                                <p class="text-xs text-slate-400 font-medium">Job openings saved in the database. Add a listing to publish it for alumni.</p>
                             </div>
+                            <button type="button" id="adminAddJobOpportunityBtn" onclick="openAddJobOpportunityModal()" class="btn btn-primary text-xs hidden">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Post Job Opportunity</span>
+                            </button>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="jobsGridContainer">
-                            <!-- Job Card 1 -->
-                            <div class="app-card app-card-hover p-5 flex flex-col justify-between">
-                                <div>
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="status-badge status-freelance text-[10px]">Full-Time</span>
-                                        <span class="text-xs font-bold text-slate-400">IT / Tech</span>
-                                    </div>
-                                    <h4 class="font-extrabold text-slate-800 text-sm">IT Support & Systems Specialist</h4>
-                                    <p class="text-xs text-brand-magenta font-semibold mt-0.5">Nexus Technology Corp.</p>
-                                    <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                                        <i class="fa-solid fa-location-dot"></i> Quezon City, Metro Manila
-                                    </p>
-                                    <p class="text-xs text-slate-500 mt-3 line-clamp-2">
-                                        Responsible for computer infrastructure, network diagnostics, and end-user hardware troubleshooting.
-                                    </p>
-                                </div>
-                                <button onclick="applyJobOpportunity('IT Support & Systems Specialist', 'Nexus Technology Corp.')" class="btn btn-primary w-full text-xs mt-4">
-                                    <i class="fa-solid fa-paper-plane text-[10px]"></i> Quick Apply
-                                </button>
-                            </div>
-
-                            <!-- Job Card 2 -->
-                            <div class="app-card app-card-hover p-5 flex flex-col justify-between">
-                                <div>
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="status-badge status-employed text-[10px]">Hybrid</span>
-                                        <span class="text-xs font-bold text-slate-400">Software</span>
-                                    </div>
-                                    <h4 class="font-extrabold text-slate-800 text-sm">Frontend Web Developer</h4>
-                                    <p class="text-xs text-brand-magenta font-semibold mt-0.5">PixelCraft Interactive</p>
-                                    <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                                        <i class="fa-solid fa-location-dot"></i> Ortigas, Pasig
-                                    </p>
-                                    <p class="text-xs text-slate-500 mt-3 line-clamp-2">
-                                        Build intuitive and responsive user interfaces using HTML, CSS, JavaScript, and modern frontend frameworks.
-                                    </p>
-                                </div>
-                                <button onclick="applyJobOpportunity('Frontend Web Developer', 'PixelCraft Interactive')" class="btn btn-primary w-full text-xs mt-4">
-                                    <i class="fa-solid fa-paper-plane text-[10px]"></i> Quick Apply
-                                </button>
-                            </div>
-
-                            <!-- Job Card 3 -->
-                            <div class="app-card app-card-hover p-5 flex flex-col justify-between">
-                                <div>
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="status-badge status-pending text-[10px]">Full-Time</span>
-                                        <span class="text-xs font-bold text-slate-400">Administration</span>
-                                    </div>
-                                    <h4 class="font-extrabold text-slate-800 text-sm">Administrative Coordinator</h4>
-                                    <p class="text-xs text-brand-magenta font-semibold mt-0.5">Caloocan Medical Diagnostics</p>
-                                    <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                                        <i class="fa-solid fa-location-dot"></i> Monumento, Caloocan
-                                    </p>
-                                    <p class="text-xs text-slate-500 mt-3 line-clamp-2">
-                                        Manage official correspondences, records scheduling, document filings, and client relations.
-                                    </p>
-                                </div>
-                                <button onclick="applyJobOpportunity('Administrative Coordinator', 'Caloocan Medical Diagnostics')" class="btn btn-primary w-full text-xs mt-4">
-                                    <i class="fa-solid fa-paper-plane text-[10px]"></i> Quick Apply
-                                </button>
-                            </div>
+                            <div class="col-span-full text-center py-10 text-slate-400 font-semibold">No job opportunities yet.</div>
                         </div>
+                    </div>
+                    <div id="jobDetailPanel" class="hidden app-card p-6 space-y-4">
+                        <button type="button" onclick="goAppBack()" class="btn btn-secondary text-xs">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Back to Jobs</span>
+                        </button>
+                        <h3 id="jobDetailTitle" class="text-xl font-extrabold text-slate-800">Job</h3>
+                        <p id="jobDetailCompany" class="text-sm font-semibold text-[#801235]"></p>
+                        <p id="jobDetailMeta" class="text-sm text-slate-500"></p>
+                        <p id="jobDetailDescription" class="text-sm text-slate-600 whitespace-pre-wrap"></p>
+                        <div id="jobDetailActions" class="flex flex-wrap gap-2"></div>
                     </div>
                 </div>
 
@@ -1050,43 +1199,16 @@
                      VIEW: TRANSCRIPT REQUEST PORTAL
                      ================================================= -->
                 <div id="view-transcript" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6">
-                        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+                    <div id="transcriptListPanel" class="app-card p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div>
-                                <h3 id="transcriptViewTitle" class="text-lg font-extrabold text-slate-800">Transcript & Academic Records Requests</h3>
-                                <p id="transcriptViewSubtitle" class="text-xs text-slate-400 font-medium">Official requests for Transcript of Records (TOR) and grade certifications.</p>
-                                <p id="transcriptRoleNotice" class="text-[11px] font-bold mt-2"></p>
+                                <h3 class="text-lg font-extrabold text-slate-800">Transcript & Academic Records Requests</h3>
+                                <p class="text-xs text-slate-400 font-medium">Official requests for Transcript of Records (TOR) and grade certifications.</p>
                             </div>
-                            <button id="transcriptRequestBtn" onclick="openRequestDocModal('Transcript of Records')" class="btn btn-primary text-xs">
+                            <button onclick="openRequestDocModal('Transcript of Records')" class="btn btn-primary text-xs">
                                 <i class="fa-solid fa-plus"></i>
                                 <span>Request New Transcript</span>
                             </button>
-                        </div>
-
-                        <!-- Administrator: view-only oversight of all document request transactions.
-                             Approval / rejection is performed by the Registrar only. -->
-                        <div id="transcriptMonitorBar" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-                            <div class="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Transactions</p>
-                                <p class="text-xl font-extrabold text-slate-800 mt-0.5" id="transcriptMonitorTotal">0</p>
-                            </div>
-                            <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80">
-                                <p class="text-[10px] text-amber-700 font-bold uppercase tracking-wider">Awaiting Registrar</p>
-                                <p class="text-xl font-extrabold text-amber-900 mt-0.5" id="transcriptMonitorPending">0</p>
-                            </div>
-                            <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
-                                <p class="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Approved</p>
-                                <p class="text-xl font-extrabold text-emerald-900 mt-0.5" id="transcriptMonitorApproved">0</p>
-                            </div>
-                            <div class="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80">
-                                <p class="text-[10px] text-rose-700 font-bold uppercase tracking-wider">Rejected</p>
-                                <p class="text-xl font-extrabold text-rose-900 mt-0.5" id="transcriptMonitorRejected">0</p>
-                            </div>
-                            <p class="col-span-2 lg:col-span-4 text-[11px] font-semibold text-slate-500">
-                                <i class="fa-solid fa-circle-info mr-1 text-slate-400"></i>
-                                Monitoring only — approval, rejection and release are performed by the Registrar.
-                                <button onclick="switchView('reports')" class="text-[#801235] font-bold hover:underline ml-1">Open Document Request Reports</button>
-                            </p>
                         </div>
 
                         <div class="data-table-container">
@@ -1097,7 +1219,7 @@
                                         <th>Request Date</th>
                                         <th>Purpose</th>
                                         <th>Status</th>
-                                        <th id="transcriptActionsHeader" class="text-right">Actions</th>
+                                        <th class="text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="transcriptTableBody">
@@ -1105,6 +1227,25 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <div id="transcriptDetailPanel" class="hidden app-card p-6 space-y-4">
+                        <button type="button" onclick="goAppBack()" class="btn btn-secondary text-xs">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Back to Transcript Requests</span>
+                        </button>
+                        <h3 id="transcriptDetailName" class="text-xl font-extrabold text-slate-800">Request</h3>
+                        <div class="grid sm:grid-cols-2 gap-3 text-sm">
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Date</p><p id="transcriptDetailDate" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Status</p><p id="transcriptDetailStatus" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Purpose</p><p id="transcriptDetailPurpose" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Registrar remarks</p><p id="transcriptDetailRemarks" class="font-semibold text-slate-800 whitespace-pre-wrap">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Release / claim</p><p id="transcriptDetailClaim" class="font-semibold text-slate-800">—</p></div>
+                        </div>
+                        <div id="transcriptDetailAttachments" class="text-sm space-y-2"></div>
+                        <div id="transcriptDetailHistory" class="text-xs space-y-1 text-slate-500"></div>
+                        <div id="transcriptDetailActions" class="flex flex-wrap gap-2"></div>
+                        <div id="transcriptDetailForms" class="space-y-3"></div>
                     </div>
                 </div>
 
@@ -1119,13 +1260,13 @@
                                 <h3 class="text-lg font-extrabold text-slate-800">Certificate & Diploma Reprint Requests</h3>
                                 <p class="text-xs text-slate-400 font-medium">Official reprint applications for diplomas, graduation certificates, and awards.</p>
                             </div>
-                            <button id="reprintRequestBtn" onclick="openRequestDocModal('Diploma / Certificate Reprint')" class="btn btn-primary text-xs">
+                            <button onclick="openRequestDocModal('Diploma / Certificate Reprint')" class="btn btn-primary text-xs">
                                 <i class="fa-solid fa-plus"></i>
                                 <span>Request Certificate Reprint</span>
                             </button>
                         </div>
 
-                        <div class="data-table-container">
+                        <div id="reprintListPanel" class="data-table-container">
                             <table class="modern-table">
                                 <thead>
                                     <tr>
@@ -1139,6 +1280,15 @@
                                     <!-- Populated dynamically -->
                                 </tbody>
                             </table>
+                        </div>
+                        <div id="reprintDetailPanel" class="hidden space-y-4 pt-4">
+                            <button type="button" class="text-xs font-bold text-[#801235]" onclick="hideDetailPanels()">Back to list</button>
+                            <h3 id="reprintDetailName" class="text-xl font-extrabold text-slate-800">Request</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Type</p><p id="reprintDetailType" class="font-semibold text-slate-800">—</p></div>
+                                <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Status</p><p id="reprintDetailStatus" class="font-semibold text-slate-800">—</p></div>
+                            </div>
+                            <div id="reprintDetailActions" class="flex flex-wrap gap-2"></div>
                         </div>
                     </div>
                 </div>
@@ -1170,7 +1320,7 @@
                                     <i class="fa-solid fa-file-csv text-emerald-600"></i>
                                     <span>Export Report (CSV)</span>
                                 </button>
-                                <button onclick="exportChedTracerStudy()" class="btn btn-secondary text-xs" title="CHED Graduate Tracer Study compliance report (server-generated when the API is online)">
+                                <button id="chedTracerBtn" onclick="exportChedTracerStudy()" class="btn btn-secondary text-xs" title="CHED Graduate Tracer Study compliance report (server-generated when the API is online)">
                                     <i class="fa-solid fa-graduation-cap text-amber-600"></i>
                                     <span>CHED Tracer Study (CSV)</span>
                                 </button>
@@ -1181,22 +1331,22 @@
                         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                             <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Employment Rate</p>
-                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiEmployedRate">88.5%</p>
-                                <p class="text-[10px] text-emerald-600 font-semibold mt-0.5"><i class="fa-solid fa-arrow-trend-up"></i> +3.2% vs last year</p>
+                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiEmployedRate">0%</p>
+                                <p class="text-[10px] text-slate-500 font-semibold mt-0.5">From saved alumni records</p>
                             </div>
                             <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Field Alignment</p>
-                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiFieldRelevance">82.0%</p>
+                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiFieldRelevance">0%</p>
                                 <p class="text-[10px] text-indigo-600 font-semibold mt-0.5"><i class="fa-solid fa-circle-check"></i> Directly related to degree</p>
                             </div>
                             <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Profile Freshness</p>
-                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiProfileFreshness">75% Up-to-Date</p>
-                                <p class="text-[10px] text-amber-600 font-semibold mt-0.5" id="kpiOutdatedCount">3 Outdated (>6 Months)</p>
+                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiProfileFreshness">0% Up-to-Date</p>
+                                <p class="text-[10px] text-slate-500 font-semibold mt-0.5" id="kpiOutdatedCount">No alumni records yet</p>
                             </div>
                             <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Avg Time-to-Hire</p>
-                                <p class="text-2xl font-extrabold text-slate-800 mt-1">2.4 Months</p>
+                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiTimeToHire">—</p>
                                 <p class="text-[10px] text-slate-500 font-semibold mt-0.5">From graduation date</p>
                             </div>
                         </div>
@@ -1380,6 +1530,7 @@
                      VIEW: ALUMNI EVENTS REGISTRATION
                      ================================================= -->
                 <div id="view-events" class="hidden space-y-6 fade-in">
+                    <div id="eventsListPanel" class="space-y-6">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h3 class="text-xl font-extrabold text-slate-800">Alumni Events & Gatherings</h3>
@@ -1393,6 +1544,18 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="eventCardsGrid">
                         <!-- Populated dynamically -->
+                    </div>
+                    </div>
+
+                    <div id="eventDetailPanel" class="hidden app-card p-6 space-y-4">
+                        <button type="button" onclick="goAppBack()" class="btn btn-secondary text-xs">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Back to Events</span>
+                        </button>
+                        <h3 id="eventDetailTitle" class="text-xl font-extrabold text-slate-800">Event</h3>
+                        <p id="eventDetailMeta" class="text-sm text-slate-500"></p>
+                        <p id="eventDetailLocation" class="text-sm text-slate-600"></p>
+                        <div id="eventDetailActions" class="flex flex-wrap gap-2"></div>
                     </div>
                 </div>
 
@@ -1435,17 +1598,17 @@
 
                                 <div class="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-100">
                                     <div class="flex justify-between text-xs font-bold text-slate-700">
-                                        <span>Target Raised: 75%</span>
-                                        <span class="text-brand-magenta font-extrabold">₱150,000 / ₱200,000</span>
+                                        <span id="donorProgressLabel">Raised: ₱0</span>
+                                        <span class="text-brand-magenta font-extrabold" id="donorProgressAmounts">₱0 / ₱200,000</span>
                                     </div>
                                     <div class="w-full bg-slate-200 rounded-full h-3.5 mt-2.5 overflow-hidden">
-                                        <div class="bg-gradient-to-r from-pink-500 to-rose-600 h-3.5 rounded-full transition-all duration-500 progress-bar-75"></div>
+                                        <div id="donorProgressBar" class="bg-gradient-to-r from-pink-500 to-rose-600 h-3.5 rounded-full transition-all duration-500" style="width: 0%"></div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                                <span><i class="fa-solid fa-heart text-rose-500 mr-1"></i> Over 84 Alumni Donors</span>
+                                <span><i class="fa-solid fa-heart text-rose-500 mr-1"></i> <span id="donorCountLabel">0 alumni donors</span></span>
                                 <span class="font-bold text-slate-600">Tax Exempt • SAA Foundation</span>
                             </div>
                         </div>
@@ -2007,7 +2170,7 @@
                                     <i class="fa-solid fa-certificate"></i>
                                 </div>
                                 <div>
-                                    <p class="text-2xl font-extrabold text-slate-800">2</p>
+                                    <p class="text-2xl font-extrabold text-slate-800" id="registrarReprintCount">0</p>
                                     <p class="text-xs font-semibold text-slate-400">Certificates</p>
                                 </div>
                             </div>
@@ -2017,11 +2180,317 @@
                                     <i class="fa-solid fa-check-circle"></i>
                                 </div>
                                 <div>
-                                    <p class="text-2xl font-extrabold text-slate-800">98%</p>
+                                    <p class="text-2xl font-extrabold text-slate-800" id="registrarFulfillmentRate">0%</p>
                                     <p class="text-xs font-semibold text-slate-400">Fulfillment Rate</p>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div id="view-users" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                            <div>
+                                <h3 class="text-lg font-extrabold text-slate-800">User & Access Management</h3>
+                                <p class="text-xs text-slate-400">Create and manage System Administrator, Staff, and Alumni accounts.</p>
+                            </div>
+                            <button type="button" onclick="openCreateUser()" class="btn btn-primary text-xs"><i class="fa-solid fa-plus"></i> Create User</button>
+                        </div>
+                        <div class="data-table-container">
+                            <table class="modern-table">
+                                <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Email</th><th>Status</th><th></th></tr></thead>
+                                <tbody id="usersTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-settings" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6">
+                        <h3 class="text-lg font-extrabold text-slate-800 mb-4">Settings</h3>
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            <button type="button" data-settings-tab="account" class="btn btn-primary text-xs" onclick="showSettingsTab('account')">Account</button>
+                            <button type="button" data-settings-tab="notifications" class="btn btn-secondary text-xs" onclick="showSettingsTab('notifications')">Notifications</button>
+                            <button type="button" data-settings-tab="privacy" class="btn btn-secondary text-xs" onclick="showSettingsTab('privacy')">Privacy</button>
+                            <button type="button" data-settings-tab="security" class="btn btn-secondary text-xs" onclick="showSettingsTab('security')">Security</button>
+                            <button type="button" data-settings-tab="general" class="btn btn-secondary text-xs" onclick="showSettingsTab('general')">General</button>
+                            <button type="button" data-settings-tab="documents" class="btn btn-secondary text-xs" onclick="showSettingsTab('documents')">Documents</button>
+                            <button type="button" data-settings-tab="alumni" class="btn btn-secondary text-xs" onclick="showSettingsTab('alumni')">Alumni</button>
+                            <button type="button" data-settings-tab="communications" class="btn btn-secondary text-xs" onclick="showSettingsTab('communications')">Communication</button>
+                            <button type="button" data-settings-tab="ai" class="btn btn-secondary text-xs" onclick="showSettingsTab('ai')">AI</button>
+                            <button type="button" data-settings-tab="history" class="btn btn-secondary text-xs" onclick="showSettingsTab('history')">History</button>
+                        </div>
+
+                        <form data-settings-panel="account" onsubmit="saveOwnProfileFromSettings(event)" class="space-y-4 max-w-xl">
+                            <label class="form-label">Username</label>
+                            <input id="settingsAccountUsername" class="form-input text-sm" disabled>
+                            <label class="form-label">Full name</label>
+                            <input id="settingsAccountName" class="form-input text-sm">
+                            <label class="form-label">Email</label>
+                            <input id="settingsAccountEmail" type="email" class="form-input text-sm">
+                            <label class="form-label">Contact</label>
+                            <input id="settingsAccountContact" class="form-input text-sm">
+                            <button type="submit" class="btn btn-primary text-xs">Save Account Settings</button>
+                            <div class="pt-4 border-t border-slate-100">
+                                <h4 class="font-bold text-sm mb-2">Change Password</h4>
+                                <input id="settingsCurrentPassword" type="password" class="form-input text-sm mb-2" placeholder="Current password">
+                                <input id="settingsNewPassword" type="password" class="form-input text-sm mb-2" placeholder="New password">
+                                <input id="settingsConfirmPassword" type="password" class="form-input text-sm mb-2" placeholder="Confirm new password">
+                                <button type="button" class="btn btn-secondary text-xs" onclick="changeOwnPassword()">Update Password</button>
+                            </div>
+                        </form>
+
+                        <div data-settings-panel="notifications" class="hidden space-y-3 max-w-xl">
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="prefSystem" checked> System notifications</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="prefEmail" checked> Email notifications</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="prefSms"> SMS notifications</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="prefDocs" checked> Document alerts</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="prefEvents" checked> Event reminders</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="prefJobs" checked> Job alerts</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="prefSurveys" checked> Survey notifications</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="prefAnnounce" checked> Announcement notifications</label>
+                            <button type="button" class="btn btn-primary text-xs" onclick="saveNotificationPrefs()">Save Notification Preferences</button>
+                        </div>
+
+                        <div data-settings-panel="privacy" class="hidden space-y-3 max-w-xl text-sm text-slate-600">
+                            <p>Your alumni record is visible only to System Administrators and Staff. Other alumni cannot open your profile or document history.</p>
+                            <p>Employment updates you submit apply only to your own graduate tracking record.</p>
+                        </div>
+
+                        <div data-settings-panel="security" class="hidden space-y-3">
+                            <p class="text-xs text-slate-500">Recent login and password activity for this account.</p>
+                            <div id="loginActivityList" class="max-w-xl"></div>
+                        </div>
+
+                        <form data-settings-panel="general" onsubmit="saveSystemSettings(event)" class="hidden space-y-3 max-w-xl">
+                            <label class="form-label">System name</label>
+                            <input id="setSystemName" class="form-input text-sm">
+                            <label class="form-label">System description</label>
+                            <textarea id="setSystemDescription" class="form-textarea text-sm" rows="3"></textarea>
+                            <label class="form-label">Institution</label>
+                            <input id="setInstitution" class="form-input text-sm">
+                            <label class="form-label">Contact information</label>
+                            <input id="setContact" class="form-input text-sm">
+                            <label class="form-label">Address</label>
+                            <input id="setAddress" class="form-input text-sm">
+                            <label class="form-label">Language</label>
+                            <input id="setLanguage" class="form-input text-sm">
+                            <label class="form-label">Date format</label>
+                            <input id="setDateFormat" class="form-input text-sm">
+                            <label class="form-label">Time format</label>
+                            <input id="setTimeFormat" class="form-input text-sm">
+                            <label class="form-label">Time zone</label>
+                            <input id="setTimeZone" class="form-input text-sm">
+                            <button type="submit" class="btn btn-primary text-xs">Save General Settings</button>
+                        </form>
+
+                        <form data-settings-panel="documents" onsubmit="saveSystemSettings(event)" class="hidden space-y-3 max-w-xl">
+                            <label class="form-label">Release methods</label>
+                            <textarea id="setReleaseMethods" class="form-textarea text-sm" rows="3"></textarea>
+                            <button type="submit" class="btn btn-primary text-xs">Save Document Settings</button>
+                        </form>
+
+                        <form data-settings-panel="alumni" onsubmit="saveSystemSettings(event)" class="hidden space-y-3 max-w-xl">
+                            <label class="form-label">Required alumni information</label>
+                            <input id="setRequiredFields" class="form-input text-sm">
+                            <button type="submit" class="btn btn-primary text-xs">Save Alumni Settings</button>
+                        </form>
+
+                        <div data-settings-panel="communications" class="hidden text-sm text-slate-600 max-w-2xl space-y-2">
+                            <p>SMS and Gmail pages store messages in the system notification log.</p>
+                            <p>External SMS delivery and Gmail sending are not active until a provider key is added to server/.env.</p>
+                        </div>
+
+                        <div data-settings-panel="ai" class="hidden text-sm text-slate-600 max-w-2xl space-y-2">
+                            <p>AI Chat Support answers from the built-in knowledge base unless OPENAI_API_KEY is configured on the server.</p>
+                            <p>Open AI Chat Support from the sidebar to start a conversation.</p>
+                        </div>
+
+                        <div data-settings-panel="history" class="hidden">
+                            <div class="data-table-container">
+                                <table class="modern-table">
+                                    <thead><tr><th>Changed setting</th><th>Detail</th><th>Changed by</th><th>Date/time</th></tr></thead>
+                                    <tbody id="settingsHistoryList"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-announcements" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6 space-y-6">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-800">Announcements</h3>
+                            <p class="text-xs text-slate-400">Official notices published in the system.</p>
+                        </div>
+                        <form id="announcementCompose" class="hidden space-y-3 border border-slate-100 rounded-xl p-4" onsubmit="publishAnnouncement(event)">
+                            <input id="announceTitle" class="form-input text-sm" placeholder="Announcement title" required>
+                            <textarea id="announceBody" class="form-textarea text-sm" rows="4" placeholder="Announcement content"></textarea>
+                            <button type="submit" class="btn btn-primary text-xs">Publish Announcement</button>
+                        </form>
+                        <div id="announcementsPageList" class="space-y-4"></div>
+                    </div>
+                </div>
+
+                <div id="view-notifications" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h3 class="text-lg font-extrabold text-slate-800">Notifications</h3>
+                                <p class="text-xs text-slate-400">Unread: <span id="notificationsUnreadLabel">0</span></p>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-secondary text-xs" onclick="markAllNotificationsRead()">Mark all as read</button>
+                                <button type="button" class="btn btn-secondary text-xs" onclick="refreshNotificationsFromServer()">Refresh</button>
+                            </div>
+                        </div>
+                        <div id="notificationsPageList"></div>
+                        <div id="notificationDetailPanel" class="hidden mt-6 pt-6 border-t border-slate-100 space-y-3">
+                            <button type="button" class="text-xs font-bold text-[#801235]" onclick="closeNotificationDetail()">Back to list</button>
+                            <p id="notificationDetailType" class="text-[11px] font-extrabold uppercase tracking-wider text-[#801235]"></p>
+                            <h4 id="notificationDetailTitle" class="text-lg font-extrabold text-slate-800"></h4>
+                            <p id="notificationDetailMessage" class="text-sm text-slate-600 whitespace-pre-wrap"></p>
+                            <p id="notificationDetailMeta" class="text-[11px] text-slate-400"></p>
+                            <div id="notificationDetailActions" class="flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-sms" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6 max-w-2xl">
+                        <h3 class="text-lg font-extrabold text-slate-800">SMS</h3>
+                        <p id="smsConfigStatus" class="text-xs text-slate-500 mb-4">Checking SMS provider configuration…</p>
+                        <form class="space-y-3" onsubmit="logInternalMessage(event, 'SMS')">
+                            <input id="smsRecipient" class="form-input text-sm" placeholder="Recipient mobile (09XXXXXXXXX or +639XXXXXXXXX)" required>
+                            <input id="smsSubject" class="form-input text-sm" placeholder="Subject / template name" required>
+                            <textarea id="smsMessage" class="form-textarea text-sm" rows="4" placeholder="Message" maxlength="160"></textarea>
+                            <button type="submit" class="btn btn-primary text-xs">Send SMS</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="view-gmail" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6 max-w-2xl">
+                        <h3 class="text-lg font-extrabold text-slate-800">Email</h3>
+                        <p id="emailConfigStatus" class="text-xs text-slate-500 mb-4">Checking SMTP configuration…</p>
+                        <form class="space-y-3" onsubmit="logInternalMessage(event, 'EMAIL')">
+                            <input id="emailRecipient" class="form-input text-sm" placeholder="Recipient email" required>
+                            <input id="emailSubject" class="form-input text-sm" placeholder="Subject" required>
+                            <textarea id="emailBody" class="form-textarea text-sm" rows="6" placeholder="Email body"></textarea>
+                            <button type="submit" class="btn btn-primary text-xs">Send Email</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="view-request-status" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6">
+                        <h3 class="text-lg font-extrabold text-slate-800 mb-4">Request Status</h3>
+                        <div class="data-table-container">
+                            <table class="modern-table">
+                                <thead><tr><th>Request</th><th>Details</th><th>Date</th><th>Status</th><th>Name</th></tr></thead>
+                                <tbody id="requestStatusList"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-applications" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6">
+                        <h3 class="text-lg font-extrabold text-slate-800 mb-4">My Applications / Referrals</h3>
+                        <div class="data-table-container">
+                            <table class="modern-table">
+                                <thead><tr><th>Position</th><th>Company</th><th>Applicant</th><th>Email</th><th>Submitted</th></tr></thead>
+                                <tbody id="applicationsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-ai-chat" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6 max-w-2xl">
+                        <h3 class="text-lg font-extrabold text-slate-800">AI Chat Support</h3>
+                        <p id="aiChatConfigStatus" class="text-sm text-slate-600 mt-2"></p>
+                        <button type="button" class="btn btn-primary text-xs mt-4" onclick="toggleChatWindow()">Open Chat Support</button>
+                    </div>
+                </div>
+
+                <div id="view-payment" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6 sm:p-8 max-w-xl mx-auto">
+                        <p class="text-[11px] font-extrabold tracking-[0.2em] text-[#801235] text-center">PAYMENT REQUIRED</p>
+                        <h3 class="text-xl font-extrabold text-slate-800 text-center mt-1" id="qrPagePurpose">Document Request</h3>
+                        <p class="text-xs text-slate-500 text-center" id="qrPageSubtitle">Transcript Request</p>
+                        <div class="mt-5 p-4 rounded-xl bg-[#f8f4ee] border border-amber-900/10 text-sm space-y-2">
+                            <div class="flex justify-between"><span class="text-slate-500">Document Request</span><span class="font-extrabold" id="qrPageRequestId">—</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Amount Due</span><span class="font-extrabold text-[#801235]" id="qrPageAmount">₱0.00</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Supported payment method</span><span class="font-bold" id="qrPageMethod">QR Ph</span></div>
+                        </div>
+                        <div class="mt-6 text-center">
+                            <p class="text-[11px] font-extrabold tracking-[0.2em] text-slate-400">SCAN TO PAY</p>
+                            <div class="mt-3 mx-auto bg-white border border-slate-200 rounded-2xl flex items-center justify-center p-5 w-[240px] h-[240px] sm:w-[300px] sm:h-[300px] md:w-[340px] md:h-[340px] lg:w-[360px] lg:h-[360px] aspect-square" id="qrPageImageWrap">
+                                <p class="text-xs text-slate-400 px-4" id="qrPageEmpty">A real PayMongo QR will appear here after checkout.</p>
+                                <img id="qrPageImage" alt="PayMongo QR Ph" class="hidden w-full h-full object-contain">
+                                <div id="qrPageGenerated" class="hidden w-full h-full flex items-center justify-center bg-white"></div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-3" id="qrPageHint">Scan this QR using GCash, Maya, or your supported banking app.</p>
+                            <p class="text-sm font-extrabold text-slate-800 mt-2">Amount: <span id="qrPageAmountRepeat">₱0.00</span></p>
+                            <p class="text-xs mt-1">QR Status: <span class="font-extrabold uppercase" id="qrPageStatus">Waiting for Payment</span></p>
+                            <p class="text-xs text-slate-500 mt-1">Expires in: <span class="font-mono font-bold" id="qrPageExpiry">—</span></p>
+                            <p class="text-sm text-slate-600 mt-3" id="qrPageMessage">Waiting for payment. Scan the QR code using your preferred banking or e-wallet app.</p>
+                        </div>
+                        <div class="mt-5 space-y-2">
+                            <button type="button" onclick="checkQrPaymentStatus()" class="btn btn-primary text-xs w-full py-2.5" id="qrCheckBtn">Check Payment Status</button>
+                            <button type="button" onclick="regeneratePaymentQr()" class="btn btn-secondary text-xs w-full py-2.5 hidden" id="qrRegenBtn">Generate New QR</button>
+                            <button type="button" onclick="openPaymentReceiptView()" class="btn btn-secondary text-xs w-full py-2.5 hidden" id="qrReceiptBtn">View Receipt</button>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-4 text-center">Payment Reference: <span class="font-mono font-bold text-slate-700" id="qrPageRef">—</span></p>
+                    </div>
+                </div>
+
+                <div id="view-payment-history" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-lg font-extrabold text-slate-800">Payment History</h3>
+                                <p class="text-xs text-slate-400">Records come from verified PayMongo transactions.</p>
+                            </div>
+                        </div>
+                        <div id="paymentHistoryList" class="space-y-3"></div>
+                    </div>
+                    <div id="paymentReportPanel" class="app-card p-6 hidden">
+                        <h3 class="text-lg font-extrabold text-slate-800 mb-3">Payment Reports</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="paymentReportSummary"></div>
+                        <div class="data-table-container mt-4">
+                            <table class="modern-table">
+                                <thead><tr><th>Request</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th>Date</th></tr></thead>
+                                <tbody id="paymentReportTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-payment-receipt" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6 sm:p-8 max-w-xl mx-auto" id="paymentReceiptSheet">
+                        <p class="text-[11px] font-extrabold tracking-[0.2em] text-slate-400 text-center">ALUMNI MANAGEMENT SYSTEM</p>
+                        <h3 class="text-xl font-extrabold text-slate-800 text-center mt-1">PAYMENT RECEIPT</h3>
+                        <div class="mt-5 text-sm space-y-2" id="paymentReceiptBody">
+                            <p class="text-center text-slate-400">Loading receipt from the server…</p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2 mt-6">
+                            <button type="button" onclick="printServerReceipt()" class="btn btn-secondary text-xs py-2" id="receiptPrintOfficialBtn" disabled>Print Receipt</button>
+                            <button type="button" onclick="downloadServerReceipt()" class="btn btn-secondary text-xs py-2" id="receiptDownloadBtn" disabled>Download PDF</button>
+                            <button type="button" onclick="switchView('payment-history')" class="btn btn-primary text-xs py-2">Back to Payment History</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-payment-return" class="hidden space-y-6 fade-in"></div>
+
+                <div id="view-unauthorized" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-8 max-w-xl mx-auto text-center">
+                        <h3 class="text-lg font-extrabold text-slate-800">Access denied</h3>
+                        <p class="text-sm text-slate-500 mt-2">Your account (<span id="unauthorizedRoleLabel">User</span>) is not allowed to open that page.</p>
+                        <button type="button" class="btn btn-primary text-xs mt-4" onclick="switchView('dashboard')">Return to Dashboard</button>
                     </div>
                 </div>
 
@@ -2047,26 +2516,38 @@
                     </div>
                     <div>
                         <p class="text-xs font-extrabold leading-tight">Agnesian AI Assistant</p>
-                        <p class="text-[10px] text-pink-300 font-medium">Powered by OpenAI API &bull; Natural Language Processing</p>
+                        <p id="chatEngineLabel" class="text-[10px] text-pink-300 font-medium">Contextual system assistant</p>
                     </div>
                 </div>
-                <button onclick="toggleChatWindow()" title="Toggle chat window" aria-label="Toggle chat window" class="text-pink-200 hover:text-white transition p-1">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+                <div class="flex items-center gap-1">
+                    <button type="button" onclick="startNewChatConversation()" title="Start new conversation" class="text-pink-200 hover:text-white transition p-1 text-[11px]">New</button>
+                    <button type="button" onclick="clearChatConversation()" title="Clear conversation" class="text-pink-200 hover:text-white transition p-1 text-[11px]">Clear</button>
+                    <button onclick="toggleChatWindow()" title="Toggle chat window" aria-label="Toggle chat window" class="text-pink-200 hover:text-white transition p-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="px-3 py-2 bg-slate-50 border-b border-slate-200/80">
+                <select id="chatHistorySelect" onchange="loadChatConversation(this.value)" class="form-select text-[11px] py-1">
+                    <option value="">Current conversation</option>
+                </select>
             </div>
 
             <!-- Quick Suggestion Chips -->
-            <div class="px-3 py-2 bg-slate-100 border-b border-slate-200/80 flex items-center gap-1.5 overflow-x-auto">
-                <button onclick="sendQuickPrompt('Total Alumni Count')" class="chat-chip">🎓 Total Alumni</button>
-                <button onclick="sendQuickPrompt('Pending Transcript Requests')" class="chat-chip">📄 Transcripts</button>
-                <button onclick="sendQuickPrompt('Upcoming Events')" class="chat-chip">📅 Events</button>
-                <button onclick="sendQuickPrompt('How to verify alumni record?')" class="chat-chip">🔍 Verification</button>
+            <div id="chatSuggestionChips" class="px-3 py-2 bg-slate-100 border-b border-slate-200/80 flex items-center gap-1.5 overflow-x-auto">
+                <button type="button" onclick="sendQuickPrompt('How do I request a transcript?')" class="chat-chip">Transcript request</button>
+                <button type="button" onclick="sendQuickPrompt('Where can I check my request?')" class="chat-chip">Request status</button>
+                <button type="button" onclick="sendQuickPrompt('What does Processing mean?')" class="chat-chip">Processing</button>
+                <button type="button" onclick="sendQuickPrompt('How do I update my employment information?')" class="chat-chip">Employment</button>
+                <button type="button" onclick="sendQuickPrompt('Where can I find job opportunities?')" class="chat-chip">Jobs</button>
+                <button type="button" onclick="sendQuickPrompt('How do I register for an event?')" class="chat-chip">Events</button>
             </div>
 
             <!-- Messages Area -->
             <div id="chatMessages" class="flex-grow p-4 overflow-y-auto space-y-3 bg-slate-50 text-xs">
                 <div class="chat-bubble-assistant">
-                    Hello! I am your Agnesian AI Assistant. How can I help you with records, transcripts, events, or alumni information today?
+                    Hello. I can help you with this Alumni Management System. Ask in English, Filipino, or Taglish. I will keep the current topic so short follow-ups like "saan?" or "ano kailangan?" still make sense.
                 </div>
             </div>
 
@@ -2191,7 +2672,7 @@
                 </p>
 
                 <h4 class="font-cinzel text-xl sm:text-2xl font-extrabold text-brand-magenta mt-3 underline decoration-amber-500 underline-offset-8" id="certAlumniName">
-                    Maria Clara D. Santos
+                    —
                 </h4>
 
                 <p class="text-xs text-slate-700 mt-4 max-w-lg mx-auto leading-relaxed">
@@ -2199,18 +2680,18 @@
                 </p>
 
                 <p class="font-cinzel text-sm sm:text-base font-extrabold text-slate-900 mt-1" id="certAlumniProgram">
-                    Bachelor of Science in Information Technology
+                    —
                 </p>
                 <p class="text-xs font-bold text-slate-600 mt-1">
-                    Graduation Batch: <span id="certAlumniBatch">2024</span> • Status: <span class="text-emerald-700">Authenticated Alumnus</span>
+                    Graduation Batch: <span id="certAlumniBatch">—</span> • Status: <span class="text-emerald-700">Authenticated Alumnus</span>
                 </p>
 
                 <!-- Footer Signatures -->
                 <div class="grid grid-cols-2 gap-8 mt-10 pt-6 border-t border-slate-200 text-left">
                     <div>
                         <p class="text-[10px] text-slate-400 uppercase font-bold">Document Serial No.</p>
-                        <p class="text-xs font-mono font-bold text-slate-800" id="certSerial">SAA-CERT-2024-8841</p>
-                        <p class="text-[9px] text-slate-400 mt-1">Date Issued: <span id="certDateIssued">August 26, 2026</span></p>
+                        <p class="text-xs font-mono font-bold text-slate-800" id="certSerial">—</p>
+                        <p class="text-[9px] text-slate-400 mt-1">Date Issued: <span id="certDateIssued">—</span></p>
                     </div>
                     <div class="text-right">
                         <div class="signature-strip inline-block text-xs font-bold text-slate-800">
@@ -2254,11 +2735,11 @@
                 <div class="space-y-2 text-slate-700">
                     <div class="flex justify-between">
                         <span class="text-slate-400">Tracking Reference:</span>
-                        <span class="font-mono font-bold text-slate-900" id="stubRef">SAA-REQ-2024-9102</span>
+                        <span class="font-mono font-bold text-slate-900" id="stubRef">—</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-400">Requestor:</span>
-                        <span class="font-bold text-slate-900" id="stubName">Maria Clara Santos</span>
+                        <span class="font-bold text-slate-900" id="stubName">—</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-400">Document Type:</span>
@@ -2371,7 +2852,7 @@
                     </div>
                     <div>
                         <label class="form-label" for="docDelivery">Claiming Method</label>
-                        <select id="docDelivery" class="form-select text-xs">
+                        <select id="docDelivery" class="form-select text-xs" onchange="updateDocumentFeePreview()">
                             <option>Pick-up at Registrar Window</option>
                             <option>Courier Delivery (+₱150)</option>
                             <option>Digital Copy (PDF via Email)</option>
@@ -2388,6 +2869,20 @@
                         <input type="email" id="docEmail" required placeholder="e.g. maria.santos@gmail.com" class="form-input pl-9 text-xs">
                     </div>
                     <p class="text-[10px] text-slate-400 mt-1">Status updates, e-Transcripts, and tracking receipts will be sent to this email address.</p>
+                </div>
+
+                <div>
+                    <label class="form-label" for="docAttachments">Supporting documents (optional)</label>
+                    <input type="file" id="docAttachments" accept=".pdf,.png,.jpg,.jpeg" multiple class="form-input text-xs">
+                    <p class="text-[10px] text-slate-400 mt-1">PDF, JPG, or PNG. Maximum 3 files, 1 MB each. The Registrar reviews these with your request.</p>
+                </div>
+
+                <div class="p-3 rounded-xl bg-[#f8f4ee] border border-amber-900/10 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Amount due</p>
+                        <p class="text-[11px] text-slate-500">Document fee is calculated by the server. GCash is required before processing.</p>
+                    </div>
+                    <p class="text-lg font-extrabold text-[#801235]" id="docFeePreview">₱150.00</p>
                 </div>
 
                 <div>
@@ -2577,6 +3072,40 @@
         </div>
     </div>
 
+    <!-- Post Job Opportunity Modal (Admin) -->
+    <div id="addJobOpportunityModal" class="modal-backdrop">
+        <div class="modal-box p-6">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                <h3 class="font-extrabold text-slate-800 text-base">Post Job Opportunity</h3>
+                <button onclick="closeAddJobOpportunityModal()" title="Close job opportunity modal" aria-label="Close job opportunity modal" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            <form onsubmit="saveNewJobOpportunity(event)" class="space-y-3.5">
+                <div>
+                    <label class="form-label" for="newJobTitle">Job Title</label>
+                    <input type="text" id="newJobTitle" required placeholder="e.g. Software Engineer" class="form-input text-xs">
+                </div>
+                <div>
+                    <label class="form-label" for="newJobCompany">Company / Employer</label>
+                    <input type="text" id="newJobCompany" required placeholder="e.g. Company name" class="form-input text-xs">
+                </div>
+                <div>
+                    <label class="form-label" for="newJobLocation">Location</label>
+                    <input type="text" id="newJobLocation" placeholder="e.g. Caloocan / Remote" class="form-input text-xs">
+                </div>
+                <div>
+                    <label class="form-label" for="newJobDescription">Description</label>
+                    <textarea id="newJobDescription" rows="3" placeholder="Role summary, requirements, and how to apply..." class="form-textarea text-xs"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeAddJobOpportunityModal()" class="btn btn-secondary text-xs">Cancel</button>
+                    <button type="submit" class="btn btn-primary text-xs">Publish Opportunity</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Feedback Confirmation Modal -->
     <div id="feedbackConfirmationModal" class="modal-backdrop">
         <div class="modal-box p-6 sm:p-8 text-center">
@@ -2593,7 +3122,7 @@
         </div>
     </div>
 
-    <!-- Digital Payment Gateway Modal -->
+    <!-- GCash Payment Gateway Modal -->
     <div id="paymentGatewayModal" class="modal-backdrop">
         <div class="modal-box p-6 sm:p-8 max-w-md">
             <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
@@ -2602,8 +3131,8 @@
                         <i class="fa-solid fa-lock"></i>
                     </div>
                     <div>
-                        <h3 class="font-extrabold text-slate-800 text-sm">Secure Payment Gateway</h3>
-                        <p class="text-[10px] text-slate-400 font-medium">St. Agnes Academy Official Billing</p>
+                        <h3 class="font-extrabold text-slate-800 text-sm">GCash Payment</h3>
+                        <p class="text-[10px] text-slate-400 font-medium">You will be redirected to PayMongo / GCash</p>
                     </div>
                 </div>
                 <button onclick="closePaymentGatewayModal()" title="Close payment gateway" aria-label="Close payment gateway" class="text-slate-400 hover:text-slate-600 p-1">
@@ -2611,113 +3140,49 @@
                 </button>
             </div>
 
-            <!-- Amount Summary Card -->
             <div class="p-4 rounded-xl bg-[#f8f4ee] border border-amber-900/10 mb-4 flex items-center justify-between">
                 <div>
-                    <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider" id="paymentPurposeText">Document Courier & Fulfillment</p>
-                    <p class="text-xs text-slate-700 font-semibold" id="paymentDetailText">Official TOR Courier Delivery</p>
+                    <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider" id="paymentPurposeText">Document request</p>
+                    <p class="text-xs text-slate-700 font-semibold" id="paymentDetailText">Amount is set by the server</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-[10px] text-slate-400 uppercase font-bold">Total Due</p>
-                    <p class="text-lg font-extrabold text-[#801235]" id="paymentAmountText">₱150.00</p>
+                    <p class="text-[10px] text-slate-400 uppercase font-bold">Amount</p>
+                    <p class="text-lg font-extrabold text-[#801235]" id="paymentAmountText">₱0.00</p>
                 </div>
             </div>
 
             <form onsubmit="submitPayment(event)" class="space-y-4">
-                <!-- Payment Method Selection Pills -->
-                <div>
-                    <label class="form-label mb-2">Select Payment Method</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="cursor-pointer">
-                            <input type="radio" name="paymentMethod" value="GCash" checked onchange="switchPaymentFields('GCash')" class="sr-only peer">
-                            <div class="p-3 rounded-xl border border-slate-200 bg-white peer-checked:border-[#801235] peer-checked:bg-amber-50/40 hover:bg-slate-50 transition flex items-center space-x-2">
-                                <span class="w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">G</span>
-                                <span class="text-xs font-extrabold text-slate-800">GCash</span>
-                            </div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="paymentMethod" value="Maya" onchange="switchPaymentFields('Maya')" class="sr-only peer">
-                            <div class="p-3 rounded-xl border border-slate-200 bg-white peer-checked:border-[#801235] peer-checked:bg-amber-50/40 hover:bg-slate-50 transition flex items-center space-x-2">
-                                <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">M</span>
-                                <span class="text-xs font-extrabold text-slate-800">Maya</span>
-                            </div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="paymentMethod" value="Card" onchange="switchPaymentFields('Card')" class="sr-only peer">
-                            <div class="p-3 rounded-xl border border-slate-200 bg-white peer-checked:border-[#801235] peer-checked:bg-amber-50/40 hover:bg-slate-50 transition flex items-center space-x-2">
-                                <i class="fa-solid fa-credit-card text-indigo-600 text-sm"></i>
-                                <span class="text-xs font-extrabold text-slate-800">Credit / Debit</span>
-                            </div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="paymentMethod" value="PayPal" onchange="switchPaymentFields('PayPal')" class="sr-only peer">
-                            <div class="p-3 rounded-xl border border-slate-200 bg-white peer-checked:border-[#801235] peer-checked:bg-amber-50/40 hover:bg-slate-50 transition flex items-center space-x-2">
-                                <i class="fa-brands fa-paypal text-blue-700 text-sm"></i>
-                                <span class="text-xs font-extrabold text-slate-800">PayPal</span>
-                            </div>
-                        </label>
+                <div class="p-3 rounded-xl border border-slate-200 bg-white flex items-center space-x-3">
+                    <span class="w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center flex-shrink-0">G</span>
+                    <div>
+                        <p class="text-xs font-extrabold text-slate-800">GCash</p>
+                        <p class="text-[11px] text-slate-500">Authorize the payment on the official GCash page. This system does not collect your GCash PIN, OTP, or password.</p>
                     </div>
                 </div>
-
-                <!-- Dynamic Input Fields -->
-                <div id="paymentEWalletFields" class="space-y-3">
-                    <div>
-                        <label class="form-label" for="payMobileNumber">Account Mobile Number</label>
-                        <input type="text" id="payMobileNumber" required placeholder="e.g. 0917 123 4567" class="form-input text-xs">
-                    </div>
-                    <div>
-                        <label class="form-label" for="payAccountName">Account Holder Name</label>
-                        <input type="text" id="payAccountName" required placeholder="e.g. Maria Clara Santos" class="form-input text-xs">
-                    </div>
-                </div>
-
-                <div id="paymentCardFields" class="space-y-3 hidden">
-                    <div>
-                        <label class="form-label" for="payCardNumber">Card Number</label>
-                        <input type="text" id="payCardNumber" placeholder="4532 •••• •••• 8891" class="form-input text-xs">
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="form-label" for="payCardExpiry">Expiry (MM/YY)</label>
-                            <input type="text" id="payCardExpiry" placeholder="08/28" class="form-input text-xs">
-                        </div>
-                        <div>
-                            <label class="form-label" for="payCardCVV">CVV / CVC</label>
-                            <input type="password" id="payCardCVV" maxlength="4" placeholder="123" class="form-input text-xs">
-                        </div>
-                    </div>
-                </div>
-
-                <div id="paymentPaypalFields" class="space-y-3 hidden">
-                    <div>
-                        <label class="form-label" for="payPaypalEmail">PayPal Email Address</label>
-                        <input type="email" id="payPaypalEmail" placeholder="e.g. maria.santos@paypal.com" class="form-input text-xs">
-                    </div>
-                </div>
-
+                <p id="paymentGatewayHint" class="text-[11px] text-slate-500">Payment stays pending until PayMongo confirms it. Returning to this site is not enough to mark it paid.</p>
                 <div class="pt-2 flex justify-end gap-2 border-t border-slate-100">
                     <button type="button" onclick="closePaymentGatewayModal()" class="btn btn-secondary text-xs">Cancel</button>
-                    <button type="submit" class="btn btn-primary text-xs w-full py-2.5">
-                        <i class="fa-solid fa-shield-check mr-1"></i> Pay Now & Complete
+                    <button type="submit" id="payNowButton" class="btn btn-primary text-xs w-full py-2.5">
+                        <i class="fa-solid fa-shield-check mr-1"></i> Continue to GCash
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Payment Receipt Modal -->
+    <!-- Payment Confirmation Modal (verified records only) -->
     <div id="paymentReceiptModal" class="modal-backdrop">
         <div class="modal-box p-6 text-center max-w-sm">
-            <div class="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3 text-2xl border-2 border-emerald-200">
-                <i class="fa-solid fa-circle-check"></i>
+            <div id="receiptIconWrap" class="w-14 h-14 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-3 text-2xl border-2 border-amber-200">
+                <i class="fa-solid fa-hourglass-half"></i>
             </div>
-            <h3 class="text-lg font-extrabold text-slate-800">Payment Successful!</h3>
-            <p class="text-xs text-slate-400 font-medium">Your transaction has been authenticated.</p>
+            <h3 class="text-lg font-extrabold text-slate-800" id="receiptTitle">Payment Pending</h3>
+            <p class="text-xs text-slate-400 font-medium" id="receiptSubtitle">Waiting for payment gateway confirmation.</p>
 
             <div class="my-4 p-4 rounded-xl bg-[#f8f4ee] border border-amber-900/10 text-left text-xs space-y-2">
                 <div class="flex justify-between">
-                    <span class="text-slate-400">Transaction Ref:</span>
-                    <span class="font-mono font-bold text-slate-900" id="receiptRef">GCASH-2026-8819</span>
+                    <span class="text-slate-400">Transaction Reference:</span>
+                    <span class="font-mono font-bold text-slate-900" id="receiptRef">—</span>
                 </div>
                 <div class="flex justify-between">
                     <span class="text-slate-400">Payment Method:</span>
@@ -2725,16 +3190,25 @@
                 </div>
                 <div class="flex justify-between">
                     <span class="text-slate-400">Paid By:</span>
-                    <span class="font-bold text-slate-800" id="receiptPayer">Maria Clara Santos</span>
+                    <span class="font-bold text-slate-800" id="receiptPayer">—</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Date & Time:</span>
+                    <span class="font-bold text-slate-800" id="receiptPaidAt">—</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Status:</span>
+                    <span class="font-extrabold uppercase text-slate-800" id="receiptStatus">pending</span>
                 </div>
                 <div class="flex justify-between border-t border-slate-200 pt-2 mt-1">
-                    <span class="font-bold text-slate-700">Amount Paid:</span>
-                    <span class="font-extrabold text-[#801235] text-sm" id="receiptAmount">₱150.00</span>
+                    <span class="font-bold text-slate-700">Amount:</span>
+                    <span class="font-extrabold text-[#801235] text-sm" id="receiptAmount">₱0.00</span>
                 </div>
             </div>
+            <p class="text-[10px] text-slate-400 mb-3">This is a payment confirmation, not an official BIR tax receipt.</p>
 
             <div class="flex gap-2">
-                <button onclick="window.print()" class="btn btn-secondary text-xs w-1/2 py-2">
+                <button onclick="printPaymentConfirmation()" class="btn btn-secondary text-xs w-1/2 py-2" id="receiptPrintBtn" disabled>
                     <i class="fa-solid fa-print"></i> Print
                 </button>
                 <button onclick="closePaymentReceiptModal()" class="btn btn-primary text-xs w-1/2 py-2">
@@ -2798,7 +3272,7 @@
                         <div class="flex items-center space-x-2">
                             <i class="fa-solid fa-file-pdf text-[#801235] text-base"></i>
                             <div>
-                                <p class="font-bold text-slate-800 text-xs" id="jobResumeAttachedName">Maria_Santos_Resume.pdf</p>
+                                <p class="font-bold text-slate-800 text-xs" id="jobResumeAttachedName">No Profile Resume Attached</p>
                                 <p class="text-[10px] text-slate-400">Profile Resume Attached</p>
                             </div>
                         </div>
@@ -2891,6 +3365,25 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                    <div>
+                        <label class="form-label" for="trackEduSchool">Further education / school</label>
+                        <input id="trackEduSchool" class="form-input text-xs" placeholder="School or university">
+                    </div>
+                    <div>
+                        <label class="form-label" for="trackEduProgram">Education program</label>
+                        <input id="trackEduProgram" class="form-input text-xs" placeholder="Program or degree">
+                    </div>
+                    <div>
+                        <label class="form-label" for="trackEduStatus">Education status</label>
+                        <input id="trackEduStatus" class="form-input text-xs" placeholder="Currently studying / Completed">
+                    </div>
+                    <div>
+                        <label class="form-label" for="trackEduYear">Enrollment / completion year</label>
+                        <input id="trackEduYear" class="form-input text-xs" placeholder="e.g. 2026">
+                    </div>
+                </div>
+
                 <div class="pt-2 flex justify-end gap-2 border-t border-slate-100">
                     <button type="button" onclick="closeUpdateEmploymentModal()" class="btn btn-secondary text-xs">Cancel</button>
                     <button type="submit" class="btn btn-primary text-xs flex-1 py-2.5">
@@ -2902,15 +3395,57 @@
     </div>
 
 
+    <div id="logoutConfirmModal" class="modal-backdrop">
+        <div class="modal-box p-6 max-w-sm text-center">
+            <h3 class="text-lg font-extrabold text-slate-800">Log out?</h3>
+            <p class="text-sm text-slate-500 mt-2">Your current session will end and you will return to the login page.</p>
+            <div class="flex justify-center gap-2 mt-5">
+                <button type="button" class="btn btn-secondary text-xs" onclick="closeLogoutConfirm()">Cancel</button>
+                <button type="button" class="btn btn-primary text-xs" onclick="confirmAndLogout()">Log Out</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="userFormModal" class="modal-backdrop">
+        <div class="modal-box p-6 max-w-md">
+            <h3 id="userFormTitle" class="text-lg font-extrabold text-slate-800 mb-4">Create user account</h3>
+            <form onsubmit="submitUserForm(event)" class="space-y-3">
+                <input type="hidden" id="userFormId">
+                <input id="userFormName" class="form-input text-sm" placeholder="Full name" required>
+                <input id="userFormUsername" class="form-input text-sm" placeholder="Username" required>
+                <input id="userFormEmail" type="email" class="form-input text-sm" placeholder="Email">
+                <input id="userFormContact" class="form-input text-sm" placeholder="Contact">
+                <select id="userFormRole" class="form-select text-sm">
+                    <option value="admin">System Administrator</option>
+                    <option value="staff">Registrar</option>
+                    <option value="alumni">Alumni</option>
+                </select>
+                <select id="userFormStatus" class="form-select text-sm">
+                    <option>Active</option>
+                    <option>Inactive</option>
+                    <option>Suspended</option>
+                    <option>Locked</option>
+                </select>
+                <input id="userFormPassword" type="password" class="form-input text-sm" placeholder="Password (required for new accounts)">
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn btn-secondary text-xs" onclick="closeUserForm()">Cancel</button>
+                    <button type="submit" class="btn btn-primary text-xs">Save Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- =========================================================
          JAVASCRIPT LOGIC
          ========================================================= -->
 
     <!-- Modular JavaScript (split from the original monolith) -->
     <script src="js/config.js"></script>
+    <script src="js/env.js"></script>
     <script src="js/api.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/access.js"></script>
     <script src="js/navigation.js"></script>
     <script src="js/records.js"></script>
     <script src="js/engagement.js"></script>

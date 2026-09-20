@@ -1,6 +1,8 @@
 import { Router } from 'express';
-import { db } from '../db.js';
-import { requireRole } from '../auth.js';
+import { db, findAlumniForUser } from '../db.js';
+import { isAdmin, isAlumni, isStaff, ownsLinkedRow, requireRole } from '../auth.js';
+import { mirror, mirrorUpdate, mirrorDelete } from '../sync-supabase.js';
+import { dispatchAlumniAudience, dispatchNotification, dispatchStaffAudience } from '../notify.js';
 
 const router = Router();
 
@@ -27,7 +29,7 @@ router.get('/events', (req, res) => {
 });
 
 /** POST /api/events - create an event (admin only). */
-router.post('/events', requireRole('admin'), (req, res) => {
+router.post('/events', requireRole('admin', 'staff'), (req, res) => {
   const { title, date, location } = req.body || {};
   if (!title) return res.status(400).json({ error: 'Event title is required.' });
 
@@ -36,21 +38,138 @@ router.post('/events', requireRole('admin'), (req, res) => {
   ).run(title, date || '', location || '');
 
   const row = db.prepare('SELECT * FROM events WHERE id = ?').get(info.lastInsertRowid);
+  dispatchAlumniAudience(`New alumni event: ${title}`, `${title} is scheduled${date ? ` on ${date}` : ''}.`, 'event', row.id).catch(() => {});
+  mirror('events', row);
   res.status(201).json({ event: mapEvent(row) });
 });
 
-/** POST /api/events/:id/rsvp - an alumnus registers / withdraws RSVP. */
+router.get('/events/:id', (req, res) => {
+  const row = db.prepare('SELECT * FROM events WHERE id = ?').get(Number(req.params.id));
+  if (!row) return res.status(404).json({ error: 'Event not found.' });
+  res.json({ event: mapEvent(row) });
+});
+
+/** POST /api/events/:id/rsvp - register or withdraw the current user only. */
 router.post('/events/:id/rsvp', (req, res) => {
   const id = Number(req.params.id);
   const row = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
   if (!row) return res.status(404).json({ error: 'Event not found.' });
+  const name = String(req.user?.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'A user profile name is required to register.' });
 
-  const registered = row.registered ? 0 : 1;
-  const rsvps = row.rsvps + (registered ? 1 : -1);
+  const attendees = parseJson(row.attendees, []);
+  const idx = attendees.findIndex((a) => String(a.name || '').toLowerCase() === name.toLowerCase());
+  if (idx >= 0) {
+    attendees.splice(idx, 1);
+  } else {
+    attendees.push({ name, email: req.user.email || '', present: false });
+  }
 
-  db.prepare('UPDATE events SET registered = ?, rsvps = ? WHERE id = ?').run(registered, Math.max(0, rsvps), id);
+  db.prepare('UPDATE events SET attendees = ?, rsvps = ?, registered = ? WHERE id = ?').run(
+    JSON.stringify(attendees),
+    attendees.length,
+    attendees.some((a) => String(a.name || '').toLowerCase() === name.toLowerCase()) ? 1 : 0,
+    id
+  );
   const updated = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
+  mirrorUpdate('events', updated);
+  if (idx < 0) {
+    dispatchNotification({
+      userId: req.user.id,
+      alumniId: req.user.alumniId || 0,
+      recipient: req.user.email || name,
+      channel: 'SYSTEM',
+      subject: 'Event registration confirmed',
+      message: `You are registered for ${updated.title}${updated.date ? ` on ${updated.date}` : ''}.`,
+      relatedType: 'event',
+      relatedId: updated.id,
+      email: req.user.email,
+      phone: req.user.contact
+    }).catch(() => {});
+  }
   res.json({ event: mapEvent(updated) });
+});
+
+router.post('/events/:id/remind', requireRole('admin', 'staff'), (req, res) => {
+  const row = db.prepare('SELECT * FROM events WHERE id = ?').get(Number(req.params.id));
+  if (!row) return res.status(404).json({ error: 'Event not found.' });
+  const attendees = parseJson(row.attendees, []);
+  if (!attendees.length) return res.status(400).json({ error: 'No registered alumni yet for this event.' });
+  let sent = 0;
+  for (const attendee of attendees) {
+    const user = attendee.email
+      ? db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?)').get(attendee.email)
+      : db.prepare('SELECT * FROM users WHERE LOWER(name) = LOWER(?)').get(attendee.name);
+    dispatchNotification({
+      userId: user?.id || 0,
+      alumniId: user?.alumni_id || 0,
+      recipient: attendee.email || attendee.name,
+      channel: 'SYSTEM',
+      subject: `Event reminder: ${row.title}`,
+      message: `${row.title} is coming up${row.date ? ` on ${row.date}` : ''}${row.location ? ` at ${row.location}` : ''}.`,
+      relatedType: 'event',
+      relatedId: row.id,
+      email: attendee.email || user?.email,
+      phone: attendee.contact || user?.contact
+    }).catch(() => {});
+    sent += 1;
+  }
+  res.json({ ok: true, reminders: sent });
+});
+
+router.put('/events/:id/attendance', requireRole('admin', 'staff'), (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Event not found.' });
+  const name = String(req.body?.name || '').trim();
+  const attendees = parseJson(row.attendees, []);
+  const attendee = attendees.find((a) => String(a.name || '').toLowerCase() === name.toLowerCase());
+  if (!attendee) return res.status(404).json({ error: 'Attendee not found.' });
+  attendee.present = Boolean(req.body?.present);
+  db.prepare('UPDATE events SET attendees = ? WHERE id = ?').run(JSON.stringify(attendees), id);
+  const updated = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
+  mirrorUpdate('events', updated);
+  res.json({ event: mapEvent(updated) });
+});
+
+/** PUT /api/events/:id - edit event (admin). */
+router.put('/events/:id', requireRole('admin', 'staff'), (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Event not found.' });
+  const { title, date, location, status } = req.body || {};
+  db.prepare('UPDATE events SET title = ?, date = ?, location = ?, status = ? WHERE id = ?').run(
+    title ?? existing.title, date ?? existing.date, location ?? existing.location, status ?? existing.status, id
+  );
+  const updated = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
+  mirrorUpdate('events', updated);
+  const cancelled = String(updated.status || '').toLowerCase().includes('cancel');
+  const changed = updated.title !== existing.title || updated.date !== existing.date || updated.location !== existing.location || updated.status !== existing.status;
+  if (cancelled) {
+    dispatchAlumniAudience(
+      `Event cancelled: ${updated.title}`,
+      `${updated.title} has been cancelled.`,
+      'event',
+      updated.id
+    ).catch(() => {});
+  } else if (changed) {
+    dispatchAlumniAudience(
+      `Event update: ${updated.title}`,
+      `${updated.title} was updated${updated.date ? ` (${updated.date})` : ''}${updated.location ? ` at ${updated.location}` : ''}.`,
+      'event',
+      updated.id
+    ).catch(() => {});
+  }
+  res.json({ event: mapEvent(updated) });
+});
+
+/** DELETE /api/events/:id - delete event (admin). */
+router.delete('/events/:id', requireRole('admin', 'staff'), (req, res) => {
+  const id = Number(req.params.id);
+  const info = db.prepare('DELETE FROM events WHERE id = ?').run(id);
+  if (info.changes === 0) return res.status(404).json({ error: 'Event not found.' });
+  mirrorDelete('events', id);
+  res.status(204).end();
 });
 
 /* -------------------------------- Reunions -------------------------------- */
@@ -62,7 +181,7 @@ router.get('/reunions', (req, res) => {
 });
 
 /** POST /api/reunions - create a reunion (admin only). */
-router.post('/reunions', requireRole('admin'), (req, res) => {
+router.post('/reunions', requireRole('admin', 'staff'), (req, res) => {
   const { batch, date, venue, coordinators } = req.body || {};
   if (!batch) return res.status(400).json({ error: 'Batch label is required.' });
 
@@ -71,27 +190,74 @@ router.post('/reunions', requireRole('admin'), (req, res) => {
   ).run(batch, date || '', venue || '', coordinators || '');
 
   const row = db.prepare('SELECT * FROM reunions WHERE id = ?').get(info.lastInsertRowid);
+  mirror('reunions', row);
   res.status(201).json({ reunion: mapReunion(row) });
+});
+
+router.post('/reunions/:id/rsvp', (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM reunions WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Reunion not found.' });
+  const name = String(req.user?.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'A user profile name is required to confirm attendance.' });
+  const attendees = parseJson(row.attendees, []);
+  const idx = attendees.findIndex((a) => String(a.name || '').toLowerCase() === name.toLowerCase());
+  if (idx >= 0) attendees.splice(idx, 1);
+  else attendees.push({ name, email: req.user.email || '', confirmed: true, present: false });
+  db.prepare('UPDATE reunions SET attendees = ?, confirmed = ? WHERE id = ?').run(
+    JSON.stringify(attendees),
+    attendees.length ? 1 : 0,
+    id
+  );
+  res.json({ reunion: mapReunion(db.prepare('SELECT * FROM reunions WHERE id = ?').get(id)) });
+});
+
+router.put('/reunions/:id/attendance', requireRole('admin', 'staff'), (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM reunions WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Reunion not found.' });
+  const name = String(req.body?.name || '').trim();
+  const attendees = parseJson(row.attendees, []);
+  const attendee = attendees.find((a) => String(a.name || '').toLowerCase() === name.toLowerCase());
+  if (!attendee) return res.status(404).json({ error: 'Attendee not found.' });
+  attendee.present = Boolean(req.body?.present);
+  db.prepare('UPDATE reunions SET attendees = ? WHERE id = ?').run(JSON.stringify(attendees), id);
+  const updated = db.prepare('SELECT * FROM reunions WHERE id = ?').get(id);
+  mirrorUpdate('reunions', updated);
+  res.json({ reunion: mapReunion(updated) });
 });
 
 /* -------------------------------- Donations ------------------------------- */
 
 /** GET /api/donations - list donation records. */
 router.get('/donations', (req, res) => {
-  const rows = db.prepare('SELECT * FROM donations ORDER BY id DESC').all();
+  let rows = db.prepare('SELECT * FROM donations ORDER BY id DESC').all();
+  if (isAlumni(req.user)) rows = rows.filter((d) => ownsLinkedRow(req.user, d) || String(d.donor || '').toLowerCase() === String(req.user.name || '').toLowerCase());
   res.json({ donations: rows.map(d => ({ id: d.id, campaign: d.campaign, donor: d.donor, amount: d.amount, date: d.date })) });
 });
 
-/** POST /api/donations - record a donation. */
+/** POST /api/donations - staff/admin operational record only. Alumni gifts go through PayMongo checkout. */
 router.post('/donations', (req, res) => {
+  if (isAlumni(req.user)) {
+    return res.status(400).json({ error: 'Donations must be completed through GCash checkout. The amount will be recorded after PayMongo confirms payment.' });
+  }
   const { campaign, donor, amount } = req.body || {};
   if (!campaign || amount == null) return res.status(400).json({ error: 'Campaign and amount are required.' });
+  const linked = isAlumni(req.user) ? findAlumniForUser(req.user) : null;
 
   const info = db.prepare(
-    'INSERT INTO donations (campaign, donor, amount, date) VALUES (?, ?, ?, ?)'
-  ).run(campaign, donor || 'Anonymous', Number(amount), new Date().toISOString().split('T')[0]);
+    'INSERT INTO donations (campaign, donor, amount, date, user_id, alumni_id) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(
+    campaign,
+    donor || req.user.name || 'Anonymous',
+    Number(amount),
+    new Date().toISOString().split('T')[0],
+    isAlumni(req.user) ? req.user.id : 0,
+    linked?.id || 0
+  );
 
   const row = db.prepare('SELECT * FROM donations WHERE id = ?').get(info.lastInsertRowid);
+  mirror('donations', row);
   res.status(201).json({ donation: { id: row.id, campaign: row.campaign, donor: row.donor, amount: row.amount, date: row.date } });
 });
 
@@ -104,7 +270,7 @@ router.get('/newsletters', (req, res) => {
 });
 
 /** POST /api/newsletters - publish a newsletter (admin / registrar). */
-router.post('/newsletters', requireRole('admin', 'registrar'), (req, res) => {
+router.post('/newsletters', requireRole('admin', 'staff'), (req, res) => {
   const { subject, body } = req.body || {};
   if (!subject) return res.status(400).json({ error: 'Subject is required.' });
 
@@ -113,14 +279,19 @@ router.post('/newsletters', requireRole('admin', 'registrar'), (req, res) => {
   ).run(subject, body || '', new Date().toISOString().split('T')[0]);
 
   const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(info.lastInsertRowid);
+  mirror('newsletters', row);
   res.status(201).json({ newsletter: { id: row.id, subject: row.subject, body: row.body, sentAt: row.sent_at } });
 });
 
 /* -------------------------------- Feedback -------------------------------- */
 
 /** GET /api/feedback - list survey feedback (admin / registrar). */
-router.get('/feedback', requireRole('admin', 'registrar'), (req, res) => {
-  const rows = db.prepare('SELECT * FROM feedback ORDER BY id DESC').all();
+router.get('/feedback', (req, res) => {
+  let rows = db.prepare('SELECT * FROM feedback ORDER BY id DESC').all();
+  if (isAlumni(req.user)) rows = rows.filter((f) => ownsLinkedRow(req.user, f));
+  else if (!isAdmin(req.user) && !isStaff(req.user)) {
+    return res.status(403).json({ error: 'You do not have permission to view survey responses.' });
+  }
   res.json({ feedback: rows.map(f => ({ id: f.id, name: f.name, rating: f.rating, category: f.category, message: f.message, createdAt: f.created_at })) });
 });
 
@@ -128,40 +299,170 @@ router.get('/feedback', requireRole('admin', 'registrar'), (req, res) => {
 router.post('/feedback', (req, res) => {
   const { name, rating, category, message } = req.body || {};
   if (!message) return res.status(400).json({ error: 'Feedback message is required.' });
+  const linked = isAlumni(req.user) ? findAlumniForUser(req.user) : null;
 
   const info = db.prepare(
-    'INSERT INTO feedback (name, rating, category, message) VALUES (?, ?, ?, ?)'
-  ).run(name || 'Anonymous', Number(rating) || 5, category || 'General', message);
+    'INSERT INTO feedback (name, rating, category, message, user_id, alumni_id) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(
+    name || req.user.name || 'Anonymous',
+    Number(rating) || 5,
+    category || 'General',
+    message,
+    isAlumni(req.user) ? req.user.id : 0,
+    linked?.id || 0
+  );
 
   const row = db.prepare('SELECT * FROM feedback WHERE id = ?').get(info.lastInsertRowid);
+  mirror('feedback', row);
   res.status(201).json({ feedback: { id: row.id, name: row.name, rating: row.rating, category: row.category, message: row.message, createdAt: row.created_at } });
 });
 
-/* ------------------------------ Notifications ----------------------------- */
+/* --------------------------- Job opportunities ---------------------------- */
 
-/** GET /api/notifications - list the notification log (admin / registrar). */
-router.get('/notifications', requireRole('admin', 'registrar'), (req, res) => {
-  const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const rows = db.prepare(
-    'SELECT * FROM notifications ORDER BY id DESC LIMIT ?'
-  ).all(limit);
-  res.json({ notifications: rows.map(n => ({
-    id: n.id, channel: n.channel, recipient: n.recipient, subject: n.subject,
-    message: n.message, status: n.status || 'QUEUED', createdAt: n.created_at
-  })) });
+router.get('/jobs', (req, res) => {
+  const rows = db.prepare('SELECT * FROM job_opportunities ORDER BY id DESC').all();
+  const visible = (isAdmin(req.user) || isStaff(req.user)) ? rows : rows.filter((j) => j.status === 'Published');
+  res.json({ jobs: visible });
 });
 
-/** POST /api/notifications - log a dispatched EMAIL/SMS notification server-side. */
-router.post('/notifications', (req, res) => {
-  const { channel, recipient, subject, message } = req.body || {};
-  if (!channel || !recipient || !subject) {
-    return res.status(400).json({ error: 'channel, recipient and subject are required.' });
-  }
+router.post('/jobs', requireRole('admin', 'staff'), (req, res) => {
+  const { title, company, location, description, status } = req.body || {};
+  if (!title) return res.status(400).json({ error: 'Job title is required.' });
   const info = db.prepare(
-    "INSERT INTO notifications (channel, recipient, subject, message, status) VALUES (?, ?, ?, ?, 'QUEUED')"
-  ).run(channel, recipient, subject, message || '');
+    "INSERT INTO job_opportunities (title, company, location, description, status) VALUES (?, ?, ?, ?, ?)"
+  ).run(title, company || '', location || '', description || '', status || 'Published');
+  const job = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(info.lastInsertRowid);
+  if ((status || 'Published') === 'Published') {
+    dispatchAlumniAudience(`New job opportunity: ${title}`, `${title} at ${company || 'an employer'} is now open.`, 'job', job.id).catch(() => {});
+  }
+  mirror('job_opportunities', job);
+  res.status(201).json({ job });
+});
 
-  res.status(201).json({ notification: { id: info.lastInsertRowid, channel, recipient, subject, message: message || '', status: 'QUEUED' } });
+router.get('/jobs/:id', (req, res) => {
+  const job = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(Number(req.params.id));
+  if (!job) return res.status(404).json({ error: 'Job opportunity not found.' });
+  if (job.status !== 'Published' && !isAdmin(req.user) && !isStaff(req.user)) {
+    return res.status(403).json({ error: 'This job opportunity is not available.' });
+  }
+  res.json({ job });
+});
+
+router.get('/applications', (req, res) => {
+  let rows = db.prepare('SELECT * FROM job_applications ORDER BY id DESC').all();
+  if (isAlumni(req.user)) {
+    rows = rows.filter((r) => ownsLinkedRow(req.user, r));
+  } else if (!isAdmin(req.user) && !isStaff(req.user)) {
+    return res.status(403).json({ error: 'You do not have permission to view applications.' });
+  }
+  res.json({ applications: rows });
+});
+
+router.post('/jobs/:id/apply', (req, res) => {
+  const jobId = Number(req.params.id) || 0;
+  const job = jobId ? db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(jobId) : null;
+  const { name, email, resumeName, title, company } = req.body || {};
+  const applicant = String(name || req.user?.name || '').trim();
+  if (!applicant) return res.status(400).json({ error: 'Applicant name is required.' });
+  const linked = isAlumni(req.user) ? findAlumniForUser(req.user) : null;
+  const info = db.prepare(
+    'INSERT INTO job_applications (job_id, title, company, applicant, email, resume_name, user_id, alumni_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(
+    jobId,
+    title || job?.title || '',
+    company || job?.company || '',
+    applicant,
+    email || req.user?.email || '',
+    resumeName || '',
+    isAlumni(req.user) ? req.user.id : 0,
+    linked?.id || 0
+  );
+  const row = db.prepare('SELECT * FROM job_applications WHERE id = ?').get(info.lastInsertRowid);
+  dispatchNotification({
+    userId: isAlumni(req.user) ? req.user.id : 0,
+    alumniId: linked?.id || 0,
+    recipient: email || req.user.email || applicant,
+    channel: 'SYSTEM',
+    subject: 'Job application received',
+    message: `Your application for ${row.title || 'the position'} at ${row.company || 'the employer'} was submitted.`,
+    relatedType: 'application',
+    relatedId: row.id,
+    email: email || req.user.email,
+    phone: req.user.contact
+  }).catch(() => {});
+  dispatchStaffAudience(
+    `New job application: ${row.title || 'Position'}`,
+    `${applicant} applied for ${row.title || 'a job'}.`,
+    'application',
+    row.id
+  ).catch(() => {});
+  mirror('job_applications', row);
+  res.status(201).json({ application: row });
+});
+
+router.put('/jobs/:id', requireRole('admin', 'staff'), (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Job opportunity not found.' });
+  const { title, company, location, description, status } = req.body || {};
+  db.prepare(
+    'UPDATE job_opportunities SET title = ?, company = ?, location = ?, description = ?, status = ? WHERE id = ?'
+  ).run(
+    title ?? existing.title,
+    company ?? existing.company,
+    location ?? existing.location,
+    description ?? existing.description,
+    status ?? existing.status,
+    id
+  );
+  const job = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(id);
+  mirrorUpdate('job_opportunities', job);
+  res.json({ job });
+});
+
+router.delete('/jobs/:id', requireRole('admin', 'staff'), (req, res) => {
+  const id = Number(req.params.id);
+  const info = db.prepare('DELETE FROM job_opportunities WHERE id = ?').run(id);
+  if (info.changes === 0) return res.status(404).json({ error: 'Job opportunity not found.' });
+  mirrorDelete('job_opportunities', id);
+  res.status(204).end();
+});
+
+/* ----------------------------- Announcements ------------------------------ */
+
+router.get('/announcements', (req, res) => {
+  const rows = db.prepare('SELECT * FROM announcements ORDER BY id DESC').all();
+  const visible = (isAdmin(req.user) || isStaff(req.user)) ? rows : rows.filter((a) => a.status === 'Published');
+  res.json({ announcements: visible });
+});
+
+router.post('/announcements', requireRole('admin', 'staff'), (req, res) => {
+  const { title, body, status, audience } = req.body || {};
+  if (!title) return res.status(400).json({ error: 'Announcement title is required.' });
+  const info = db.prepare('INSERT INTO announcements (title, body, status, audience) VALUES (?, ?, ?, ?)').run(
+    title, body || '', status || 'Published', audience || 'alumni'
+  );
+  const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(info.lastInsertRowid);
+  if ((status || 'Published') === 'Published') {
+    dispatchAlumniAudience(title, body || 'A new announcement was published.', 'announcement', announcement.id).catch(() => {});
+  }
+  res.status(201).json({ announcement });
+});
+
+router.get('/announcements/:id', (req, res) => {
+  const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(Number(req.params.id));
+  if (!announcement) return res.status(404).json({ error: 'Announcement not found.' });
+  if (announcement.status !== 'Published' && !isAdmin(req.user) && !isStaff(req.user)) {
+    return res.status(403).json({ error: 'This announcement is not available.' });
+  }
+  res.json({ announcement });
+});
+
+router.post('/surveys/invite', requireRole('admin', 'staff'), (req, res) => {
+  const subject = req.body?.subject || 'Survey invitation';
+  const message = req.body?.message || 'Please complete the alumni survey in the portal.';
+  dispatchAlumniAudience(subject, message, 'survey', req.body?.relatedId || '').catch(() => {});
+  res.status(201).json({ ok: true });
 });
 
 export default router;

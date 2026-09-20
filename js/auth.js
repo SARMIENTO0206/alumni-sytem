@@ -4,15 +4,6 @@
 /* Source: index.html lines 3117-3336 */
 /* ------------------------------------------------------------------------- */
 
-    /* Quick Fill Account Helper */
-    function quickFillAccount(roleKey) {
-        if (accounts[roleKey]) {
-            document.getElementById("username").value = accounts[roleKey].username;
-            document.getElementById("password").value = accounts[roleKey].password;
-            showToast(`Filled credentials for ${accounts[roleKey].title}`, "info");
-        }
-    }
-
     function togglePassword() {
         const pass = document.getElementById("password");
         const icon = document.getElementById("passwordIcon");
@@ -42,12 +33,22 @@
             } else {
                 localStorage.removeItem("rememberedUsername");
             }
-            const homePage = document.getElementById("homePage");
-            if (homePage) homePage.classList.add("hidden");
-            document.getElementById("loginPage").classList.add("hidden");
-            document.getElementById("dashboardPage").classList.remove("hidden");
+            showDashboardScreen();
+            history.replaceState({ viewId: "dashboard", auth: true }, "", "#/dashboard");
             applyUserRole();
             showToast(`Welcome back, ${currentUser.name}!`, "success");
+            if (typeof SAA_API !== "undefined" && SAA_API.refreshAllData) {
+                SAA_API.refreshAllData().then((ok) => {
+                    if (!ok) {
+                        showToast("Unable to load records from the server.", "warning");
+                        return;
+                    }
+                    if (typeof renderAlumniTable === "function") renderAlumniTable();
+                    if (typeof updateStatCounters === "function") updateStatCounters();
+                    if (typeof updateReports === "function") updateReports();
+                    if (typeof renderDashboardActivity === "function") renderDashboardActivity();
+                });
+            }
         };
 
         const showLoginError = (msg) => {
@@ -74,14 +75,7 @@
 
         tryServerLogin().then(online => {
             if (online) return;
-            /* Offline demo fallback: plaintext demo accounts only. Real authentication is server-side bcrypt. */
-            const matched = Object.values(accounts).find(acc => acc.username === username && acc.password === password);
-            if (!matched) {
-                showLoginError("Invalid username or password credentials. (API offline - demo mode.)");
-                return;
-            }
-            showToast("⚠ Running in demo mode - API server offline.", "warning");
-            enterDashboard(matched, null);
+            showLoginError("The server is unavailable. Sign in requires a registered account.");
         });
     }
 
@@ -107,30 +101,10 @@
         const finishRegistration = (displayName) => {
             closeSelfRegisterModal();
             event.target.reset();
-            document.getElementById("loginPage").classList.add("hidden");
-            document.getElementById("dashboardPage").classList.remove("hidden");
+            showDashboardScreen();
+            history.replaceState({ viewId: "dashboard", auth: true }, "", "#/dashboard");
             applyUserRole();
             showToast(`Welcome, ${displayName}! Your alumni registration was successful.`, "success");
-        };
-
-        /* Legacy offline registration fallback (demo only; no bcrypt client-side). */
-        const doLegacyRegistration = () => {
-            if (Object.values(accounts).some(acc => acc.username === username)) {
-                showToast("Username already exists. Please pick a unique username.", "error");
-                return;
-            }
-            const avatar = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
-            const newAccount = {
-                username, password, role: "alumni", name,
-                title: `Alumnus (Batch ${batch})`, avatar, studentId, batch, program, email, photoUrl: ""
-            };
-            accounts[username] = newAccount;
-            alumniList.unshift({ id: Date.now(), name, batch, program, status: "Employed", studentId });
-            updateLocalStorage();
-            currentUser = newAccount;
-            sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
-            sessionStorage.removeItem("saaToken");
-            finishRegistration(name);
         };
 
         /* Primary path: register through the backend - the password is bcrypt-hashed server-side. */
@@ -144,6 +118,12 @@
                 sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
                 if (data.token) sessionStorage.setItem("saaToken", data.token); else sessionStorage.removeItem("saaToken");
                 finishRegistration(name);
+                if (typeof SAA_API !== "undefined" && SAA_API.refreshAllData) {
+                    SAA_API.refreshAllData().then(() => {
+                        if (typeof renderAlumniTable === "function") renderAlumniTable();
+                        if (typeof updateStatCounters === "function") updateStatCounters();
+                    });
+                }
                 return;
             }
         } catch (err) {
@@ -151,8 +131,7 @@
             return;
         }
 
-        /* Offline fallback: local demo registration. */
-        doLegacyRegistration();
+        showToast("The server is unavailable. Registration requires a live account.", "error");
     }
 
     function applyUserRole() {
@@ -170,33 +149,28 @@
         document.getElementById("alumniSidebar").classList.add("hidden");
         document.getElementById("registrarSidebar").classList.add("hidden");
 
-        const adminAddBtn = document.getElementById("adminAddEventBtn");
-        if (adminAddBtn) {
-            if (currentUser.role === "admin") adminAddBtn.classList.remove("hidden");
-            else adminAddBtn.classList.add("hidden");
-        }
+        currentUser.role = (typeof normalizeRole === "function") ? normalizeRole(currentUser.role) : currentUser.role;
 
-        const adminReunionBtn = document.getElementById("adminCreateReunionBtn");
-        if (adminReunionBtn) {
-            if (currentUser.role === "admin") adminReunionBtn.classList.remove("hidden");
-            else adminReunionBtn.classList.add("hidden");
-        }
+        document.getElementById("headerUserRole").textContent = (typeof roleLabel === "function")
+            ? roleLabel(currentUser.role)
+            : currentUser.title;
+        document.getElementById("sidebarRoleName").textContent = currentUser.name || currentUser.title;
 
-        const adminNewsBtn = document.getElementById("adminNewsletterBtn");
-        if (adminNewsBtn) {
-            if (currentUser.role === "admin") adminNewsBtn.classList.remove("hidden");
-            else adminNewsBtn.classList.add("hidden");
-        }
+        if (typeof applyRoleChrome === "function") applyRoleChrome();
 
         if (currentUser.role === "admin") {
             document.getElementById("adminSidebar").classList.remove("hidden");
         } else if (currentUser.role === "alumni") {
             document.getElementById("alumniSidebar").classList.remove("hidden");
-        } else if (currentUser.role === "registrar") {
+        } else if (currentUser.role === "staff" || currentUser.role === "registrar") {
             document.getElementById("registrarSidebar").classList.remove("hidden");
         }
 
-        switchView("dashboard");
+        const parsed = parseAppLocation();
+        const initialView = (parsed.viewId && parsed.viewId !== "login" && parsed.viewId !== "home")
+            ? parsed.viewId
+            : "dashboard";
+        switchView(initialView, { replace: true, detailId: parsed.detailId });
         updateStatCounters();
         updateReports();
     }
@@ -213,20 +187,33 @@
         }
     }
 
-    function handleLogout() {
-        /* Best-effort server-side session revocation (token auth). */
+    async function handleLogout() {
         const token = sessionStorage.getItem("saaToken");
         if (token && typeof SAA_API !== "undefined") {
             SAA_API.request("/api/auth/logout", { method: "POST" }).catch(() => { /* offline */ });
         }
+        if (window.saaSupabase && window.saaSupabase.auth && typeof window.saaSupabase.auth.signOut === "function") {
+            try { await window.saaSupabase.auth.signOut(); } catch (e) { /* optional client */ }
+        }
+
         currentUser = null;
+        currentAppView = null;
+        currentDetailId = null;
         sessionStorage.removeItem("currentUser");
         sessionStorage.removeItem("saaToken");
-        document.getElementById("dashboardPage").classList.add("hidden");
-        document.getElementById("loginPage").classList.remove("hidden");
-        document.getElementById("loginForm").reset();
-        document.getElementById("loginError").classList.add("hidden");
-        closeChat();
+
+        if (typeof hideDetailPanels === "function") hideDetailPanels();
+        document.querySelectorAll("[id^='view-']").forEach((el) => el.classList.add("hidden"));
+
+        const loginForm = document.getElementById("loginForm");
+        const loginError = document.getElementById("loginError");
+        if (loginForm) loginForm.reset();
+        if (loginError) loginError.classList.add("hidden");
+        if (typeof closeChat === "function") closeChat();
+
+        showPublicScreen("login");
+        history.replaceState({ auth: "logged-out" }, "", "#/login");
+        history.pushState({ auth: "logged-out" }, "", "#/login");
         showToast("You have been securely logged out.", "info");
     }
 
@@ -248,18 +235,34 @@
     /* Role-Based Navigation Permissions */
     const rolePermissions = {
         admin: [
-            "dashboard", "database", "transcript", "reprint", "tracking", "placement", 
-            "events", "reunions", "donor", "newsletter", "feedback", "reports", 
-            "verification", "academic-records"
+            "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
+            "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback", "reports",
+            "verification", "academic-records", "request-approval", "document-processing",
+            "release-claiming", "request-history", "registrar-reports", "users", "settings",
+            "announcements", "notifications", "sms", "gmail", "ai-chat", "applications", "unauthorized",
+            "payment-return", "payment", "payment-history", "payment-receipt"
         ],
-        alumni: [
-            "dashboard", "profile", "job-opportunities", "transcript", 
-            "reprint", "tracking", "events", "reunions", "donor", "newsletter", "feedback"
+        staff: [
+            "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
+            "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback",
+            "verification", "academic-records", "request-approval", "document-processing",
+            "release-claiming", "request-history", "registrar-reports", "settings",
+            "announcements", "notifications", "sms", "gmail", "ai-chat", "applications", "unauthorized",
+            "payment-return", "payment", "payment-history", "payment-receipt"
         ],
         registrar: [
-            "dashboard", "verification", "request-approval", "document-processing", 
-            "release-claiming", "transcript", "reprint", "academic-records", 
-            "request-history", "registrar-reports"
+            "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
+            "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback",
+            "verification", "academic-records", "request-approval", "document-processing",
+            "release-claiming", "request-history", "registrar-reports", "settings",
+            "announcements", "notifications", "sms", "gmail", "ai-chat", "applications", "unauthorized",
+            "payment-return", "payment", "payment-history", "payment-receipt"
+        ],
+        alumni: [
+            "dashboard", "idcard", "profile", "job-opportunities", "transcript",
+            "reprint", "tracking", "events", "reunions", "donor", "newsletter", "feedback",
+            "request-status", "announcements", "notifications", "settings", "ai-chat",
+            "applications", "unauthorized", "payment-return", "payment", "payment-history", "payment-receipt"
         ]
     };
 

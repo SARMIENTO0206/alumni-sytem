@@ -26,7 +26,7 @@
                 name: a.name,
                 batch: a.batch,
                 lastUpdated: a.lastUpdated || "Never",
-                contact: a.contact || a.phone || "+63 917 123 4567",
+                contact: a.contact || a.phone || "",
                 status: "Needs Update",
                 reminded: !!reminders[a.id]
             }));
@@ -36,7 +36,20 @@
      * Refresh all KPI summary cards in the Graduate Tracking dashboard
      */
     function updateTrackingKPIs() {
-        const total = alumniList.length || 1;
+        const total = alumniList.length;
+        if (!total) {
+            const kpiEmp = document.getElementById("kpiEmployedRate");
+            if (kpiEmp) kpiEmp.textContent = "0%";
+            const kpiField = document.getElementById("kpiFieldRelevance");
+            if (kpiField) kpiField.textContent = "0%";
+            const kpiFresh = document.getElementById("kpiProfileFreshness");
+            if (kpiFresh) kpiFresh.textContent = "0% Up-to-Date";
+            const kpiCountEl = document.getElementById("kpiOutdatedCount");
+            if (kpiCountEl) kpiCountEl.textContent = "No alumni records yet";
+            const kpiHire = document.getElementById("kpiTimeToHire");
+            if (kpiHire) kpiHire.textContent = "—";
+            return;
+        }
         
         // 1. Employment Rate (Employed + Freelance)
         const employedCount = alumniList.filter(a => a.status === "Employed" || a.status === "Freelance").length;
@@ -46,9 +59,9 @@
 
         // 2. Field Alignment (Directly Related / Employed)
         const directlyRelated = alumniList.filter(a => a.relevance === "Directly Related").length;
-        const fieldRate = employedCount > 0 ? Math.round((directlyRelated / employedCount) * 100) : 85;
+        const fieldRate = employedCount > 0 ? Math.round((directlyRelated / employedCount) * 100) : 0;
         const kpiField = document.getElementById("kpiFieldRelevance");
-        if (kpiField) kpiField.textContent = (fieldRate > 0 ? fieldRate : 82) + "%";
+        if (kpiField) kpiField.textContent = fieldRate + "%";
 
         // 3. Profile Freshness
         const stale = detectStaleProfiles();
@@ -61,6 +74,25 @@
             kpiCountEl.textContent = stale.length + " Outdated (>6 Months)";
             kpiCountEl.className = "text-[10px] " + (stale.length > 0 ? "text-amber-600 font-semibold mt-0.5" : "text-emerald-600 font-semibold mt-0.5");
         }
+
+        const kpiHire = document.getElementById("kpiTimeToHire");
+        if (kpiHire) kpiHire.textContent = averageTimeToHireLabel();
+    }
+
+    function averageTimeToHireLabel() {
+        const mapMonths = {
+            "< 1 Month": 0.5,
+            "1-3 Months": 2,
+            "3-6 Months": 4.5,
+            "6-12 Months": 9,
+            "> 1 Year": 14
+        };
+        const values = alumniList
+            .map((a) => mapMonths[a.timeToFirst] ?? null)
+            .filter((n) => n != null);
+        if (!values.length) return "—";
+        const avg = values.reduce((sum, n) => sum + n, 0) / values.length;
+        return avg.toFixed(1) + " Months";
     }
 
     /**
@@ -105,43 +137,24 @@
         `).join("");
     }
 
-    function runSmsReminderSweep() {
-        const smsMessage = "ST. AGNES ACADEMY OF CALOOCAN: Dear Alumni, please update your employment or education status through the Alumni Management System. Your response helps the school improve its graduate tracking program. Thank you.";
-        const staleProfiles = detectStaleProfiles();
-        let dispatchedCount = 0;
-
-        if (!staleProfiles.length) {
-            showToast("No outdated profiles found. All alumni are up to date!", "info");
-            return;
+    async function runSmsReminderSweep() {
+        try {
+            const data = await SAA_API.request("/api/tracking/reminders/sweep", { method: "POST" });
+            if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
+            renderOutdatedProfilesTable();
+            showToast(`Reminders recorded for ${data.dispatchedCount || 0} alumni. SMS delivery depends on provider configuration.`, "info");
+        } catch (err) {
+            showToast(err.message || "Unable to send tracking reminders.", "error");
         }
-
-        const reminders = JSON.parse(localStorage.getItem("saaOutdatedReminders") || "{}");
-
-        staleProfiles.forEach(a => {
-            triggerNotification("SMS", a.contact, "Grad Tracking Update Reminder", smsMessage);
-            reminders[a.id] = new Date().toISOString();
-            dispatchedCount++;
-        });
-
-        localStorage.setItem("saaOutdatedReminders", JSON.stringify(reminders));
-        renderOutdatedProfilesTable();
-        showToast(`SMS Sweep Complete! Dispatched reminders to ${dispatchedCount} alumni contacts.`, "success");
     }
 
-    function sendSingleSmsReminder(id) {
+    async function sendSingleSmsReminder(id) {
         const item = detectStaleProfiles().find(a => a.id === id);
         if (!item) return;
-
-        const smsMessage = "ST. AGNES ACADEMY OF CALOOCAN: Dear Alumni, please update your employment or education status through the Alumni Management System. Your response helps the school improve its graduate tracking program. Thank you.";
-
-        triggerNotification("SMS", item.contact, "Grad Tracking Update Reminder", smsMessage);
-
-        const reminders = JSON.parse(localStorage.getItem("saaOutdatedReminders") || "{}");
-        reminders[id] = new Date().toISOString();
-        localStorage.setItem("saaOutdatedReminders", JSON.stringify(reminders));
-
+        if (typeof triggerNotification === "function") {
+            await triggerNotification("SMS", item.contact, "Grad Tracking Update Reminder", "Please update your employment or education status through the Alumni Management System.");
+        }
         renderOutdatedProfilesTable();
-        showToast(`SMS Reminder dispatched to ${item.name} (${item.contact}).`, "success");
     }
 
     /**
@@ -194,6 +207,10 @@
         if (document.getElementById("trackTimeFirst")) document.getElementById("trackTimeFirst").value = alumnus.timeToFirst || "< 1 Month";
         if (document.getElementById("trackRelevance")) document.getElementById("trackRelevance").value = alumnus.relevance || "Directly Related";
         if (document.getElementById("trackLocation")) document.getElementById("trackLocation").value = alumnus.location || "Local";
+        if (document.getElementById("trackEduSchool")) document.getElementById("trackEduSchool").value = alumnus.educationSchool || "";
+        if (document.getElementById("trackEduProgram")) document.getElementById("trackEduProgram").value = alumnus.educationProgram || "";
+        if (document.getElementById("trackEduStatus")) document.getElementById("trackEduStatus").value = alumnus.educationStatus || "";
+        if (document.getElementById("trackEduYear")) document.getElementById("trackEduYear").value = alumnus.educationYear || "";
 
         onTrackEmpStatusChange();
     }
@@ -257,77 +274,50 @@
     /**
      * Submit validated employment update
      */
-    function submitEmploymentUpdate(event) {
+    async function submitEmploymentUpdate(event) {
         event.preventDefault();
         const select = document.getElementById("trackAlumniSelect");
         const targetId = select ? parseInt(select.value) : null;
         const status = document.getElementById("trackEmpStatus").value;
         const company = document.getElementById("trackCompany").value.trim();
         const title = document.getElementById("trackJobTitle").value.trim();
-        const timeToFirst = document.getElementById("trackTimeFirst") ? document.getElementById("trackTimeFirst").value : "< 1 Month";
-        const relevance = document.getElementById("trackRelevance") ? document.getElementById("trackRelevance").value : "Directly Related";
+        const timeToFirst = document.getElementById("trackTimeFirst") ? document.getElementById("trackTimeFirst").value : "";
+        const relevance = document.getElementById("trackRelevance") ? document.getElementById("trackRelevance").value : "Not Related";
         const location = document.getElementById("trackLocation") ? document.getElementById("trackLocation").value : "Local";
-        const today = new Date().toISOString().split("T")[0];
 
         let targetAlumnus = alumniList.find(a => a.id === targetId);
         if (!targetAlumnus) {
             targetAlumnus = alumniList.find(a => currentUser && (a.name.toLowerCase() === currentUser.name.toLowerCase()));
         }
-        const alumnusName = targetAlumnus ? targetAlumnus.name : (currentUser ? currentUser.name : "Maria Clara Santos");
-        const alumnusId = targetAlumnus ? targetAlumnus.id : 1;
-
-        // 1) Update the alumni record
-        alumniList = alumniList.map(a => {
-            if (a.id === alumnusId) {
-                return {
-                    ...a,
-                    status: status,
-                    company: company,
-                    title: title,
-                    timeToFirst: timeToFirst,
-                    relevance: relevance,
-                    location: location,
-                    lastUpdated: today
-                };
-            }
-            return a;
-        });
-
-        // 2) Log placement if employed or in post-grad
-        if (status !== "Unemployed") {
-            placementLogs.unshift({
-                id: Date.now(),
-                alumni: alumnusName,
-                company: company,
-                title: title,
-                date: today
-            });
+        const alumnusId = targetAlumnus ? targetAlumnus.id : null;
+        if (!alumnusId) {
+            showToast("Select an alumni record first.", "error");
+            return;
         }
 
-        // 3) Clear any SMS reminder flags for this alumnus
-        const reminders = JSON.parse(localStorage.getItem("saaOutdatedReminders") || "{}");
-        delete reminders[alumnusId];
-        localStorage.setItem("saaOutdatedReminders", JSON.stringify(reminders));
-
-        // 4) Persist and update all dashboards (cross-module: also refresh alumni DB + KPI cards)
-        updateLocalStorage();
-        if (typeof renderPlacementLogs === 'function') renderPlacementLogs();
-        if (typeof renderAlumniTable === 'function') renderAlumniTable();
-        if (typeof updateReports === 'function') updateReports();
-        renderOutdatedProfilesTable();
-        updateTrackingKPIs();
-        renderTrackingCharts();
-        closeUpdateEmploymentModal();
-
-        // 5) Trigger notification
-        triggerNotification(
-            "EMAIL",
-            targetAlumnus && targetAlumnus.email ? targetAlumnus.email : (currentUser ? currentUser.email : "alumni@stagnes.edu.ph"),
-            "Graduate Employment Profile Updated - Verified",
-            `Dear ${alumnusName}, your employment record has been verified and updated:\n• Status: ${status}\n• Organization: ${company}\n• Position: ${title}\n• Relevance: ${relevance}\n• Location: ${location}\nDate refreshed: ${today}.`
-        );
-
-        showToast(`✔ Validated & saved! Tracking records and analytics refreshed for ${alumnusName}.`, "success");
+        try {
+            await SAA_API.request(`/api/tracking/${alumnusId}/employment`, {
+                method: "PUT",
+                body: JSON.stringify({
+                    status, company, title, timeToFirst, relevance, location,
+                    educationSchool: (document.getElementById("trackEduSchool") || {}).value || "",
+                    educationProgram: (document.getElementById("trackEduProgram") || {}).value || "",
+                    educationStatus: (document.getElementById("trackEduStatus") || {}).value || "",
+                    educationYear: (document.getElementById("trackEduYear") || {}).value || ""
+                })
+            });
+            await SAA_API.refreshAllData();
+            if (typeof renderPlacementLogs === "function") renderPlacementLogs();
+            if (typeof renderAlumniTable === "function") renderAlumniTable();
+            if (typeof updateReports === "function") updateReports();
+            renderOutdatedProfilesTable();
+            updateTrackingKPIs();
+            renderTrackingCharts();
+            closeUpdateEmploymentModal();
+            showToast("Employment information saved.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to save graduate tracking information.", "error");
+        }
     }
 
     function exportGraduateTrackingReport() {
@@ -458,7 +448,7 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 leading-relaxed">
                     <p><b>Full Name:</b> ${match.name}</p>
-                    <p><b>Student / Alumni ID:</b> ${match.studentId || `SAA-${match.batch}-00${match.id}`}</p>
+                    <p><b>Student / Alumni ID:</b> ${match.studentId || "—"}</p>
                     <p><b>Graduation Batch:</b> ${match.batch}</p>
                     <p><b>Degree / Track:</b> ${match.program}</p>
                     <p><b>Enrollment Status:</b> SAA Alumnus in Good Standing</p>
@@ -481,7 +471,7 @@
     function renderRequestApproval() {
         const box = document.getElementById("approvalRequestsList");
         if (!box) return;
-        const pending = transcriptRequests.filter(r => r.status === "Pending");
+        const pending = transcriptRequests.filter(r => ["Pending", "For Correction", "Payment Required"].includes(r.status));
         if (!pending.length) {
             box.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No pending requests at this time.</div>`;
             return;
@@ -490,11 +480,17 @@
             <div class="p-4 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
                 <div>
                     <p class="font-extrabold text-slate-800 text-sm">${r.name}</p>
-                    <p class="text-xs text-slate-400">Transcript Request • ${r.purpose || "Official Record"} • ${r.date}</p>
+                    <p class="text-xs text-slate-400">Transcript Request • ${r.purpose || "Official Record"} • ${r.date} • ${r.status} • Payment: ${(r.paymentStatus || "pending").toUpperCase()}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="updateRequestStatus(${r.id}, 'Approved')" class="btn btn-success text-xs py-1.5 px-3">Approve</button>
-                    <button onclick="updateRequestStatus(${r.id}, 'Rejected')" class="btn btn-danger text-xs py-1.5 px-3">Reject</button>
+                    ${r.status === "Payment Required" || (r.paymentStatus && r.paymentStatus !== "paid")
+                        ? `<span class="text-xs text-amber-700 font-bold">Awaiting verified GCash payment</span>`
+                        : r.status === "For Correction"
+                        ? `<span class="text-xs text-amber-700 font-bold">Waiting for alumni correction</span>`
+                        : `<button onclick="updateRequestStatus(${r.id}, 'Approved')" class="btn btn-success text-xs py-1.5 px-3">Approve</button>
+                           <button onclick="updateRequestStatus(${r.id}, 'For Correction')" class="btn btn-secondary text-xs py-1.5 px-3">Return</button>
+                           <button onclick="updateRequestStatus(${r.id}, 'Rejected')" class="btn btn-danger text-xs py-1.5 px-3">Reject</button>`}
+                    <button type="button" onclick="openTranscriptDetails(${r.id})" class="text-xs font-bold text-[#801235]">View</button>
                 </div>
             </div>
         `).join("");
@@ -504,6 +500,8 @@
         const box = document.getElementById("documentPreparationList");
         if (!box) return;
         const approvedCount = transcriptRequests.filter(r => r.status === "Approved").length;
+        const pendingCount = transcriptRequests.filter(r => r.status === "Pending").length;
+        const processingCount = transcriptRequests.filter(r => r.status === "Processing").length;
         box.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="app-card p-5 border-l-4 border-l-amber-500">
@@ -512,15 +510,23 @@
                     <p class="text-[11px] text-slate-400 mt-1">Pending seal & signatures</p>
                 </div>
                 <div class="app-card p-5 border-l-4 border-l-indigo-500">
-                    <p class="text-xs text-slate-400 font-bold uppercase">In Quality Review</p>
-                    <p class="text-3xl font-extrabold text-slate-800 mt-2">2</p>
-                    <p class="text-[11px] text-slate-400 mt-1">Registrar verification</p>
+                    <p class="text-xs text-slate-400 font-bold uppercase">Registrar Review</p>
+                    <p class="text-3xl font-extrabold text-slate-800 mt-2">${pendingCount}</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Waiting for validation</p>
                 </div>
                 <div class="app-card p-5 border-l-4 border-l-emerald-500">
-                    <p class="text-xs text-slate-400 font-bold uppercase">Ready for Claiming</p>
-                    <p class="text-3xl font-extrabold text-slate-800 mt-2">${transcriptRequests.filter(r => r.status === "Released").length}</p>
-                    <p class="text-[11px] text-slate-400 mt-1">At registrar release counter</p>
+                    <p class="text-xs text-slate-400 font-bold uppercase">Processing</p>
+                    <p class="text-3xl font-extrabold text-slate-800 mt-2">${processingCount}</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Document preparation</p>
                 </div>
+            </div>
+            <div class="mt-4 space-y-2">
+                ${transcriptRequests.filter((r) => r.status === "Approved").map((r) => `
+                    <div class="p-3 border border-slate-100 rounded-xl flex items-center justify-between">
+                        <p class="text-sm font-bold">${r.name} • ${r.purpose || "Transcript"}</p>
+                        <button type="button" onclick="updateRequestStatus(${r.id}, 'Processing')" class="btn btn-primary text-xs">Start Processing</button>
+                    </div>
+                `).join("")}
             </div>
         `;
     }
@@ -528,20 +534,22 @@
     function renderReleaseClaiming() {
         const box = document.getElementById("releaseRecordsList");
         if (!box) return;
-        const ready = transcriptRequests.filter(r => r.status === "Approved");
+        const ready = transcriptRequests.filter(r => r.status === "Ready for Release" || r.status === "Processing");
         if (!ready.length) {
-            box.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No approved documents currently awaiting pick-up.</div>`;
+            box.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No documents currently awaiting pick-up.</div>`;
             return;
         }
         box.innerHTML = ready.map(r => `
             <div class="p-4 border border-slate-200 rounded-xl flex items-center justify-between bg-white">
                 <div>
                     <p class="font-extrabold text-slate-800 text-sm">${r.name}</p>
-                    <p class="text-xs text-slate-400">Document Type: Transcript of Records</p>
+                    <p class="text-xs text-slate-400">${r.status} • ${r.claimWindow || r.delivery || "Registrar window"}</p>
                 </div>
-                <button onclick="updateRequestStatus(${r.id}, 'Released')" class="btn btn-primary text-xs py-1.5 px-3">
+                ${r.status === "Processing"
+                    ? `<button onclick="updateRequestStatus(${r.id}, 'Ready for Release')" class="btn btn-secondary text-xs py-1.5 px-3">Set Release / Claim Info</button>`
+                    : `<button onclick="updateRequestStatus(${r.id}, 'Released')" class="btn btn-primary text-xs py-1.5 px-3">
                     <i class="fa-solid fa-box-open mr-1"></i> Mark Released / Claimed
-                </button>
+                </button>`}
             </div>
         `).join("");
     }
@@ -549,6 +557,10 @@
     function renderRequestHistory() {
         const box = document.getElementById("requestHistoryList");
         if (!box) return;
+        if (!transcriptRequests.length) {
+            box.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No transcript requests yet.</div>`;
+            return;
+        }
         box.innerHTML = transcriptRequests.map(r => `
             <div class="p-4 border border-slate-100 rounded-xl flex items-center justify-between bg-slate-50/60">
                 <div>
@@ -562,7 +574,7 @@
 
     function updateReports() {
         const aCount = document.getElementById("reportAlumniCount");
-        if (aCount) aCount.textContent = (alumniList.length + 5240).toLocaleString();
+        if (aCount) aCount.textContent = String(alumniList.length);
 
         const tCount = document.getElementById("reportTranscriptCount");
         if (tCount) tCount.textContent = transcriptRequests.length;
@@ -580,12 +592,66 @@
 
         const p = document.getElementById("registrarPendingCount");
         if (p) p.textContent = transcriptRequests.filter(r => r.status === "Pending").length;
+
+        const reprintsEl = document.getElementById("registrarReprintCount");
+        if (reprintsEl) reprintsEl.textContent = String(reprintRequests.length);
+
+        const fulfilled = transcriptRequests.filter(r => r.status === "Released").length;
+        const rateEl = document.getElementById("registrarFulfillmentRate");
+        if (rateEl) {
+            rateEl.textContent = transcriptRequests.length
+                ? Math.round((fulfilled / transcriptRequests.length) * 100) + "%"
+                : "0%";
+        }
     }
 
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 5376-5476 */
 /* ------------------------------------------------------------------------- */
     /* Charts */
+    function renderGrowthChart() {
+        const canvas = document.getElementById("growthChart");
+        if (!canvas) return;
+        if (growthChartInstance) growthChartInstance.destroy();
+
+        const byBatch = {};
+        alumniList.forEach(a => {
+            const batch = String(a.batch || "Unknown");
+            byBatch[batch] = (byBatch[batch] || 0) + 1;
+        });
+        const labels = Object.keys(byBatch).sort();
+        const data = labels.map(k => byBatch[k]);
+        const trend = document.querySelector("#growthChart")?.closest(".app-card")?.querySelector(".status-badge");
+        if (trend) trend.textContent = alumniList.length ? `${alumniList.length} record${alumniList.length === 1 ? "" : "s"}` : "No records yet";
+
+        growthChartInstance = new Chart(canvas.getContext("2d"), {
+            type: "line",
+            data: {
+                labels: labels.length ? labels : ["No data"],
+                datasets: [{
+                    label: "Registered Alumni",
+                    data: labels.length ? data : [0],
+                    borderColor: "#b91c56",
+                    backgroundColor: "rgba(185, 28, 86, 0.08)",
+                    fill: true,
+                    tension: 0.35,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: "#b91c56",
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: "#f1f5f9" } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
     function renderTrackingCharts() {
         setTimeout(() => {
             const pieCanvas = document.getElementById("employmentPieChart");
@@ -628,10 +694,10 @@
                 indChartInstance = new Chart(barCanvas.getContext("2d"), {
                     type: "bar",
                     data: {
-                        labels: labels.length ? labels : ["Information Tech", "Business & Finance", "Education", "Healthcare"],
+                        labels: labels.length ? labels : ["No data"],
                         datasets: [{
                             label: "Total Alumni by Program",
-                            data: data.length ? data : [4, 3, 2, 2],
+                            data: data.length ? data : [0],
                             backgroundColor: "#801235",
                             borderRadius: 6
                         }]
@@ -757,8 +823,50 @@
         showToast("Dashboard insights generated.", "success");
     }
 
+    function applyLiveDataToUi() {
+        if (typeof updateStatCounters === "function") updateStatCounters();
+        if (typeof renderAlumniTable === "function") renderAlumniTable();
+        if (typeof updateReports === "function") updateReports();
+        if (typeof updateRegistrarReports === "function") updateRegistrarReports();
+        if (typeof renderDashboardUpcomingEvents === "function") renderDashboardUpcomingEvents();
+        if (typeof renderDashboardActivity === "function") renderDashboardActivity();
+        if (typeof renderEventsGrid === "function") renderEventsGrid();
+        if (typeof renderReunionsGrid === "function") renderReunionsGrid();
+        if (typeof renderJobsGrid === "function") renderJobsGrid();
+        if (typeof renderNewsletterArchive === "function") renderNewsletterArchive();
+        if (typeof renderDonorProgress === "function") renderDonorProgress();
+        if (typeof updateTrackingKPIs === "function") updateTrackingKPIs();
+        if (typeof renderPlacementLogs === "function") renderPlacementLogs();
+        if (typeof renderTranscriptRequests === "function") renderTranscriptRequests();
+        if (typeof renderReprintRequests === "function") renderReprintRequests();
+        if (typeof renderRequestApproval === "function") renderRequestApproval();
+        if (typeof renderDocumentPreparation === "function") renderDocumentPreparation();
+        if (typeof renderReleaseClaiming === "function") renderReleaseClaiming();
+        if (typeof renderRequestHistory === "function") renderRequestHistory();
+        if (typeof renderAcademicRecords === "function") renderAcademicRecords();
+        if (typeof updateNotificationBadge === "function") updateNotificationBadge();
+        if (typeof renderGrowthChart === "function") renderGrowthChart();
+    }
+
+    function loadPublicHomepageStats() {
+        const base = (typeof SAA_API !== "undefined" ? SAA_API.base : "") || "";
+        fetch(base + "/api/public/stats")
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (!data) return;
+                const alumniEl = document.getElementById("homeStatAlumni");
+                const eventsEl = document.getElementById("homeStatEvents");
+                const jobsEl = document.getElementById("homeStatJobs");
+                if (alumniEl) alumniEl.textContent = String(data.alumni || 0);
+                if (eventsEl) eventsEl.textContent = String(data.events || 0);
+                if (jobsEl) jobsEl.textContent = String(data.jobs || 0);
+            })
+            .catch(() => { /* homepage stays at 0 when the API is offline */ });
+    }
+
     /* Initialization */
     window.addEventListener("DOMContentLoaded", () => {
+        loadPublicHomepageStats();
         updateNotificationBadge();
         renderResumeUI();
         if (typeof renderOutdatedProfilesTable === 'function') renderOutdatedProfilesTable();
@@ -779,6 +887,13 @@
                 document.getElementById("loginPage").classList.add("hidden");
                 document.getElementById("dashboardPage").classList.remove("hidden");
                 applyUserRole();
+                if (typeof SAA_API !== "undefined" && SAA_API.refreshAllData) {
+                    SAA_API.refreshAllData().then(() => {
+                        if (typeof updateStatCounters === "function") updateStatCounters();
+                        if (typeof renderAlumniTable === "function") renderAlumniTable();
+                        if (typeof updateReports === "function") updateReports();
+                    });
+                }
             } catch (e) {
                 sessionStorage.removeItem("currentUser");
             }

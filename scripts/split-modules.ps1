@@ -44,8 +44,8 @@ Write-Module 'auth.js' '/* auth.js - Authentication, self-registration, role per
     ,@(3117,3336)
 )
 
-# 4. navigation.js - view controller, profile + page-level navigation
-Write-Module 'navigation.js' '/* navigation.js - View routing (switchView), counters, profile and page navigation. */' @(
+# 4. navigation.js - view controller, digital ID, profile + page-level navigation (3337-3612, 5565-5624)
+Write-Module 'navigation.js' '/* navigation.js - View routing (switchView), counters, digital ID, profile and page navigation. */' @(
     ,@(3337,3612)
     ,@(5565,5624)
 )

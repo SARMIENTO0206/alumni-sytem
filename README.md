@@ -23,7 +23,7 @@ automated text-message flows and OpenAI API integration.
 | `style.css`  | Design system / brand styling (maroon & gold, school typography) |
 | `logo.jpeg`  | School logo |
 | `js/`        | Front-end logic, split into 8 modules (see below) |
-| `server/`    | Node.js + Express + SQLite REST API (job, messaging, and alumni workflows), bcrypt hashing, OpenAI routes |
+| `server/`    | Node.js + Express + SQLite REST API (**45 endpoints**), bcrypt hashing, OpenAI routes |
 | `scripts/`   | Verification scripts: `test-api.ps1`, `test-ai.ps1`, `test-ai-live.ps1` |
 
 ### Front-end modules (`js/`)
@@ -34,7 +34,7 @@ automated text-message flows and OpenAI API integration.
 | `api.js`        | REST client (`SAA_API`): health probe, auth headers, error handling |
 | `utils.js`      | Toast notifications, localStorage sync |
 | `auth.js`       | Login/registration (bcrypt via API), roles, session handling |
-| `navigation.js` | View router, counters, profile, page navigation |
+| `navigation.js` | View router, counters, digital ID, profile, page navigation |
 | `records.js`    | Alumni database, transcripts, reprints, placements, academic records |
 | `engagement.js` | Events, reunions, donations, resume, notifications engine, newsletter, feedback, AI assistant chat |
 | `reports.js`    | Graduate tracking, CHED tracer study, charts, registrar workflow, AI tools, initialization |
@@ -65,9 +65,9 @@ automated communication flows and AI features:
 
 | Role | Access |
 | ---- | ------ |
-| **Administrator** | Alumni records, events, reunions, donations, newsletters, reports, AI tools; **monitors** document-request transactions and job placement logs (does not approve them) |
-| **Registrar** | Verification, request approval (approve / reject / release), document preparation, release/claiming, request history, registrar reports |
-| **Alumni** | Own profile, transcript/certificate requests (submit and track), job board, events, reunions, newsletter, surveys |
+| **Administrator** | Full access — alumni records, events, reunions, donations, newsletters, reports, AI tools |
+| **Registrar** | Verification, request approval, document preparation, release/claiming, request history, registrar reports |
+| **Alumni** | Own profile, digital ID, transcript/certificate requests, job board, events, reunions, newsletter, surveys |
 
 ## 🛠️ Troubleshooting
 
@@ -106,15 +106,6 @@ Open **http://localhost:3000** in your browser.
 > The SQLite database (`server/data/saa.db`) is created and seeded with demo data
 > automatically on first run — no migration or seed step required.
 
-### Production deployment
-
-Before exposing the system publicly, copy `server/.env.example` to
-`server/.env`, set `NODE_ENV=production`, configure `CORS_ORIGINS` with the
-exact HTTPS frontend origin, and provide unique 12-character minimum seed
-passwords. Put the Node server behind an HTTPS reverse proxy, keep
-`server/data` on persistent storage, and back up `saa.db` regularly. The
-production seed will refuse to create the default demo passwords.
-
 ### Demo accounts
 
 | Role      | Username    | Password      |
@@ -135,51 +126,20 @@ Base URL: `http://localhost:3000/api`
 All endpoints except `/health` and `/auth/login` / `/auth/register` require a
 bearer token: `Authorization: Bearer <token>` (issued by `POST /auth/login`).
 
-**61 endpoints total** — `ai(6)`, `alumni(5)`, `auth(4)`, `documents(8)`,
-`engagement(13)`, `flow/message-replies(2)`, `jobs/applications(9)`, `messages(5)`,
-`reports(4)`, `tracking(4)`, `health(1)`.
+**45 endpoints total** — `ai(6)`, `alumni(5)`, `auth(4)`, `documents(8)`,
+`engagement(13)`, `reports(4)`, `tracking(4)`, `health(1)`.
 
 - `GET  /api/health` — service status + active AI engine
 - **Auth (4):** `POST /auth/login`, `POST /auth/register`, `GET /auth/me`, `POST /auth/logout`
 - **Alumni (5):** `GET /alumni`, `POST /alumni`, `GET /alumni/:id`, `PUT /alumni/:id`, `DELETE /alumni/:id`
 - **Documents (8):** `GET/POST /transcripts`, `PUT /transcripts/:id/status`, `GET/POST /reprints`, `PUT /reprints/:id/status`, `GET/POST /placements`
 - **Tracking (4):** `GET /tracking`, `PUT /tracking/:id/employment`, `GET /tracking/stale-profiles`, `POST /tracking/reminders/sweep`
-- **Engagement:** `GET/POST /events`, `POST /events/:id/rsvp`, `GET/POST /reunions`, `GET/POST /donations`, `GET/POST /newsletters`, `GET/POST /feedback`, `GET/POST /notifications`
-- **Jobs and applications (9):** `GET /jobs`, `GET /jobs/:id`, `POST/PUT/DELETE /jobs/:id`, `POST /jobs/:id/applications`, `GET /applications`, `GET /jobs/:id/applications`, `PUT /applications/:id/status`
-- **Demo messages (5):** `GET/POST /messages/outbound`, `PUT /messages/outbound/:id/status`, `GET/POST /messages/inbound`
-- **Legacy message replies (2):** `POST /messages/:id/replies`, `GET /messages/replies` (admin/registrar)
+- **Engagement (13):** `GET/POST /events`, `POST /events/:id/rsvp`, `GET/POST /reunions`, `GET/POST /donations`, `GET/POST /newsletters`, `GET/POST /feedback`, `GET/POST /notifications`
 - **Reports (4):** `GET /reports/summary`, `GET /reports/registrar`, `GET /reports/tracer-study`, `GET /reports/tracer-study/download`
 - **AI / OpenAI (6):** `GET /ai/status`, `POST /ai/assistant`, `POST /ai/compose-announcement`, `POST /ai/gmail-auto-reply`, `POST /ai/summarize-survey`, `POST /ai/dashboard-insights`
 
-Role restrictions apply: job postings and application status changes are limited
-to admin/registrar users; authenticated alumni can submit applications and see
-their own applications. Outbound messages and message status changes are
-limited to admin/registrar users. `POST /alumni` and `DELETE /alumni/:id` are
-admin-only.
-
-### Document requests — separation of responsibilities
-
-The transcript and certificate-request flow is deliberately split so that the
-Administrator cannot approve documents:
-
-| Role | Responsibility |
-| ---- | -------------- |
-| **Alumni** | Submit a request and track its status. Sees only their own transactions. |
-| **Registrar** | Review, approve / reject, process and release. The only role allowed to change a request status. |
-| **Administrator** | Monitor transactions and reports (view-only) — no approval rights. |
-
-Enforced in both layers: `PUT /transcripts/:id/status` and
-`PUT /reprints/:id/status` require the **registrar** role (`requireRole('registrar')`),
-and the front-end decides the visible actions from the signed-in role
-(`transcriptRoles` in `js/records.js`), so the Administrator sees a view-only
-badge plus a monitoring summary instead of Approve / Reject buttons.
-
-The job board and messaging flow is database-backed for local demonstrations:
-the server seeds three open job postings, records applications in SQLite, and
-simulates SMS/email dispatch by writing `Sent` outbound messages and inbound
-replies to SQLite. No Twilio, Gmail, or other external provider is contacted.
-For a demo reply, create an outbound message, then `POST /messages/inbound`
-with its `outboundMessageId`; this advances that message to `Received`.
+Role restrictions apply: `POST /alumni` and `DELETE /alumni/:id` are admin-only,
+while `PUT /transcripts/:id/status` allows admin **and** registrar.
 
 Run the smoke test to verify everything:
 

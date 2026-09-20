@@ -1,11 +1,11 @@
+import './src/load-env.js';
 import express from 'express';
 import { dirname, join } from 'node:path';
-import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { initDb } from './src/db.js';
+import { db, initDb } from './src/db.js';
 import { requireAuth } from './src/auth.js';
 import { isAiConfigured, aiModel } from './src/ai.js';
-import { rateLimit } from './src/rate-limit.js';
+import { getSupabaseConfig, pingSupabase } from './src/supabase.js';
 import authRoutes from './src/routes/auth.js';
 import alumniRoutes from './src/routes/alumni.js';
 import documentsRoutes from './src/routes/documents.js';
@@ -13,46 +13,36 @@ import trackingRoutes from './src/routes/tracking.js';
 import engagementRoutes from './src/routes/engagement.js';
 import reportsRoutes from './src/routes/reports.js';
 import aiRoutes from './src/routes/ai.js';
-import jobsRoutes from './src/routes/jobs.js';
-import messagesRoutes from './src/routes/messages.js';
-import flowRoutes from './src/routes/flow.js';
+import usersRoutes from './src/routes/users.js';
+import settingsRoutes from './src/routes/settings.js';
+import paymentsRoutes, { handlePaymongoWebhook } from './src/routes/payments.js';
+import notificationRoutes from './src/routes/notifications.js';
+import { paymongoConfig } from './src/paymongo.js';
+import { mailAndSmsHealth } from './src/notify.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..');
-
-/* Load server/.env using Node's built-in loader (no extra dependency).
- * server/.env.example is the template; .env itself is gitignored so the
- * OpenAI credential is never committed nor exposed to the frontend. */
-const envFile = join(__dirname, '.env');
-if (existsSync(envFile)) {
-  try {
-    process.loadEnvFile(envFile);
-  } catch (err) {
-    console.warn(`  Could not read server/.env: ${err.message}`);
-  }
-}
-
 const PORT = Number(process.env.PORT) || 3000;
-const allowedOrigins = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean);
 
 const app = express();
+/* PayMongo webhook must read the raw body for HMAC verification. */
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
+  Promise.resolve(handlePaymongoWebhook(req, res)).catch(next);
+});
 app.use(express.json({ limit: '2mb' }));
-app.use('/api', rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  message: 'Too many requests. Please try again later.'
-}));
 
+/* Permissive CORS for local development; restrict in production with CORS_ORIGINS. */
 app.use((req, res, next) => {
+  const raw = String(process.env.CORS_ORIGINS || '*').trim();
   const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || (origin === 'null' && process.env.NODE_ENV !== 'production'))) {
-    res.set('Access-Control-Allow-Origin', origin);
+  if (raw === '*') {
+    res.set('Access-Control-Allow-Origin', '*');
+  } else {
+    const allowed = raw.split(',').map((s) => s.trim()).filter(Boolean);
+    if (origin && allowed.includes(origin)) res.set('Access-Control-Allow-Origin', origin);
     res.set('Vary', 'Origin');
   }
-  res.set('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
@@ -60,12 +50,70 @@ app.use((req, res, next) => {
 
 initDb();
 
-app.get('/api/health', (req, res) => {
+const supabaseConfig = getSupabaseConfig();
+let supabaseStatus = {
+  configured: supabaseConfig.configured,
+  urlConfigured: supabaseConfig.urlConfigured,
+  keyConfigured: supabaseConfig.keyConfigured,
+  authReachable: false,
+  postgresConnected: false,
+  message: supabaseConfig.keyConfigured
+    ? 'Checking Supabase connection...'
+    : 'Add SUPABASE_ANON_KEY to server/.env (anon public key only, not service_role).'
+};
+
+function refreshSupabaseStatus() {
+  pingSupabase().then((supabase) => {
+    supabaseStatus = {
+      configured: supabase.configured,
+      urlConfigured: supabase.urlConfigured,
+      keyConfigured: supabase.keyConfigured,
+      authReachable: supabase.auth.ok,
+      postgresConnected: supabase.postgres.ok,
+      message: supabase.message
+    };
+  }).catch(() => {
+    supabaseStatus = {
+      ...supabaseStatus,
+      authReachable: false,
+      postgresConnected: false,
+      message: 'Could not reach the Supabase project URL.'
+    };
+  });
+}
+
+refreshSupabaseStatus();
+
+app.get('/api/public/stats', (req, res) => {
+  const count = (sql) => db.prepare(sql).get().n;
   res.json({
-    ok: true,
+    alumni: count('SELECT COUNT(*) AS n FROM alumni'),
+    events: count('SELECT COUNT(*) AS n FROM events'),
+    jobs: count("SELECT COUNT(*) AS n FROM job_opportunities WHERE status = 'Published'")
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  let sqliteOk = false;
+  try {
+    sqliteOk = db.prepare('SELECT 1 AS ok').get()?.ok === 1;
+  } catch {
+    sqliteOk = false;
+  }
+
+  res.json({
+    ok: sqliteOk,
     service: 'SAA Alumni Management System API',
     time: new Date().toISOString(),
-    ai: { configured: isAiConfigured(), model: isAiConfigured() ? aiModel() : null }
+    ai: { configured: isAiConfigured(), model: isAiConfigured() ? aiModel() : null },
+    sqlite: { connected: sqliteOk },
+    supabase: supabaseStatus,
+    payments: {
+      gateway: 'paymongo',
+      configured: paymongoConfig().configured,
+      mode: paymongoConfig().mode
+    },
+    ...mailAndSmsHealth()
   });
 });
 
@@ -74,22 +122,15 @@ app.use('/api/alumni', requireAuth, alumniRoutes);
 app.use('/api/tracking', requireAuth, trackingRoutes);
 app.use('/api/reports', requireAuth, reportsRoutes);
 app.use('/api/ai', requireAuth, aiRoutes);          // assistant, compose, gmail-auto-reply, summaries, insights
-app.use('/api', requireAuth, flowRoutes);           // legacy inbound message replies
+app.use('/api/users', requireAuth, usersRoutes);
+app.use('/api/settings', requireAuth, settingsRoutes);
+app.use('/api/payments', requireAuth, paymentsRoutes);
+app.use('/api/notifications', requireAuth, notificationRoutes);
 app.use('/api', requireAuth, documentsRoutes);      // /transcripts, /reprints, /placements
-app.use('/api', requireAuth, engagementRoutes);     // /events, /reunions, /donations, /newsletters, /feedback, /notifications
-app.use('/api', requireAuth, jobsRoutes);            // /jobs, /applications
-app.use('/api', requireAuth, messagesRoutes);        // demo outbound messages and inbound replies
+app.use('/api', requireAuth, engagementRoutes);     // /events, /reunions, /donations, /newsletters, /feedback
 
-/* Serve ONLY the SPA front-end assets (index.html + js/ + style.css + logo.jpeg).
- * NOTE: never serve the whole PROJECT_ROOT - that would expose the backend source
- * (server/src/*.js), the SQLite database (server/data/saa.db, which stores the
- * bcrypt password hashes) and the verification scripts over plain HTTP. */
-const FRONTEND_FILES = ['index.html', 'style.css', 'logo.jpeg'];
-for (const file of FRONTEND_FILES) {
-  app.get(`/${file}`, (req, res) => res.sendFile(join(PROJECT_ROOT, file)));
-}
-app.use('/js', express.static(join(PROJECT_ROOT, 'js'), { dotfiles: 'deny' }));
-app.get('/', (req, res) => res.sendFile(join(PROJECT_ROOT, 'index.html')));
+/* Serve the SPA (index.html + js/ + style.css + logo.jpeg). */
+app.use(express.static(PROJECT_ROOT, { index: 'index.html' }));
 
 app.use((err, req, res, next) => {
   console.error('[api] Unhandled error:', err);
@@ -100,13 +141,17 @@ app.listen(PORT, () => {
   console.log('  ');
   console.log('  St. Agnes Academy of Caloocan - Alumni Management System');
   console.log(`  API + Site running at  http://localhost:${PORT}`);
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('  Demo accounts:  admin/admin123  alumni/alumni123  registrar/registrar123');
-  }
+  const payments = paymongoConfig();
   console.log(
     isAiConfigured()
       ? `  AI engine:      OpenAI API (model: ${aiModel()})`
       : '  AI engine:      Built-in fallback (add OPENAI_API_KEY to server/.env for OpenAI)'
   );
+  console.log(
+    payments.configured
+      ? `  Payments:       PayMongo (${payments.mode})`
+      : '  Payments:       PayMongo not configured (add PAYMONGO_SECRET_KEY to server/.env)'
+  );
+  console.log(`  Supabase:       ${supabaseStatus.message}`);
   console.log('  ');
 });

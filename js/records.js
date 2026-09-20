@@ -10,6 +10,12 @@
         if (!body) return;
         body.innerHTML = "";
 
+        if (!alumniList.length) {
+            body.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-semibold">No alumni records yet. Add your first alumni record to get started.</td></tr>`;
+            updateStatCounters();
+            return;
+        }
+
         alumniList.forEach(item => {
             const tr = document.createElement("tr");
             const statusClass = item.status === "Employed" ? "status-employed" :
@@ -18,13 +24,18 @@
 
             tr.innerHTML = `
                 <td class="font-extrabold text-slate-800">
-                    <div>${item.name}</div>
-                    <div class="text-[10px] text-slate-400 font-mono">${item.studentId || `SAA-${item.batch}-00${item.id}`}</div>
+                    <button type="button" onclick="openAlumniDetails(${item.id})" class="text-left hover:text-brand-magenta hover:underline">
+                        <div>${item.name}</div>
+                        <div class="text-[10px] text-slate-400 font-mono">${item.studentId || "—"}</div>
+                    </button>
                 </td>
                 <td class="font-semibold text-slate-600">${item.batch}</td>
                 <td class="text-slate-500">${item.program}</td>
                 <td><span class="status-badge ${statusClass}">${item.status}</span></td>
                 <td class="text-right">
+                    <button type="button" onclick="openAlumniDetails(${item.id})" class="text-xs text-slate-600 hover:underline font-bold mr-3">
+                        <i class="fa-solid fa-eye"></i> View
+                    </button>
                     ${currentUser?.role === "admin" ? `
                         <button onclick="openOfficialCertificate(${item.id})" class="text-xs text-amber-600 hover:underline font-bold mr-3" title="Generate Official Certificate">
                             <i class="fa-solid fa-award"></i> Certificate
@@ -44,13 +55,151 @@
         updateStatCounters();
     }
 
-    function searchAlumniTable() {
-        const query = document.getElementById("dbSearch")?.value.toLowerCase() || "";
-        const filter = document.getElementById("filterStatus")?.value || "";
+    function openAlumniDetails(id) {
+        switchView("database", { detailId: id });
+    }
 
+    function showAlumniDetails(id, silent) {
+        const item = alumniList.find((a) => String(a.id) === String(id));
+        const list = document.getElementById("alumniListPanel");
+        const panel = document.getElementById("alumniDetailPanel");
+        if (!item || !panel) return;
+        if (list) list.classList.add("hidden");
+        panel.classList.remove("hidden");
+        document.getElementById("alumniDetailName").textContent = item.name || "Alumni";
+        document.getElementById("alumniDetailStudentId").textContent = item.studentId || "";
+        document.getElementById("alumniDetailBatch").textContent = item.batch || "—";
+        document.getElementById("alumniDetailProgram").textContent = item.program || "—";
+        document.getElementById("alumniDetailCompany").textContent = item.company || "—";
+        document.getElementById("alumniDetailTitle").textContent = item.title || item.jobTitle || "—";
+        const statusEl = document.getElementById("alumniDetailStatus");
+        if (statusEl) statusEl.textContent = item.status || "—";
+        const actions = document.getElementById("alumniDetailActions");
+        if (actions) {
+            const adminBtns = currentUser?.role === "admin"
+                ? `<button type="button" onclick="editAlumniModal(${item.id})" class="btn btn-primary text-xs">Edit Record</button>
+                   <button type="button" onclick="openOfficialCertificate(${item.id})" class="btn btn-secondary text-xs">Certificate</button>`
+                : `<button type="button" onclick="openOfficialCertificate(${item.id})" class="btn btn-secondary text-xs">View Certificate</button>`;
+            actions.innerHTML = adminBtns;
+        }
+        if (!silent) switchView("database", { detailId: item.id });
+    }
+
+    function openTranscriptDetails(id) {
+        switchView("transcript", { detailId: id });
+    }
+
+    async function showTranscriptDetails(id, silent) {
+        let item = transcriptRequests.find((r) => String(r.id) === String(id));
+        let history = [];
+        let attachments = item && item.attachments ? item.attachments : [];
+        if (typeof SAA_API !== "undefined") {
+            try {
+                const data = await SAA_API.request(`/api/transcripts/${id}`);
+                item = data.request || item;
+                history = data.history || [];
+                attachments = data.attachments || attachments;
+                if (item && !transcriptRequests.some((r) => String(r.id) === String(item.id))) transcriptRequests.unshift(item);
+            } catch (err) {
+                if (!item) {
+                    showToast(err.message || "You cannot open this transcript request.", "error");
+                    return;
+                }
+            }
+        }
+        const list = document.getElementById("transcriptListPanel");
+        const panel = document.getElementById("transcriptDetailPanel");
+        if (!item || !panel) return;
+        if (list) list.classList.add("hidden");
+        panel.classList.remove("hidden");
+        document.getElementById("transcriptDetailName").textContent = item.name || "Request";
+        document.getElementById("transcriptDetailDate").textContent = item.date || "—";
+        document.getElementById("transcriptDetailStatus").textContent = item.status || "—";
+        document.getElementById("transcriptDetailPurpose").textContent = item.purpose || "Official Record";
+        const remarksEl = document.getElementById("transcriptDetailRemarks");
+        if (remarksEl) remarksEl.textContent = item.remarks || item.correctionNotes || "—";
+        const claimEl = document.getElementById("transcriptDetailClaim");
+        if (claimEl) {
+            const bits = [item.delivery, item.claimWindow, item.claimNotes, item.releasedAt ? `Released ${item.releasedAt}` : ""].filter(Boolean);
+            claimEl.textContent = bits.join(" • ") || "Not set yet.";
+        }
+        const attBox = document.getElementById("transcriptDetailAttachments");
+        if (attBox) {
+            attBox.innerHTML = attachments.length
+                ? `<p class="text-[10px] font-bold text-slate-400 uppercase">Supporting documents</p>` + attachments.map((f) =>
+                    `<a class="block text-xs text-[#801235] font-bold" href="${f.dataUri}" download="${f.fileName}">${f.fileName}</a>`
+                ).join("")
+                : `<p class="text-xs text-slate-400">No supporting documents uploaded.</p>`;
+        }
+        const histBox = document.getElementById("transcriptDetailHistory");
+        if (histBox) {
+            histBox.innerHTML = history.length
+                ? `<p class="text-[10px] font-bold text-slate-400 uppercase">Request history</p>` + history.map((h) =>
+                    `<p>${h.createdAt || ""} • ${h.action}${h.remarks ? " — " + h.remarks : ""}</p>`
+                ).join("")
+                : "";
+        }
+        const role = typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role;
+        const isProcessor = ["admin", "staff", "registrar"].includes(role);
+        const isOwnerAlumni = role === "alumni";
+        const needsPay = item.paymentStatus && item.paymentStatus !== "paid";
+        const paid = !needsPay;
+        const actions = document.getElementById("transcriptDetailActions");
+        if (actions) {
+            let html = "";
+            if (needsPay && isOwnerAlumni) html += `<button type="button" onclick="payDocumentRequest('transcript', ${item.id})" class="btn btn-primary text-xs">Pay QR</button>`;
+            html += `<button type="button" onclick="openClaimStub(${item.id})" class="btn btn-secondary text-xs">View Claim Stub</button>`;
+            if (isOwnerAlumni && item.canCancel) html += `<button type="button" onclick="cancelDocumentRequest('transcript', ${item.id})" class="btn btn-danger text-xs">Cancel Request</button>`;
+            if (isProcessor && item.status === "Pending" && paid) {
+                html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Approved')" class="btn btn-success text-xs">Approve</button>`;
+                html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Rejected')" class="btn btn-danger text-xs">Reject</button>`;
+                html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'For Correction')" class="btn btn-secondary text-xs">Return for Correction</button>`;
+            }
+            if (isProcessor && item.status === "Approved") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Processing')" class="btn btn-primary text-xs">Start Processing</button>`;
+            if (isProcessor && item.status === "Processing") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Ready for Release')" class="btn btn-primary text-xs">Ready for Release</button>`;
+            if (isProcessor && item.status === "Ready for Release") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Released')" class="btn btn-primary text-xs">Mark Released / Claimed</button>`;
+            actions.innerHTML = html;
+        }
+        const forms = document.getElementById("transcriptDetailForms");
+        if (forms) {
+            if (isOwnerAlumni && item.status === "For Correction") {
+                forms.innerHTML = `
+                    <div class="p-3 rounded-xl border border-amber-200 bg-amber-50 space-y-2">
+                        <p class="text-xs font-bold text-amber-800">The Registrar asked for a correction.</p>
+                        <textarea id="correctionNotes" class="form-textarea text-xs" rows="3" placeholder="Describe the updated information"></textarea>
+                        <input type="file" id="correctionFiles" accept=".pdf,.png,.jpg,.jpeg" multiple class="form-input text-xs">
+                        <button type="button" onclick="submitCorrectionResponse('transcript', ${item.id})" class="btn btn-primary text-xs">Submit Correction</button>
+                    </div>`;
+            } else {
+                forms.innerHTML = "";
+            }
+        }
+        if (!silent) switchView("transcript", { detailId: item.id });
+    }
+
+    async function searchAlumniTable() {
+        const query = document.getElementById("dbSearch")?.value || "";
+        const filter = document.getElementById("filterStatus")?.value || "";
+        try {
+            if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
+                const params = new URLSearchParams();
+                if (query) params.set("q", query);
+                if (filter) params.set("status", filter);
+                const data = await SAA_API.request(`/api/alumni?${params.toString()}`);
+                alumniList = data.alumni || [];
+                const body = document.getElementById("alumniTableBody");
+                if (body) {
+                    body.innerHTML = "";
+                    renderAlumniTable();
+                }
+                return;
+            }
+        } catch (err) {
+            showToast("Unable to search alumni records.", "error");
+        }
         document.querySelectorAll("#alumniTableBody tr").forEach(row => {
             const text = row.innerText.toLowerCase();
-            const matchesQuery = text.includes(query);
+            const matchesQuery = text.includes(query.toLowerCase());
             const matchesFilter = filter === "" || text.includes(filter.toLowerCase());
             row.style.display = (matchesQuery && matchesFilter) ? "" : "none";
         });
@@ -116,36 +265,59 @@
         document.getElementById("addAlumniModal").classList.remove("active");
     }
 
-    function saveAlumniRecord(event) {
+    async function saveAlumniRecord(event) {
         event.preventDefault();
         const editId = document.getElementById("editAlumniId").value;
         const name = document.getElementById("newAlumniName").value.trim();
         const batch = document.getElementById("newAlumniBatch").value;
         const program = document.getElementById("newAlumniProgram").value.trim();
         const status = document.getElementById("newAlumniEmployment").value;
-
-        if (editId) {
-            alumniList = alumniList.map(a => a.id == editId ? { ...a, name, batch, program, status } : a);
-            showToast(`Updated record for ${name}.`, "success");
-        } else {
-            const studentId = `SAA-${batch}-${Math.floor(1000 + Math.random() * 9000)}`;
-            alumniList.unshift({ id: Date.now(), name, batch, program, status, studentId });
-            showToast(`Added new alumnus: ${name}`, "success");
+        if (!name) {
+            showToast("Name is required.", "error");
+            return;
         }
 
-        updateLocalStorage();
-        renderAlumniTable();
-        closeAddAlumniModal();
+        try {
+            if (typeof SAA_API === "undefined" || !(await SAA_API.health())) {
+                showToast("Unable to save alumni record. The server is offline.", "error");
+                return;
+            }
+            if (editId) {
+                await SAA_API.request(`/api/alumni/${editId}`, {
+                    method: "PUT",
+                    body: JSON.stringify({ name, batch, program, status })
+                });
+                showToast(`Updated record for ${name}.`, "success");
+            } else {
+                await SAA_API.request("/api/alumni", {
+                    method: "POST",
+                    body: JSON.stringify({ name, batch, program, status })
+                });
+                showToast(`Added new alumnus: ${name}`, "success");
+            }
+            await SAA_API.refreshAllData();
+            renderAlumniTable();
+            closeAddAlumniModal();
+        } catch (err) {
+            showToast(err.message || "Unable to save alumni record. Please try again.", "error");
+        }
     }
 
-    function deleteAlumni(id) {
+    async function deleteAlumni(id) {
         if (currentUser?.role !== "admin") return;
         if (!confirm("Are you sure you want to permanently delete this alumni record?")) return;
-
-        alumniList = alumniList.filter(a => a.id !== id);
-        updateLocalStorage();
-        renderAlumniTable();
-        showToast("Alumni record deleted.", "info");
+        try {
+            if (typeof SAA_API === "undefined" || !(await SAA_API.health())) {
+                showToast("Unable to delete alumni record. The server is offline.", "error");
+                return;
+            }
+            await SAA_API.request(`/api/alumni/${id}`, { method: "DELETE" });
+            await SAA_API.refreshAllData();
+            renderAlumniTable();
+            showToast("Alumni record deleted.", "info");
+        } catch (err) {
+            showToast(err.message || "Unable to delete alumni record.", "error");
+        }
     }
 
     /* Document Requests */
@@ -156,14 +328,45 @@
         const emailEl = document.getElementById("docEmail");
         const contactEl = document.getElementById("docContact");
 
-        if (emailEl) emailEl.value = currentUser ? (currentUser.email || "alumni@stagnes.edu.ph") : "alumni@stagnes.edu.ph";
-        if (contactEl) contactEl.value = currentUser ? (currentUser.contact || "+63 917 888 9999") : "+63 917 888 9999";
+        if (emailEl) emailEl.value = currentUser ? (currentUser.email || "") : "";
+        if (contactEl) contactEl.value = currentUser ? (currentUser.contact || "") : "";
 
         document.getElementById("requestDocModal").classList.add("active");
+        if (typeof updateDocumentFeePreview === "function") updateDocumentFeePreview();
+    }
+
+    async function updateDocumentFeePreview() {
+        const el = document.getElementById("docFeePreview");
+        const delivery = document.getElementById("docDelivery") ? document.getElementById("docDelivery").value : "";
+        if (!el) return;
+        try {
+            const data = await SAA_API.request(`/api/payments/quote?relatedType=transcript&delivery=${encodeURIComponent(delivery)}`);
+            el.textContent = `₱${Number(data.amount || 0).toFixed(2)}`;
+        } catch (err) {
+            el.textContent = delivery && delivery.includes("Courier") ? "₱300.00" : "₱150.00";
+        }
     }
 
     function closeRequestDocModal() {
         document.getElementById("requestDocModal").classList.remove("active");
+    }
+
+    function readFilesAsAttachments(input) {
+        const files = input && input.files ? Array.from(input.files).slice(0, 3) : [];
+        return Promise.all(files.map((file) => new Promise((resolve, reject) => {
+            if (file.size > 1024 * 1024) {
+                reject(new Error(`${file.name} is larger than 1 MB.`));
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => resolve({
+                fileName: file.name,
+                mimeType: file.type,
+                dataUri: reader.result
+            });
+            reader.onerror = () => reject(new Error(`Unable to read ${file.name}.`));
+            reader.readAsDataURL(file);
+        })));
     }
 
     function submitDocumentRequest(event) {
@@ -171,124 +374,52 @@
         const type = document.getElementById("docType").value;
         const purpose = document.getElementById("docPurpose").value;
         const delivery = document.getElementById("docDelivery") ? document.getElementById("docDelivery").value : "Pick-up at Registrar Window";
-        const email = document.getElementById("docEmail") ? document.getElementById("docEmail").value : (currentUser?.email || "alumni@stagnes.edu.ph");
-        const contact = document.getElementById("docContact") ? document.getElementById("docContact").value : "+63 917 888 9999";
+        const email = document.getElementById("docEmail") ? document.getElementById("docEmail").value : (currentUser?.email || "");
+        const contact = document.getElementById("docContact") ? document.getElementById("docContact").value : (currentUser?.contact || "");
+        const copies = document.getElementById("docCopies") ? document.getElementById("docCopies").value : 1;
 
-        const processSubmission = (payRef) => {
-            const newReq = {
-                id: Date.now(),
-                name: currentUser ? currentUser.name : "Maria Clara Santos",
-                email: email,
-                contact: contact,
-                date: new Date().toISOString().split("T")[0],
-                purpose: purpose,
-                status: "Pending",
-                type: type,
-                delivery: delivery,
-                paymentRef: payRef || "N/A"
-            };
-
-            transcriptRequests.unshift(newReq);
-            updateLocalStorage();
-            renderTranscriptRequests();
-            closeRequestDocModal();
-
-            triggerNotification(
-                "EMAIL",
-                email,
-                `Request Confirmation - ${type}`,
-                `Your official request for ${type} (${purpose}) has been submitted to the Registrar. Notifications will be sent to ${email}.`
-            );
-
-            triggerNotification(
-                "SMS",
-                contact,
-                `SAA Registrar Alert`,
-                `Request #${newReq.id.toString().slice(-4)} submitted for ${type}. Delivery: ${delivery}.`
-            );
-
-            showToast(`Request for ${type} submitted. Email confirmation sent to ${email}`, "success");
+        const payload = {
+            name: currentUser ? currentUser.name : "",
+            email: email,
+            contact: contact,
+            purpose: purpose,
+            type: type,
+            delivery: delivery,
+            copies
         };
-
-        if (delivery.includes("Courier")) {
-            closeRequestDocModal();
-            openPaymentGateway(150, "Courier Shipping & Delivery Fee", `${type} Courier Delivery`, (ref) => {
-                processSubmission(ref);
-            });
-        } else {
-            processSubmission(null);
+        if (!payload.name || !purpose) {
+            showToast("Name and purpose are required.", "error");
+            return;
         }
-    }
-
-    /**
-     * Shared Transcript / Document Request view.
-     *
-     * Separation of responsibilities:
-     *   alumni     -> submit and track their own requests (no approval rights)
-     *   registrar  -> review, approve / reject, process and update status
-     *   admin      -> monitor transactions and reports only (no approval rights)
-     */
-    const transcriptRoles = {
-        admin: {
-            title: "Document Request Monitoring",
-            subtitle: "Consolidated view of all transcript and document request transactions.",
-            notice: "Administrator access is view-only monitoring. Review and approval is performed by the Registrar.",
-            noticeClass: "text-slate-500",
-            actionsHeader: "Monitoring",
-            canApprove: false,
-            monitor: true,
-            canRequest: false
-        },
-        registrar: {
-            title: "Transcript & Academic Records Requests",
-            subtitle: "Review, approve or reject incoming requests, then process and release the documents.",
-            notice: "Registrar access: validate the academic record, then approve or reject each pending request.",
-            noticeClass: "text-[#801235]",
-            actionsHeader: "Actions",
-            canApprove: true,
-            monitor: false,
-            canRequest: false
-        },
-        alumni: {
-            title: "My Transcript Requests",
-            subtitle: "Submit document requests and track their status until the document is released.",
-            notice: "Alumni access: submit a request, then track its status here. Approval is handled by the Registrar.",
-            noticeClass: "text-slate-500",
-            actionsHeader: "Tracking",
-            canApprove: false,
-            monitor: false,
-            canRequest: true
-        }
-    };
-
-    /** Returns the capability set for the signed-in role (defaults to the most limited). */
-    function transcriptRole() {
-        const role = currentUser ? currentUser.role : "";
-        return transcriptRoles[role] || transcriptRoles.alumni;
-    }
-
-    /**
-     * Normalises a person name for comparison: lower-cased, punctuation removed and
-     * single-letter middle initials dropped, so "Maria Clara D. Santos" and
-     * "Maria Clara Santos" are recognised as the same requestor.
-     */
-    function normaliseRequesterName(value) {
-        return String(value || "")
-            .toLowerCase()
-            .replace(/[^a-z\s]/g, " ")
-            .split(/\s+/)
-            .filter(token => token.length > 1)
-            .join(" ");
-    }
-
-    /** True when the request belongs to the signed-in alumnus (by e-mail or by name). */
-    function isOwnRequest(item) {
-        const ownEmail = String((currentUser && currentUser.email) || "").trim().toLowerCase();
-        const itemEmail = String(item.email || "").trim().toLowerCase();
-        if (ownEmail && itemEmail && ownEmail === itemEmail) return true;
-
-        const ownName = normaliseRequesterName(currentUser && currentUser.name);
-        return Boolean(ownName) && normaliseRequesterName(item.name) === ownName;
+        (async () => {
+            try {
+                if (typeof SAA_API === "undefined" || !(await SAA_API.health())) {
+                    showToast("Unable to submit the request. The server is offline.", "error");
+                    return;
+                }
+                payload.attachments = await readFilesAsAttachments(document.getElementById("docAttachments"));
+                const isReprint = type && String(type).toLowerCase().includes("reprint");
+                const path = isReprint ? "/api/reprints" : "/api/transcripts";
+                const created = await SAA_API.request(path, { method: "POST", body: JSON.stringify(payload) });
+                await SAA_API.refreshAllData();
+                renderTranscriptRequests();
+                renderReprintRequests();
+                closeRequestDocModal();
+                const record = created.request || created.reprint;
+                const fee = Number(record && record.fee ? record.fee : 0);
+                showToast(`Request submitted. Status is ${record.status}. The Registrar reviews requests after payment.`, "info");
+                if (record && record.paymentStatus !== "paid") {
+                    payDocumentRequest(
+                        isReprint ? "reprint" : "transcript",
+                        record.id,
+                        fee,
+                        isReprint ? "Certificate reprint fee" : "Document request fee"
+                    );
+                }
+            } catch (err) {
+                showToast(err.message || "Unable to submit the request. Please try again.", "error");
+            }
+        })();
     }
 
     function renderTranscriptRequests() {
@@ -296,149 +427,139 @@
         if (!body) return;
         body.innerHTML = "";
 
-        const caps = transcriptRole();
-
-        // Role-aware header, subtitle and responsibility notice.
-        const titleEl = document.getElementById("transcriptViewTitle");
-        if (titleEl) titleEl.textContent = caps.title;
-        const subtitleEl = document.getElementById("transcriptViewSubtitle");
-        if (subtitleEl) subtitleEl.textContent = caps.subtitle;
-
-        const noticeEl = document.getElementById("transcriptRoleNotice");
-        if (noticeEl) {
-            noticeEl.textContent = caps.notice;
-            noticeEl.className = `text-[11px] font-bold mt-2 ${caps.noticeClass}`;
-        }
-
-        const actionsHeader = document.getElementById("transcriptActionsHeader");
-        if (actionsHeader) actionsHeader.textContent = caps.actionsHeader;
-
-        // Only a requester may file a new request; monitoring / approving roles may not.
-        toggleDashboardButton("transcriptRequestBtn", caps.canRequest);
-
-        // Administrator monitoring strip.
-        const monitorBar = document.getElementById("transcriptMonitorBar");
-        if (monitorBar) monitorBar.classList.toggle("hidden", !caps.monitor);
-        if (caps.monitor) {
-            const countOf = (status) => transcriptRequests.filter(r => r.status === status).length;
-            const setCount = (id, value) => {
-                const el = document.getElementById(id);
-                if (el) el.textContent = String(value);
-            };
-            setCount("transcriptMonitorTotal", transcriptRequests.length);
-            setCount("transcriptMonitorPending", countOf("Pending"));
-            setCount("transcriptMonitorApproved", countOf("Approved") + countOf("Released"));
-            setCount("transcriptMonitorRejected", countOf("Rejected"));
-        }
-
-        // Alumni only track their own transactions; staff see the whole register.
-        const rows = caps.canRequest
-            ? transcriptRequests.filter(isOwnRequest)
-            : transcriptRequests;
-
-        if (!rows.length) {
-            const empty = document.createElement("tr");
-            empty.innerHTML = `
-                <td colspan="5" class="py-10 text-center text-slate-400 font-semibold">
-                    <i class="fa-regular fa-folder-open text-xl block mb-2"></i>
-                    No document requests to display.
-                </td>`;
-            body.appendChild(empty);
+        if (!transcriptRequests.length) {
+            body.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-semibold">No transcript requests yet.</td></tr>`;
             return;
         }
 
-        rows.forEach(item => {
+        transcriptRequests.forEach(item => {
             const tr = document.createElement("tr");
             const statusClass = item.status === "Approved" ? "status-approved" :
                                 item.status === "Rejected" ? "status-rejected" :
                                 item.status === "Released" ? "status-released" : "status-pending";
 
-            // Only the Registrar may act on a request.
-            const canApprove = caps.canApprove && item.status === "Pending";
-            const canRelease = caps.canApprove && item.status === "Approved";
-
-            let actionCell = `<span class="text-xs text-slate-400 font-semibold">${item.status}</span>`;
-            if (caps.monitor) {
-                actionCell = `<span class="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                                  <i class="fa-regular fa-eye mr-1"></i>View only
-                              </span>`;
-            } else if (canApprove) {
-                actionCell = `
-                        <button onclick="updateRequestStatus(${item.id}, 'Approved')" class="btn btn-success text-xs px-2.5 py-1 mr-1">Approve</button>
-                        <button onclick="updateRequestStatus(${item.id}, 'Rejected')" class="btn btn-danger text-xs px-2.5 py-1">Reject</button>`;
-            } else if (canRelease) {
-                actionCell = `
-                        <button onclick="updateRequestStatus(${item.id}, 'Released')" class="btn btn-primary text-xs px-2.5 py-1">
-                            <i class="fa-solid fa-box-open mr-1"></i>Mark Released
-                        </button>`;
-            } else if (item.status === "Pending") {
-                actionCell = `<span class="text-xs text-amber-600 font-bold"><i class="fa-regular fa-clock mr-1"></i>Awaiting Registrar</span>`;
-            }
+            const role = typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role;
+            const canProcess = ["admin", "staff", "registrar"].includes(role);
+            const needsPay = item.paymentStatus && item.paymentStatus !== "paid";
+            const payBtn = needsPay && role === "alumni"
+                ? `<button type="button" onclick="payDocumentRequest('transcript', ${item.id}, ${Number(item.fee || 0)}, 'Document request fee')" class="btn btn-primary text-xs px-2.5 py-1 mr-1">Pay QR</button>`
+                : "";
+            const cancelBtn = role === "alumni" && item.canCancel
+                ? `<button type="button" onclick="cancelDocumentRequest('transcript', ${item.id})" class="text-xs text-rose-600 font-semibold hover:underline ml-2">Cancel</button>`
+                : "";
 
             tr.innerHTML = `
                 <td class="font-extrabold text-slate-800">
                     <div>${item.name}</div>
-                    <button onclick="openClaimStub(${item.id})" class="text-[10px] text-[#801235] font-bold hover:underline">
+                    <button type="button" onclick="openTranscriptDetails(${item.id})" class="text-[10px] text-[#801235] font-bold hover:underline mr-2">
+                        <i class="fa-solid fa-eye mr-0.5"></i> View Details
+                    </button>
+                    <button type="button" onclick="openClaimStub(${item.id})" class="text-[10px] text-[#801235] font-bold hover:underline">
                         <i class="fa-solid fa-receipt mr-0.5"></i> View Claim Stub
                     </button>
                 </td>
                 <td class="text-slate-500">${item.date}</td>
                 <td class="text-slate-600 font-medium">${item.purpose || "Official Record"}</td>
-                <td><span class="status-badge ${statusClass}">${item.status}</span></td>
+                <td><span class="status-badge ${statusClass}">${item.status}${item.paymentStatus ? ` / ${item.paymentStatus}` : ""}</span></td>
                 <td class="text-right">
-                    ${actionCell}
+                    ${payBtn}
+                    ${(canProcess && item.status === "Pending" && !needsPay) ? `
+                        <button onclick="updateRequestStatus(${item.id}, 'Approved')" class="btn btn-success text-xs px-2.5 py-1 mr-1">Approve</button>
+                        <button onclick="updateRequestStatus(${item.id}, 'Rejected')" class="btn btn-danger text-xs px-2.5 py-1">Reject</button>
+                    ` : `<button type="button" onclick="openTranscriptDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">View</button>`}
+                    ${cancelBtn}
                 </td>
             `;
             body.appendChild(tr);
         });
     }
 
-    function updateRequestStatus(id, newStatus) {
-        // Separation of responsibilities: ONLY the Registrar reviews and updates
-        // the status of a document request. Administrators monitor them instead.
-        if (!currentUser || currentUser.role !== "registrar") {
-            showToast("Only the Registrar can approve, reject or release document requests.", "error");
-            return;
+    async function updateRequestStatus(id, newStatus, kind) {
+        const type = kind || "transcript";
+        try {
+            if (typeof SAA_API === "undefined" || !(await SAA_API.health())) {
+                showToast("Unable to update request status. The server is offline.", "error");
+                return;
+            }
+            let remarks = "";
+            if (newStatus === "Rejected") {
+                remarks = prompt("Reason for rejection (required):") || "";
+                if (!remarks.trim()) {
+                    showToast("A rejection reason is required.", "error");
+                    return;
+                }
+            }
+            if (newStatus === "For Correction") {
+                remarks = prompt("What additional information or correction is needed?") || "";
+                if (!remarks.trim()) {
+                    showToast("Describe the missing information.", "error");
+                    return;
+                }
+            }
+            let claimWindow = "";
+            let claimNotes = "";
+            if (newStatus === "Ready for Release") {
+                claimWindow = prompt("Release / claim window (example: Registrar window, Mon–Fri 8AM–4PM):") || "Registrar window";
+                claimNotes = prompt("Claim instructions for the alumni:") || "";
+            }
+            const path = type === "reprint" ? `/api/reprints/${id}/status` : `/api/transcripts/${id}/status`;
+            await SAA_API.request(path, {
+                method: "PUT",
+                body: JSON.stringify({ status: newStatus, remarks, claimWindow, claimNotes })
+            });
+            await SAA_API.refreshAllData();
+            renderTranscriptRequests();
+            renderReprintRequests();
+            if (typeof updateReports === "function") updateReports();
+            if (typeof updateRegistrarReports === "function") updateRegistrarReports();
+            if (typeof renderRequestApproval === "function") renderRequestApproval();
+            if (typeof renderDocumentPreparation === "function") renderDocumentPreparation();
+            if (typeof renderReleaseClaiming === "function") renderReleaseClaiming();
+            if (typeof renderRequestHistory === "function") renderRequestHistory();
+            if (type === "transcript" && typeof showTranscriptDetails === "function") showTranscriptDetails(id, true);
+            showToast(`Request marked as ${newStatus}. The alumni will be notified.`, "success");
+        } catch (err) {
+            showToast(err.message || "Unable to update request status.", "error");
         }
+    }
 
-        transcriptRequests = transcriptRequests.map(r => r.id === id ? { ...r, status: newStatus } : r);
-        updateLocalStorage();
-        renderTranscriptRequests();
-        if (typeof updateReports === 'function') updateReports();
-        if (typeof updateRegistrarReports === 'function') updateRegistrarReports();
+    async function cancelDocumentRequest(kind, id) {
+        if (!confirm("Cancel this request? The record will be kept as Cancelled, not deleted.")) return;
+        try {
+            const path = kind === "reprint" ? `/api/reprints/${id}/cancel` : `/api/transcripts/${id}/cancel`;
+            await SAA_API.request(path, { method: "POST", body: JSON.stringify({ remarks: "Cancelled by alumni." }) });
+            await SAA_API.refreshAllData();
+            renderTranscriptRequests();
+            renderReprintRequests();
+            showToast("Request cancelled. The record remains in request history.", "info");
+        } catch (err) {
+            showToast(err.message || "Unable to cancel this request.", "error");
+        }
+    }
 
-        // Also refresh the active Registrar workflow views so the list is not stale.
-        if (typeof renderRequestApproval === 'function') renderRequestApproval();
-        if (typeof renderDocumentPreparation === 'function') renderDocumentPreparation();
-        if (typeof renderReleaseClaiming === 'function') renderReleaseClaiming();
-        if (typeof renderRequestHistory === 'function') renderRequestHistory();
-
-        const req = transcriptRequests.find(r => r.id === id);
-        const name = req ? req.name : "Alumnus";
-        const recipientEmail = req && req.email ? req.email : "alumni@stagnes.edu.ph";
-        const recipientContact = req && req.contact ? req.contact : "+63 917 888 9999";
-
-        // Trigger Automated Notifications (sent to the actual requester, not a generic address)
-        triggerNotification(
-            "EMAIL",
-            recipientEmail,
-            `Document Request #${id} Status Update: ${newStatus}`,
-            `Dear ${name}, your document request status has been updated to "${newStatus}" by the University Registrar.`
-        );
-        triggerNotification(
-            "SMS",
-            recipientContact,
-            `SAA Registrar Alert`,
-            `SAA Registrar Notice: Request #${id} status is now ${newStatus}.`
-        );
-
-        showToast(`Request #${id} marked as ${newStatus}. Notification dispatched to ${name}.`, "success");
+    async function submitCorrectionResponse(kind, id) {
+        try {
+            const notes = (document.getElementById("correctionNotes") || {}).value || "";
+            const attachments = await readFilesAsAttachments(document.getElementById("correctionFiles"));
+            await SAA_API.request(`/api/transcripts/${id}/correction-response`, {
+                method: "POST",
+                body: JSON.stringify({ notes, attachments })
+            });
+            await SAA_API.refreshAllData();
+            showTranscriptDetails(id, true);
+            showToast("Correction submitted. Status is Pending for Registrar review.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to submit the correction.", "error");
+        }
     }
 
     /* Official Certificate Modal */
     function openOfficialCertificate(alumniId) {
-        const match = alumniList.find(a => a.id === alumniId) || alumniList[0];
-        if (!match) return;
+        const match = alumniList.find(a => a.id === alumniId);
+        if (!match) {
+            showToast("No alumni record selected.", "warning");
+            return;
+        }
 
         document.getElementById("certAlumniName").textContent = match.name;
         document.getElementById("certAlumniProgram").textContent = match.program;
@@ -455,8 +576,11 @@
 
     /* Official Claim Stub Modal */
     function openClaimStub(reqId) {
-        const req = transcriptRequests.find(r => r.id === reqId) || transcriptRequests[0];
-        if (!req) return;
+        const req = transcriptRequests.find(r => r.id === reqId);
+        if (!req) {
+            showToast("No transcript request selected.", "warning");
+            return;
+        }
 
         document.getElementById("stubRef").textContent = `SAA-REQ-${new Date().getFullYear()}-${req.id.toString().slice(-4)}`;
         document.getElementById("stubName").textContent = req.name;
@@ -489,46 +613,78 @@
         const body = document.getElementById("reprintTableBody");
         if (!body) return;
         body.innerHTML = "";
-
-        const caps = transcriptRole();
-        toggleDashboardButton("reprintRequestBtn", caps.canRequest);
+        if (!reprintRequests.length) {
+            body.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-semibold">No certificate reprint requests yet.</td></tr>`;
+            return;
+        }
 
         reprintRequests.forEach(item => {
             const tr = document.createElement("tr");
             const statusClass = item.status === "Approved" ? "status-approved" : "status-pending";
-
-            let actionCell = `<span class="text-xs text-slate-400 font-semibold">${item.status}</span>`;
-            if (caps.monitor) {
-                actionCell = `<span class="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                                  <i class="fa-regular fa-eye mr-1"></i>View only
-                              </span>`;
-            } else if (caps.canApprove && item.status === "Pending") {
-                actionCell = `<button onclick="approveReprint(${item.id})" class="btn btn-success text-xs px-2.5 py-1">Approve Reprint</button>`;
-            } else if (item.status === "Pending") {
-                actionCell = `<span class="text-xs text-amber-600 font-bold"><i class="fa-regular fa-clock mr-1"></i>Awaiting Registrar</span>`;
-            }
+            const canProcess = ["admin", "staff", "registrar"].includes(typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role);
+            const needsPay = item.paymentStatus && item.paymentStatus !== "paid";
 
             tr.innerHTML = `
-                <td class="font-extrabold text-slate-800">${item.name}</td>
+                <td class="font-extrabold text-slate-800"><button type="button" class="hover:text-brand-magenta" onclick="openReprintDetails(${item.id})">${item.name}</button></td>
                 <td class="text-slate-600">${item.type}</td>
-                <td><span class="status-badge ${statusClass}">${item.status}</span></td>
+                <td><span class="status-badge ${statusClass}">${item.status}${item.paymentStatus ? ` / ${item.paymentStatus}` : ""}</span></td>
                 <td class="text-right">
-                    ${actionCell}
+                    ${needsPay ? `<button type="button" onclick="payDocumentRequest('reprint', ${item.id}, ${Number(item.fee || 0)}, 'Certificate reprint fee')" class="btn btn-primary text-xs px-2.5 py-1 mr-1">Pay GCash</button>` : ""}
+                    ${(canProcess && (item.status === "Pending" || item.status === "Processing")) ? `
+                        <button onclick="approveReprint(${item.id})" class="btn btn-success text-xs px-2.5 py-1">Approve Reprint</button>
+                    ` : (needsPay ? "" : `<span class="text-xs text-slate-400">Processed</span>`)}
                 </td>
             `;
             body.appendChild(tr);
         });
     }
 
-    function approveReprint(id) {
-        // Registrar-only action; the Administrator monitors reprint transactions.
-        if (!currentUser || currentUser.role !== "registrar") {
-            showToast("Only the Registrar can approve certificate reprint requests.", "error");
-            return;
+    function openReprintDetails(id) {
+        switchView("reprint", { detailId: id });
+    }
+
+    async function showReprintDetails(id, silent) {
+        let item = reprintRequests.find((r) => String(r.id) === String(id));
+        if (!item && typeof SAA_API !== "undefined") {
+            try {
+                const data = await SAA_API.request(`/api/reprints/${id}`);
+                item = data.reprint;
+                if (item && !reprintRequests.some((r) => String(r.id) === String(item.id))) reprintRequests.unshift(item);
+            } catch (err) {
+                showToast(err.message || "You cannot open this reprint request.", "error");
+                return;
+            }
         }
-        reprintRequests = reprintRequests.map(r => r.id === id ? { ...r, status: "Approved" } : r);
-        renderReprintRequests();
-        showToast("Certificate reprint request approved.", "success");
+        const list = document.getElementById("reprintListPanel");
+        const panel = document.getElementById("reprintDetailPanel");
+        if (!item || !panel) return;
+        if (list) list.classList.add("hidden");
+        panel.classList.remove("hidden");
+        document.getElementById("reprintDetailName").textContent = item.name || "Request";
+        document.getElementById("reprintDetailType").textContent = item.type || "—";
+        document.getElementById("reprintDetailStatus").textContent = item.status || "—";
+        const actions = document.getElementById("reprintDetailActions");
+        const needsPay = item.paymentStatus && item.paymentStatus !== "paid";
+        if (actions) {
+            actions.innerHTML = needsPay
+                ? `<button type="button" onclick="payDocumentRequest('reprint', ${item.id})" class="btn btn-primary text-xs">Pay QR</button>`
+                : `<button type="button" onclick="switchView('payment-history')" class="btn btn-secondary text-xs">View Payments</button>`;
+        }
+        if (!silent) switchView("reprint", { detailId: item.id });
+    }
+
+    async function approveReprint(id) {
+        try {
+            await SAA_API.request(`/api/reprints/${id}/status`, {
+                method: "PUT",
+                body: JSON.stringify({ status: "Approved" })
+            });
+            await SAA_API.refreshAllData();
+            renderReprintRequests();
+            showToast("Certificate reprint request approved.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to update reprint status.", "error");
+        }
     }
 
     /* Placements */
@@ -536,6 +692,11 @@
         const body = document.getElementById("placementTableBody");
         if (!body) return;
         body.innerHTML = "";
+
+        if (!placementLogs.length) {
+            body.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-semibold">No job placement records yet.</td></tr>`;
+            return;
+        }
 
         placementLogs.forEach(p => {
             const tr = document.createElement("tr");
@@ -557,45 +718,50 @@
         document.getElementById("addJobModal").classList.remove("active");
     }
 
-    function saveJobPlacement(event) {
+    async function saveJobPlacement(event) {
         event.preventDefault();
         const alumni = document.getElementById("jobAlumniName").value.trim();
         const company = document.getElementById("jobCompany").value.trim();
         const title = document.getElementById("jobTitle").value.trim();
-
-        placementLogs.unshift({
-            id: Date.now(),
-            alumni,
-            company,
-            title,
-            date: new Date().toISOString().split("T")[0]
-        });
-
-        updateLocalStorage();
-        renderPlacementLogs();
-        closeAddJobModal();
-        event.target.reset();
-        showToast(`Job placement recorded for ${alumni}.`, "success");
+        try {
+            await SAA_API.request("/api/placements", {
+                method: "POST",
+                body: JSON.stringify({ alumni, company, title })
+            });
+            await SAA_API.refreshAllData();
+            renderPlacementLogs();
+            closeAddJobModal();
+            event.target.reset();
+            showToast(`Job placement recorded for ${alumni}.`, "success");
+        } catch (err) {
+            showToast(err.message || "Unable to save placement record.", "error");
+        }
     }
 
 
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 5139-5210 */
 /* ------------------------------------------------------------------------- */
-    /* Academic Records Master (Registrar) */
-    let defaultAcademicRecords = [
-        { studentId: "SAA-2024-0089", name: "Maria Clara D. Santos", program: "BS Information Technology", batch: "2024", gwa: "1.24", honors: "Magna Cum Laude", status: "Transcript Released" },
-        { studentId: "SAA-2018-0412", name: "Juan Miguel R. Reyes", program: "BS Business Administration", batch: "2018", gwa: "1.45", honors: "Cum Laude", status: "Pending Verification" },
-        { studentId: "SAA-2020-0931", name: "Angela K. Mendoza", program: "BS Computer Science", batch: "2020", gwa: "1.18", honors: "Summa Cum Laude", status: "Archived Complete" },
-        { studentId: "SAA-2021-0155", name: "Joseph P. Aquino", program: "BS Education", batch: "2021", gwa: "1.65", honors: "Academic Distinction", status: "Certified Official" },
-        { studentId: "SAA-2015-0819", name: "Isabella C. De Leon", program: "BS Nursing", batch: "2015", gwa: "1.52", honors: "Dean's Lister", status: "Archived Complete" },
-        { studentId: "SAA-2023-0188", name: "Christian Gabriel Perez", program: "BS Accountancy", batch: "2023", gwa: "1.30", honors: "Magna Cum Laude", status: "Transcript In-Process" }
-    ];
+    function academicRecordsSource() {
+        return alumniList.map(a => ({
+            studentId: a.studentId || "",
+            name: a.name,
+            program: a.program || "",
+            batch: a.batch || "",
+            gwa: a.gwa || "—",
+            honors: a.honors || "—",
+            status: a.status || "Active"
+        }));
+    }
 
     function renderAcademicRecords(recordsToRender) {
         const body = document.getElementById("academicRecordsTableBody");
         if (!body) return;
-        const data = recordsToRender || defaultAcademicRecords;
+        const data = recordsToRender || academicRecordsSource();
+        if (!data.length) {
+            body.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 font-semibold">No academic records yet. Add alumni records first.</td></tr>`;
+            return;
+        }
 
         body.innerHTML = data.map(r => `
             <tr>
@@ -624,22 +790,24 @@
         const input = document.getElementById("academicRecordsSearch");
         if (!input) return;
         const q = input.value.trim().toLowerCase();
+        const source = academicRecordsSource();
         if (!q) {
-            renderAcademicRecords();
+            renderAcademicRecords(source);
             return;
         }
-        const filtered = defaultAcademicRecords.filter(r => 
-            r.studentId.toLowerCase().includes(q) ||
-            r.name.toLowerCase().includes(q) ||
-            r.program.toLowerCase().includes(q) ||
-            r.batch.includes(q)
+        const filtered = source.filter(r =>
+            String(r.studentId).toLowerCase().includes(q) ||
+            String(r.name).toLowerCase().includes(q) ||
+            String(r.program).toLowerCase().includes(q) ||
+            String(r.batch).includes(q)
         );
         renderAcademicRecords(filtered);
     }
 
     function exportAcademicRecordsCSV() {
+        const source = academicRecordsSource();
         let csv = "Student ID,Full Name,Degree Program,Batch,GWA,Honors,Status\n";
-        defaultAcademicRecords.forEach(r => {
+        source.forEach(r => {
             csv += `"${r.studentId}","${r.name}","${r.program}","${r.batch}","${r.gwa}","${r.honors}","${r.status}"\n`;
         });
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -651,6 +819,6 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast("Academic Records Master exported to CSV.", "success");
+        showToast(source.length ? "Academic records exported to CSV." : "No academic records to export yet.", source.length ? "success" : "info");
     }
 
