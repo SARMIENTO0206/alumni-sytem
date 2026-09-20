@@ -124,6 +124,29 @@ disk — there is no offline demo mode.
 Passwords are verified server-side with **bcrypt**. Clone
 **https://github.com/SARMIENTO0206/alumni-sytem** (not `SoloLevelings/nicose-sarmiento`).
 
+## Deploy on Render (so every device opens the same site)
+
+This app is Node.js + SQLite. Use **Render**, not PHP cPanel. One web service
+serves both the website and `/api`.
+
+1. Open [https://dashboard.render.com](https://dashboard.render.com) and sign in with GitHub.
+2. **New** → **Blueprint** (or **Web Service**) → connect `SARMIENTO0206/alumni-sytem`.
+3. If asked for commands:
+   - **Build:** `npm install --prefix server`
+   - **Start:** `node server/index.js`
+   - **Node version:** `22`
+4. Set `APP_PUBLIC_URL` to the Render URL after the first deploy
+   (example: `https://saa-alumni.onrender.com`).
+5. Wait until the service is **Live**, then open that `https://….onrender.com` URL
+   on any phone or laptop. Login should show **Live system · 20 Sep 2026 build**.
+6. Custom domain: Render → the service → **Settings** → **Custom Domains** → add
+   `alumni.yourschool.edu.ph` (or similar). At your domain DNS, add a **CNAME**
+   to the Render hostname they show you.
+
+On the free instance, SQLite can reset when the service sleeps or redeploys.
+For a defense demo, keep the Render service awake and avoid frequent redeploys,
+or attach a persistent disk to `server/data`.
+
 ## 🔌 API
 
 Base URL: `http://localhost:3000/api`

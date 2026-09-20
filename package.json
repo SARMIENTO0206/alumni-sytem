@@ -1,0 +1,12 @@
+{
+  "name": "saa-alumni-system",
+  "private": true,
+  "description": "St. Agnes Academy Alumni Management System — Express serves the site and API together.",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "install:server": "npm install --prefix server"
+  }
+}

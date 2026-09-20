@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: saa-alumni
+    runtime: node
+    region: singapore
+    buildCommand: npm install --prefix server
+    startCommand: node server/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22.14.0"
+      - key: NODE_ENV
+        value: production
+      - key: APP_PUBLIC_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: KEEP_DEMO_DATA
+        value: "false"
