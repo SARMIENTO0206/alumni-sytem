@@ -244,9 +244,14 @@
                 method: "POST",
                 body: JSON.stringify({ identifier: document.getElementById("resetIdentifier").value.trim() })
             });
-            showResetMessage("forgotPasswordMessage", "If an account exists for that information, we’ll send password-reset instructions.", "success");
+            showResetMessage("forgotPasswordMessage", "If an account exists for that information, we’ll send a verification code.", "success");
+            document.getElementById("forgotPasswordPanel")?.classList.add("hidden");
+            document.getElementById("resetPasswordPanel")?.classList.remove("hidden");
+            document.getElementById("resetOtp")?.focus();
         } catch (err) {
-            showResetMessage("forgotPasswordMessage", "If an account exists for that information, we’ll send password-reset instructions.", "success");
+            showResetMessage("forgotPasswordMessage", "If an account exists for that information, we’ll send a verification code.", "success");
+            document.getElementById("forgotPasswordPanel")?.classList.add("hidden");
+            document.getElementById("resetPasswordPanel")?.classList.remove("hidden");
         }
     }
 
@@ -265,10 +270,10 @@
             return;
         }
         try {
-            const token = new URLSearchParams((location.hash.split("?")[1] || "")).get("token") || "";
+            const otp = document.getElementById("resetOtp").value.trim();
             const result = await SAA_API.request("/api/auth/password-reset/complete", {
                 method: "POST",
-                body: JSON.stringify({ token, newPassword: password })
+                body: JSON.stringify({ otp, newPassword: password })
             });
             showResetMessage("resetPasswordMessage", result.message, "success");
             event.target.reset();
@@ -279,18 +284,7 @@
     }
 
     function showResetPasswordFromLocation() {
-        if (location.hash.startsWith("#/reset-password")) {
-            showPublicScreen("login");
-            document.getElementById("loginForm")?.classList.add("hidden");
-            document.getElementById("forgotPasswordPanel")?.classList.add("hidden");
-            document.getElementById("resetPasswordPanel")?.classList.remove("hidden");
-            SAA_API.request("/api/auth/password-reset/verify", {
-                method: "POST",
-                body: JSON.stringify({ token: new URLSearchParams(location.hash.split("?")[1] || "").get("token") || "" })
-            }).catch((err) => {
-                showResetMessage("resetPasswordMessage", err.message || "This reset link is invalid or has expired.", "error");
-            });
-        }
+        if (location.hash.startsWith("#/reset-password")) showPublicScreen("login");
     }
 
     function showContactRegistrar() {

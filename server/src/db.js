@@ -48,6 +48,16 @@ export function initDb() {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS password_reset_otps (
+      otp_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      channel TEXT NOT NULL,
+      destination TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT DEFAULT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS alumni (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       name         TEXT NOT NULL,

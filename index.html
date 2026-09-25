@@ -368,7 +368,7 @@
                 <section id="forgotPasswordPanel" class="hidden mt-6" aria-labelledby="forgotPasswordTitle">
                     <div class="text-center mb-5">
                         <h4 id="forgotPasswordTitle" class="text-xl font-extrabold text-slate-800">Reset your password</h4>
-                        <p class="text-sm text-slate-500 mt-1">Enter your email, username, or phone number.</p>
+                        <p class="text-sm text-slate-500 mt-1">Enter your email, username, or phone number. We’ll send a verification code.</p>
                     </div>
                     <form id="forgotPasswordForm" class="space-y-4" onsubmit="requestPasswordReset(event)">
                         <label class="form-label" for="resetIdentifier">Account identifier</label>
@@ -382,9 +382,11 @@
                 <section id="resetPasswordPanel" class="hidden mt-6" aria-labelledby="resetPasswordTitle">
                     <div class="text-center mb-5">
                         <h4 id="resetPasswordTitle" class="text-xl font-extrabold text-slate-800">Create a new password</h4>
-                        <p class="text-sm text-slate-500 mt-1">Use at least 8 characters, including upper, lower, and a number.</p>
+                        <p class="text-sm text-slate-500 mt-1">Enter the code sent to your verified email or phone, then create a new password.</p>
                     </div>
                     <form id="resetPasswordForm" class="space-y-4" onsubmit="completePasswordReset(event)">
+                        <label class="form-label" for="resetOtp">Verification code</label>
+                        <input id="resetOtp" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" class="form-input tracking-[0.4em] text-center" placeholder="000000">
                         <label class="form-label" for="newResetPassword">New password</label>
                         <input id="newResetPassword" type="password" required autocomplete="new-password" class="form-input" oninput="updateResetPasswordStrength()" placeholder="New password">
                         <div id="resetPasswordStrength" class="text-xs text-slate-500"></div>
