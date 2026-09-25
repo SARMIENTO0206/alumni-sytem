@@ -171,14 +171,31 @@ router.post('/login', (req, res) => {
 /** POST /api/auth/register - self-registration for alumni (bcrypt-hashes the password). */
 router.post('/register', (req, res) => {
   const {
-    username, password, name, studentId, batch, program, email, contact, school, strand, lrn, address, consent
+    username, password, name, studentId, batch, email, contact, track, strand, lrn, address, consent
   } = req.body || {};
 
   if (!username || !password || !name) {
     return res.status(400).json({ error: 'Username, password and full name are required.' });
   }
-  if (!school || !strand || !batch) {
-    return res.status(400).json({ error: 'School, graduation year and SHS strand/track are required.' });
+  const normalizedStudentId = String(studentId || '').trim();
+  if (!normalizedStudentId || !batch || !track || !strand || !email) {
+    return res.status(400).json({ error: 'Student ID, graduation year, SHS track, strand and email are required.' });
+  }
+  const allowedStrands = {
+    Academic: ['STEM', 'ABM', 'HUMSS', 'GAS'],
+    TVL: ['ICT', 'Home Economics', 'Industrial Arts', 'Agri-Fishery Arts'],
+    Sports: ['Sports Track'],
+    'Arts and Design': ['Arts and Design']
+  };
+  if (!allowedStrands[track]?.includes(strand)) {
+    return res.status(400).json({ error: 'Select a valid SHS track and strand combination.' });
+  }
+  const graduationYear = Number(batch);
+  if (!Number.isInteger(graduationYear) || graduationYear < 1960 || graduationYear > new Date().getFullYear()) {
+    return res.status(400).json({ error: 'Enter a valid graduation year.' });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+    return res.status(400).json({ error: 'Enter a valid email address.' });
   }
   if (consent !== true) {
     return res.status(400).json({ error: 'Please accept the privacy consent before submitting.' });
@@ -191,7 +208,11 @@ router.post('/register', (req, res) => {
   if (exists) return res.status(409).json({ error: 'Username already exists. Please pick a unique username.' });
 
   const avatar = String(name).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const autoStudentId = studentId || `SAA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const duplicateStudentId = db.prepare(
+    `SELECT id FROM users WHERE LOWER(student_id) = LOWER(?) AND TRIM(student_id) != ''`
+  ).get(normalizedStudentId);
+  if (duplicateStudentId) return res.status(409).json({ error: 'This Student ID is already associated with an account. Contact the Registrar if you need help.' });
+
   let mobile = '';
   try {
     mobile = normalizePhMobile(contact);
@@ -200,20 +221,21 @@ router.post('/register', (req, res) => {
   }
 
   const info = db.prepare(
-    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status, school, strand, lrn, address)
-     VALUES (?, ?, 'alumni', ?, ?, ?, ?, ?, ?, '', ?, ?, 'Pending Verification', ?, ?, ?, ?)`
+    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status, school, track, strand, lrn, address)
+     VALUES (?, ?, 'alumni', ?, ?, ?, ?, ?, ?, '', ?, ?, 'Pending Verification', ?, ?, ?, ?, ?)`
   ).run(
     String(username).trim(),
     bcrypt.hashSync(String(password), 10),
     name,
     `Alumnus (Batch ${batch || new Date().getFullYear()})`,
     avatar,
-    autoStudentId,
+    normalizedStudentId,
     batch || String(new Date().getFullYear()),
-    program || '',
+    strand,
     email || '',
     mobile,
-    school || '',
+    'St. Agnes Academy of Caloocan',
+    track,
     strand || '',
     lrn || '',
     address || ''

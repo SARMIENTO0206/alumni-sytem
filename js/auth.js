@@ -81,6 +81,13 @@
 
     /* Self-Registration System */
     function openSelfRegisterModal() {
+        const form = document.querySelector("#selfRegisterModal form");
+        form.reset();
+        form.hidden = false;
+        document.getElementById("registrationSubmitted").classList.add("hidden");
+        document.getElementById("regSchool").value = "St. Agnes Academy of Caloocan";
+        populateRegistrationYears();
+        updateRegistrationStrands();
         document.getElementById("selfRegisterModal").classList.add("active");
     }
 
@@ -88,35 +95,66 @@
         document.getElementById("selfRegisterModal").classList.remove("active");
     }
 
+    function populateRegistrationYears() {
+        const yearSelect = document.getElementById("regBatch");
+        const currentYear = new Date().getFullYear();
+        const selectedYear = yearSelect.value;
+        yearSelect.replaceChildren(new Option("Select year", ""));
+        for (let year = currentYear; year >= 1960; year--) {
+            yearSelect.add(new Option(String(year), String(year)));
+        }
+        yearSelect.value = selectedYear;
+    }
+
+    const REGISTRATION_STRANDS = {
+        Academic: ["STEM", "ABM", "HUMSS", "GAS"],
+        TVL: ["ICT", "Home Economics", "Industrial Arts", "Agri-Fishery Arts"],
+        Sports: ["Sports Track"],
+        "Arts and Design": ["Arts and Design"]
+    };
+
+    function updateRegistrationStrands() {
+        const track = document.getElementById("regTrack").value;
+        const strandSelect = document.getElementById("regStrand");
+        strandSelect.replaceChildren(new Option(track ? "Select strand" : "Select a track first", ""));
+        for (const strand of REGISTRATION_STRANDS[track] || []) {
+            strandSelect.add(new Option(strand, strand));
+        }
+        strandSelect.disabled = !track;
+    }
+
     async function handleRegisterAlumni(event) {
         event.preventDefault();
         const name = document.getElementById("regName").value.trim();
         const username = document.getElementById("regUsername").value.trim();
         const password = document.getElementById("regPassword").value;
-        const studentId = document.getElementById("regStudentId").value.trim() || `SAA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        const confirmPassword = document.getElementById("regConfirmPassword").value;
+        const studentId = document.getElementById("regStudentId").value.trim();
         const batch = document.getElementById("regBatch").value;
-        const program = document.getElementById("regProgram").value.trim();
         const email = document.getElementById("regEmail").value.trim();
+        const contact = document.getElementById("regContact").value.trim();
         const school = document.getElementById("regSchool").value.trim();
+        const track = document.getElementById("regTrack").value;
         const strand = document.getElementById("regStrand").value.trim();
         const lrn = document.getElementById("regLrn").value.trim();
         const address = document.getElementById("regAddress").value.trim();
         const consent = document.getElementById("regConsent").checked;
 
-        const finishRegistration = (displayName) => {
-            closeSelfRegisterModal();
-            event.target.reset();
-            showToast(`Registration submitted for ${displayName}. Please wait for Registrar verification before signing in.`, "success");
-        };
+        if (password !== confirmPassword) {
+            showToast("Passwords do not match.", "error");
+            document.getElementById("regConfirmPassword").focus();
+            return;
+        }
 
         /* Primary path: register through the backend - the password is bcrypt-hashed server-side. */
         try {
             if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
                 const data = await SAA_API.request("/api/auth/register", {
                     method: "POST",
-                    body: JSON.stringify({ username, password, name, studentId, batch, program, email, school, strand, lrn, address, consent })
+                    body: JSON.stringify({ username, password, name, studentId, batch, email, contact, school, track, strand, lrn, address, consent })
                 });
-                finishRegistration(name);
+                event.target.hidden = true;
+                document.getElementById("registrationSubmitted").classList.remove("hidden");
                 return;
             }
         } catch (err) {

@@ -233,6 +233,7 @@ export function initDb() {
 
   ensureColumn('users', 'status', "status TEXT DEFAULT 'Active'");
   ensureColumn('users', 'school', "school TEXT DEFAULT ''");
+  ensureColumn('users', 'track', "track TEXT DEFAULT ''");
   ensureColumn('users', 'strand', "strand TEXT DEFAULT ''");
   ensureColumn('users', 'lrn', "lrn TEXT DEFAULT ''");
   ensureColumn('users', 'address', "address TEXT DEFAULT ''");
@@ -429,6 +430,7 @@ export function mapUser(row) {
     role: row.role === 'registrar' ? 'staff' : row.role,
     status: row.status || 'Active',
     school: row.school || '',
+    track: row.track || '',
     strand: row.strand || '',
     lrn: row.lrn || '',
     name: row.name,

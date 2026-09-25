@@ -2642,63 +2642,91 @@
             </div>
 
             <form onsubmit="handleRegisterAlumni(event)" class="space-y-3.5">
-                <div>
-                    <label class="form-label" for="regName">Full Legal Name</label>
-                    <input type="text" id="regName" required placeholder="e.g. Christian Gabriel Perez" class="form-input text-xs">
-                </div>
+                <section class="space-y-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Personal Information</h4>
+                    <div>
+                        <label class="form-label" for="regName">Full Legal Name *</label>
+                        <input type="text" id="regName" required autocomplete="name" placeholder="e.g. Juan Dela Cruz" class="form-input text-xs">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="regEmail">Email Address *</label>
+                            <input type="email" id="regEmail" required autocomplete="email" placeholder="e.g. juan@email.com" class="form-input text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label" for="regContact">Contact Number</label>
+                            <input type="tel" id="regContact" autocomplete="tel" placeholder="e.g. 0912 345 6789" class="form-input text-xs">
+                        </div>
+                    </div>
+                </section>
 
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="form-label" for="regUsername">Username</label>
-                        <input type="text" id="regUsername" required placeholder="e.g. christian2023" class="form-input text-xs">
+                <section class="space-y-3 border-t border-slate-100 pt-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">School Record</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="regStudentId">Student ID Number *</label>
+                            <input type="text" id="regStudentId" required placeholder="e.g. SAA-2023-0188" class="form-input text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label" for="regBatch">Graduation Batch / Year *</label>
+                            <select id="regBatch" required class="form-select text-xs"></select>
+                        </div>
                     </div>
                     <div>
-                        <label class="form-label" for="regPassword">Password</label>
-                        <input type="password" id="regPassword" required placeholder="Create password" class="form-input text-xs">
+                        <label class="form-label" for="regSchool">School *</label>
+                        <input type="text" id="regSchool" value="St. Agnes Academy of Caloocan" readonly class="form-input text-xs bg-slate-50 text-slate-500">
                     </div>
-                </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="regTrack">SHS Track *</label>
+                            <select id="regTrack" required onchange="updateRegistrationStrands()" class="form-select text-xs">
+                                <option value="">Select track</option>
+                                <option value="Academic">Academic</option>
+                                <option value="TVL">Technical-Vocational-Livelihood (TVL)</option>
+                                <option value="Sports">Sports</option>
+                                <option value="Arts and Design">Arts and Design</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label" for="regStrand">SHS Strand *</label>
+                            <select id="regStrand" required disabled class="form-select text-xs">
+                                <option value="">Select a track first</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="regLrn">LRN <span class="font-normal text-slate-400">(Optional)</span></label>
+                            <input type="text" id="regLrn" inputmode="numeric" placeholder="For record matching" class="form-input text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label" for="regAddress">Current City / Municipality</label>
+                            <input type="text" id="regAddress" placeholder="e.g. Caloocan City" class="form-input text-xs">
+                        </div>
+                    </div>
+                </section>
 
-                <div class="grid grid-cols-2 gap-3">
+                <section class="space-y-3 border-t border-slate-100 pt-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Account Information</h4>
                     <div>
-                        <label class="form-label" for="regStudentId">Student ID Number</label>
-                        <input type="text" id="regStudentId" placeholder="e.g. SAA-2023-0188" class="form-input text-xs">
+                        <label class="form-label" for="regUsername">Username *</label>
+                        <input type="text" id="regUsername" required autocomplete="username" placeholder="e.g. juandela2023" class="form-input text-xs">
                     </div>
-                    <div>
-                        <label class="form-label" for="regBatch">Graduation Batch Year</label>
-                        <input type="number" id="regBatch" required min="1960" max="2026" value="2023" class="form-input text-xs">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="regPassword">Password *</label>
+                            <input type="password" id="regPassword" required minlength="6" autocomplete="new-password" placeholder="Create password" class="form-input text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label" for="regConfirmPassword">Confirm Password *</label>
+                            <input type="password" id="regConfirmPassword" required minlength="6" autocomplete="new-password" placeholder="Re-enter password" class="form-input text-xs">
+                        </div>
                     </div>
-                </div>
+                </section>
 
-                <div>
-                    <label class="form-label" for="regSchool">School</label>
-                    <input type="text" id="regSchool" required value="St. Agnes Academy of Caloocan" class="form-input text-xs">
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="form-label" for="regStrand">SHS Strand / Track</label>
-                        <input type="text" id="regStrand" required placeholder="e.g. STEM" class="form-input text-xs">
-                    </div>
-                    <div>
-                        <label class="form-label" for="regLrn">Student ID / LRN (optional)</label>
-                        <input type="text" id="regLrn" placeholder="For record matching" class="form-input text-xs">
-                    </div>
-                </div>
-                <div>
-                    <label class="form-label" for="regProgram">Program / Track (optional)</label>
-                    <input type="text" id="regProgram" placeholder="e.g. Senior High School" class="form-input text-xs">
-                </div>
-                <div>
-                    <label class="form-label" for="regAddress">Current address / city (optional)</label>
-                    <input type="text" id="regAddress" placeholder="City or municipality" class="form-input text-xs">
-                </div>
-
-                <div>
-                    <label class="form-label" for="regEmail">Email Address</label>
-                    <input type="email" id="regEmail" required placeholder="e.g. christian.perez@gmail.com" class="form-input text-xs">
-                </div>
                 <label class="flex items-start gap-2 text-[11px] text-slate-500">
                     <input type="checkbox" id="regConsent" required class="mt-0.5">
-                    <span>I consent to the school processing these details to verify my alumni record.</span>
+                    <span>I consent to the school processing the information I provided to verify my alumni record.</span>
                 </label>
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -2708,6 +2736,14 @@
                     </button>
                 </div>
             </form>
+            <div id="registrationSubmitted" class="hidden py-6 text-center">
+                <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                    <i class="fa-solid fa-check text-lg"></i>
+                </div>
+                <h4 class="text-base font-extrabold text-slate-800">Registration Submitted</h4>
+                <p class="mt-2 text-sm text-slate-600">Your alumni registration is currently <strong>Pending Verification</strong>. The Registrar's Office will review your school record before activating your account.</p>
+                <button type="button" onclick="closeSelfRegisterModal()" class="btn btn-primary mt-5 text-xs">Back to Sign In</button>
+            </div>
         </div>
     </div>
 
