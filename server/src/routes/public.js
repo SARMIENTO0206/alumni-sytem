@@ -12,6 +12,18 @@ const concerns = new Set([
   'Other inquiry'
 ]);
 
+router.get('/events/:id/image', (req, res) => {
+  const row = db.prepare('SELECT image_data FROM events WHERE id = ?').get(Number(req.params.id));
+  const match = row?.image_data
+    ? /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(row.image_data)
+    : null;
+  if (!match) return res.status(404).end();
+
+  res.set('Cache-Control', 'public, max-age=300');
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.type(match[1]).send(Buffer.from(match[2], 'base64'));
+});
+
 router.post('/registrar-inquiries', async (req, res) => {
   const { name, email, contact, studentId, concern, message } = req.body || {};
   if (!name || !email || !concern || !message) {

@@ -240,6 +240,8 @@ export function initDb() {
   ensureColumn('users', 'lrn', "lrn TEXT DEFAULT ''");
   ensureColumn('users', 'address', "address TEXT DEFAULT ''");
   ensureColumn('users', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
+  ensureColumn('events', 'description', "description TEXT DEFAULT ''");
+  ensureColumn('events', 'image_data', "image_data TEXT DEFAULT ''");
   ensureColumn('alumni', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('alumni', 'education_school', "education_school TEXT DEFAULT ''");
   ensureColumn('alumni', 'education_program', "education_program TEXT DEFAULT ''");

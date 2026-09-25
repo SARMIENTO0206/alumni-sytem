@@ -3,6 +3,8 @@
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 4018-4710 */
 /* ------------------------------------------------------------------------- */
+    let newEventImageData = "";
+
     async function showJobDetails(id, silent) {
         let job = (jobsList || []).find((j) => String(j.id) === String(id));
         if (!job && typeof SAA_API !== "undefined") {
@@ -135,6 +137,14 @@
                     </button>
                 `}
             `;
+            if (ev.imageUrl) {
+                const image = document.createElement("img");
+                image.src = ev.imageUrl;
+                image.alt = `${ev.title || "Event"} image`;
+                image.loading = "lazy";
+                image.className = "mb-4 max-h-48 w-full rounded-xl border border-slate-200 object-cover";
+                card.prepend(image);
+            }
             grid.appendChild(card);
         });
     }
@@ -163,6 +173,17 @@
         document.getElementById("eventDetailTitle").textContent = ev.title || "Event";
         document.getElementById("eventDetailMeta").textContent = `${ev.date || ""} • ${ev.rsvps || 0} RSVPs`;
         document.getElementById("eventDetailLocation").textContent = ev.location || "";
+        const image = document.getElementById("eventDetailImage");
+        if (image) {
+            image.src = ev.imageUrl || "";
+            image.alt = `${ev.title || "Event"} image`;
+            image.classList.toggle("hidden", !ev.imageUrl);
+        }
+        const description = document.getElementById("eventDetailDescription");
+        if (description) {
+            description.textContent = ev.description || "";
+            description.classList.toggle("hidden", !ev.description);
+        }
         const actions = document.getElementById("eventDetailActions");
         if (actions) {
             actions.innerHTML = `
@@ -194,6 +215,45 @@
 
     function closeAddEventModal() {
         document.getElementById("addEventModal").classList.remove("active");
+    }
+
+    function previewNewEventImage(input) {
+        const file = input.files && input.files[0];
+        const preview = document.getElementById("newEventImagePreview");
+        newEventImageData = "";
+        preview.removeAttribute("src");
+        preview.classList.add("hidden");
+        if (!file) return;
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+            input.value = "";
+            showToast("Choose a JPG, PNG, or WebP image.", "error");
+            return;
+        }
+        if (file.size > 1024 * 1024) {
+            input.value = "";
+            showToast("Event images must be 1 MB or smaller.", "error");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result !== "string") {
+                showToast("Unable to preview this image.", "error");
+                return;
+            }
+            newEventImageData = reader.result;
+            preview.src = reader.result;
+            preview.classList.remove("hidden");
+        };
+        reader.onerror = () => showToast("Unable to read this image.", "error");
+        reader.readAsDataURL(file);
+    }
+
+    function clearNewEventImagePreview() {
+        newEventImageData = "";
+        const preview = document.getElementById("newEventImagePreview");
+        preview.removeAttribute("src");
+        preview.classList.add("hidden");
     }
 
     function updateEventScheduleFields() {
@@ -240,6 +300,7 @@
         const startTime = document.getElementById("newEventStartTime").value;
         const endTime = document.getElementById("newEventEndTime").value;
         const location = document.getElementById("newEventLocation").value.trim();
+        const description = document.getElementById("newEventDescription").value.trim();
         const formatDate = (value) => {
             const [year, month, day] = value.split("-").map(Number);
             return new Date(year, month - 1, day).toLocaleDateString("en-US", {
@@ -265,12 +326,13 @@
         try {
             await SAA_API.request("/api/events", {
                 method: "POST",
-                body: JSON.stringify({ title, date, location })
+                body: JSON.stringify({ title, date, location, description, imageData: newEventImageData })
             });
             await SAA_API.refreshAllData();
             renderEventsGrid();
             closeAddEventModal();
             event.target.reset();
+            clearNewEventImagePreview();
             updateEventScheduleFields();
             showToast(`"${title}" published.`, "success");
         } catch (err) {
@@ -1504,4 +1566,3 @@
         if (bar) bar.style.width = pct + "%";
         if (count) count.textContent = donors + (donors === 1 ? " alumni donor" : " alumni donors");
     }
-

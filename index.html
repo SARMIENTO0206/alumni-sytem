@@ -1613,6 +1613,8 @@
                         <h3 id="eventDetailTitle" class="text-xl font-extrabold text-slate-800">Event</h3>
                         <p id="eventDetailMeta" class="text-sm text-slate-500"></p>
                         <p id="eventDetailLocation" class="text-sm text-slate-600"></p>
+                        <img id="eventDetailImage" alt="" class="hidden max-h-[28rem] w-full rounded-xl border border-slate-200 object-cover">
+                        <p id="eventDetailDescription" class="hidden whitespace-pre-wrap text-sm leading-6 text-slate-600"></p>
                         <div id="eventDetailActions" class="flex flex-wrap gap-2"></div>
                     </div>
                 </div>
@@ -3055,7 +3057,13 @@
                     </div>
                     <div>
                         <label class="form-label" for="newEventDescription">Event Description</label>
-                        <textarea id="newEventDescription" rows="3" placeholder="Describe the event highlights, program flow, and what alumni can expect..." class="form-textarea text-xs"></textarea>
+                        <textarea id="newEventDescription" rows="3" maxlength="5000" placeholder="Describe the event highlights, program flow, and what alumni can expect..." class="form-textarea text-xs"></textarea>
+                    </div>
+                    <div>
+                        <label class="form-label" for="newEventImage">Event Image <span class="font-normal text-slate-400">(optional)</span></label>
+                        <input type="file" id="newEventImage" accept="image/jpeg,image/png,image/webp" onchange="previewNewEventImage(this)" class="form-input text-xs">
+                        <p class="mt-1 text-[10px] text-slate-400">JPG, PNG, or WebP; maximum file size 1 MB.</p>
+                        <img id="newEventImagePreview" alt="Event image preview" class="hidden mt-3 max-h-48 w-full rounded-lg border border-slate-200 object-cover">
                     </div>
                 </section>
 

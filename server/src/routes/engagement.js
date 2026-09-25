@@ -10,8 +10,40 @@ const parseJson = (str, fallback) => {
   try { return JSON.parse(str || '[]'); } catch (e) { return fallback; }
 };
 
+function validateEventImageData(imageData) {
+  if (imageData === undefined || imageData === null || imageData === '') return { data: '' };
+  if (typeof imageData !== 'string') return { error: 'Event image must be a JPG, PNG, or WebP file.' };
+
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(imageData);
+  if (!match) return { error: 'Event image must be a JPG, PNG, or WebP file.' };
+
+  const bytes = Buffer.from(match[2], 'base64');
+  if (!bytes.length || bytes.length > 1024 * 1024 || bytes.toString('base64') !== match[2]) {
+    return { error: 'Event images must be 1 MB or smaller.' };
+  }
+
+  const signatures = {
+    'image/jpeg': bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff,
+    'image/png': bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+    'image/webp': bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP'
+  };
+  if (!signatures[match[1]]) return { error: 'The uploaded file does not match its image type.' };
+
+  return { data: `data:${match[1]};base64,${match[2]}` };
+}
+
+function mirrorEvent(row, update = false) {
+  const legacyRow = Object.fromEntries(
+    Object.entries(row).filter(([key]) => key !== 'description' && key !== 'image_data')
+  );
+  if (update) mirrorUpdate('events', legacyRow);
+  else mirror('events', legacyRow);
+}
+
 const mapEvent = (e) => ({
   id: e.id, title: e.title, date: e.date, location: e.location, rsvps: e.rsvps,
+  description: e.description || '',
+  imageUrl: e.image_data ? `/api/public/events/${e.id}/image` : '',
   registered: Boolean(e.registered), status: e.status, attendees: parseJson(e.attendees, [])
 });
 
@@ -30,16 +62,21 @@ router.get('/events', (req, res) => {
 
 /** POST /api/events - create an event (admin only). */
 router.post('/events', requireRole('admin', 'staff'), (req, res) => {
-  const { title, date, location } = req.body || {};
+  const { title, date, location, description = '', imageData } = req.body || {};
   if (!title) return res.status(400).json({ error: 'Event title is required.' });
+  if (typeof description !== 'string' || description.length > 5000) {
+    return res.status(400).json({ error: 'Event description must be 5,000 characters or fewer.' });
+  }
+  const image = validateEventImageData(imageData);
+  if (image.error) return res.status(400).json({ error: image.error });
 
   const info = db.prepare(
-    "INSERT INTO events (title, date, location, rsvps, registered, status, attendees) VALUES (?, ?, ?, 0, 0, 'Upcoming', '[]')"
-  ).run(title, date || '', location || '');
+    "INSERT INTO events (title, date, location, description, image_data, rsvps, registered, status, attendees) VALUES (?, ?, ?, ?, ?, 0, 0, 'Upcoming', '[]')"
+  ).run(title, date || '', location || '', description.trim(), image.data);
 
   const row = db.prepare('SELECT * FROM events WHERE id = ?').get(info.lastInsertRowid);
   dispatchAlumniAudience(`New alumni event: ${title}`, `${title} is scheduled${date ? ` on ${date}` : ''}.`, 'event', row.id).catch(() => {});
-  mirror('events', row);
+  mirrorEvent(row);
   res.status(201).json({ event: mapEvent(row) });
 });
 
@@ -72,7 +109,7 @@ router.post('/events/:id/rsvp', (req, res) => {
     id
   );
   const updated = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
-  mirrorUpdate('events', updated);
+  mirrorEvent(updated, true);
   if (idx < 0) {
     dispatchNotification({
       userId: req.user.id,
@@ -128,7 +165,7 @@ router.put('/events/:id/attendance', requireRole('admin', 'staff'), (req, res) =
   attendee.present = Boolean(req.body?.present);
   db.prepare('UPDATE events SET attendees = ? WHERE id = ?').run(JSON.stringify(attendees), id);
   const updated = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
-  mirrorUpdate('events', updated);
+  mirrorEvent(updated, true);
   res.json({ event: mapEvent(updated) });
 });
 
@@ -137,14 +174,22 @@ router.put('/events/:id', requireRole('admin', 'staff'), (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'Event not found.' });
-  const { title, date, location, status } = req.body || {};
-  db.prepare('UPDATE events SET title = ?, date = ?, location = ?, status = ? WHERE id = ?').run(
-    title ?? existing.title, date ?? existing.date, location ?? existing.location, status ?? existing.status, id
+  const { title, date, location, status, description, imageData } = req.body || {};
+  if (description !== undefined && (typeof description !== 'string' || description.length > 5000)) {
+    return res.status(400).json({ error: 'Event description must be 5,000 characters or fewer.' });
+  }
+  const image = imageData === undefined ? { data: existing.image_data || '' } : validateEventImageData(imageData);
+  if (image.error) return res.status(400).json({ error: image.error });
+  db.prepare('UPDATE events SET title = ?, date = ?, location = ?, status = ?, description = ?, image_data = ? WHERE id = ?').run(
+    title ?? existing.title, date ?? existing.date, location ?? existing.location, status ?? existing.status,
+    description === undefined ? existing.description : description.trim(), image.data, id
   );
   const updated = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
-  mirrorUpdate('events', updated);
+  mirrorEvent(updated, true);
   const cancelled = String(updated.status || '').toLowerCase().includes('cancel');
-  const changed = updated.title !== existing.title || updated.date !== existing.date || updated.location !== existing.location || updated.status !== existing.status;
+  const changed = updated.title !== existing.title || updated.date !== existing.date ||
+    updated.location !== existing.location || updated.status !== existing.status ||
+    updated.description !== existing.description || updated.image_data !== existing.image_data;
   if (cancelled) {
     dispatchAlumniAudience(
       `Event cancelled: ${updated.title}`,
