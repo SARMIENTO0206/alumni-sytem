@@ -14,6 +14,9 @@ export function notificationTarget(relatedType, relatedId, extras = {}) {
   if (type === 'event') {
     return { view: 'events', url: id ? `/#/events/${id}` : '/#/events' };
   }
+  if (type === 'reunion') {
+    return { view: 'reunions', url: '/#/batch-reunions' };
+  }
   if (type === 'job') {
     return { view: 'job-opportunities', url: id ? `/#/jobs/${id}` : '/#/jobs' };
   }
@@ -93,7 +96,9 @@ export async function deliverChannels(notification, opts = {}) {
   let emailStatus = '';
   let smsStatus = '';
 
-  if (opts.sendEmail !== false && prefs.email !== false && emailTo) {
+  const emailEnabled = opts.forceChannels ? opts.sendEmail === true : opts.sendEmail !== false && prefs.email !== false;
+  const smsEnabled = opts.forceChannels ? opts.sendSms === true : opts.sendSms === true || (prefs.sms === true && phoneTo);
+  if (emailEnabled && emailTo) {
     const result = await sendMail({
       to: emailTo,
       subject: notification.subject,
@@ -106,7 +111,7 @@ export async function deliverChannels(notification, opts = {}) {
     emailStatus = 'skipped';
   }
 
-  if (opts.sendSms === true || (prefs.sms === true && phoneTo)) {
+  if (smsEnabled && phoneTo) {
     const result = await sendSms({
       to: phoneTo,
       message: `${notification.subject}: ${notification.message}`.slice(0, 160),

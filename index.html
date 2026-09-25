@@ -3127,71 +3127,122 @@
     <div id="addReunionModal" class="modal-backdrop">
         <div class="modal-box p-6">
             <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
-                <h3 class="font-extrabold text-slate-800 text-base">Create Batch Reunion</h3>
+                <h3 id="reunionModalTitle" class="font-extrabold text-slate-800 text-base">Create Batch Reunion</h3>
                 <button onclick="closeAddReunionModal()" title="Close reunion modal" aria-label="Close reunion modal" class="text-slate-400 hover:text-slate-600 p-1">
                     <i class="fa-solid fa-xmark text-base"></i>
                 </button>
             </div>
 
-            <form onsubmit="saveNewReunion(event)" class="space-y-3.5">
-                <!-- Target Batch Selector -->
-                <div>
-                    <label class="form-label" for="reunionBatch">Target Batch Year</label>
-                    <select id="reunionBatch" required class="form-select text-xs">
-                        <option value="">Select graduation batch...</option>
-                        <option value="2014">Batch 2014 (10th Year)</option>
-                        <option value="2015">Batch 2015</option>
-                        <option value="2018">Batch 2018</option>
-                        <option value="2019">Batch 2019 (5th Year)</option>
-                        <option value="2020">Batch 2020</option>
-                        <option value="2021">Batch 2021</option>
-                        <option value="2023">Batch 2023</option>
-                        <option value="2024">Batch 2024</option>
-                    </select>
-                    <p class="text-[10px] text-slate-400 mt-1">Invitations will only be sent to alumni from this batch.</p>
-                </div>
+            <form onsubmit="saveNewReunion(event)" class="space-y-4">
+                <section class="space-y-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Target Alumni</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="reunionEducationLevel">Educational Level <span class="text-rose-600">*</span></label>
+                            <select id="reunionEducationLevel" required class="form-select text-xs" onchange="updateReunionTargetOptions()">
+                                <option value="">Select level...</option>
+                                <option value="JHS">Junior High School</option>
+                                <option value="SHS">Senior High School</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label" for="reunionBatch">Target Batch Year <span class="text-rose-600">*</span></label>
+                            <select id="reunionBatch" required class="form-select text-xs" disabled onchange="updateReunionTargetPreview()">
+                                <option value="">Select level first...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="reunionStrandField" hidden>
+                        <label class="form-label" for="reunionStrand">SHS Strand</label>
+                        <select id="reunionStrand" class="form-select text-xs" onchange="updateReunionTargetPreview()">
+                            <option value="">All Strands</option>
+                        </select>
+                    </div>
+                </section>
 
-                <div class="grid grid-cols-2 gap-3">
+                <section class="space-y-3 border-t border-slate-100 pt-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Reunion Details</h4>
                     <div>
-                        <label class="form-label" for="reunionLabel">Reunion Label</label>
-                        <input type="text" id="reunionLabel" required placeholder="e.g. Batch 2014 Decennial" class="form-input text-xs">
+                        <label class="form-label" for="reunionLabel">Reunion Title <span class="text-rose-600">*</span></label>
+                        <input type="text" id="reunionLabel" required maxlength="160" placeholder="e.g. Batch 2016 10th Year Reunion" class="form-input text-xs">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="reunionDate">Reunion Date <span class="text-rose-600">*</span></label>
+                            <input type="date" id="reunionDate" required class="form-input text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label" for="reunionStartTime">Start Time <span class="text-rose-600">*</span></label>
+                            <input type="time" id="reunionStartTime" required class="form-input text-xs" onchange="validateReunionTimes()">
+                        </div>
                     </div>
                     <div>
-                        <label class="form-label" for="reunionDate">Reunion Date</label>
-                        <input type="text" id="reunionDate" required placeholder="e.g. July 20, 2024" class="form-input text-xs">
+                        <label class="form-label" for="reunionEndTime">End Time <span class="font-normal text-slate-400">(optional)</span></label>
+                        <input type="time" id="reunionEndTime" class="form-input text-xs" onchange="validateReunionTimes()">
                     </div>
-                </div>
-
-                <div>
-                    <label class="form-label" for="reunionVenue">Venue</label>
-                    <input type="text" id="reunionVenue" required placeholder="e.g. SAA Multi-purpose Hall" class="form-input text-xs">
-                </div>
-
-                <div>
-                    <label class="form-label" for="reunionCoordinator">Batch Coordinator</label>
-                    <input type="text" id="reunionCoordinator" required placeholder="e.g. Maria Santos (+63 917 123 4567)" class="form-input text-xs">
-                </div>
-
-                <!-- Invitation Channel Preference -->
-                <div class="p-3.5 rounded-lg bg-[#f8f4ee] border border-amber-900/10">
-                    <p class="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                        <i class="fa-solid fa-paper-plane text-amber-600 mr-1"></i> Auto Invitation Channels
-                    </p>
-                    <div class="flex flex-wrap gap-3 text-xs">
-                        <label class="flex items-center gap-1.5 cursor-pointer">
-                            <input type="checkbox" id="sendReunionEmail" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
-                            <span class="text-slate-700 font-semibold"><i class="fa-regular fa-envelope text-indigo-500 mr-0.5"></i> Gmail Invitation</span>
-                        </label>
-                        <label class="flex items-center gap-1.5 cursor-pointer">
-                            <input type="checkbox" id="sendReunionSms" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
-                            <span class="text-slate-700 font-semibold"><i class="fa-solid fa-comment-sms text-emerald-500 mr-0.5"></i> SMS Invitation</span>
-                        </label>
+                    <div>
+                        <label class="form-label" for="reunionVenue">Venue / Location <span class="text-rose-600">*</span></label>
+                        <input type="text" id="reunionVenue" required maxlength="240" placeholder="e.g. SAA Multi-Purpose Hall" class="form-input text-xs">
                     </div>
-                </div>
+                    <div>
+                        <label class="form-label" for="reunionDescription">Description</label>
+                        <textarea id="reunionDescription" rows="3" maxlength="5000" placeholder="Add reunion details, activities, dress code, and other information..." class="form-textarea text-xs"></textarea>
+                    </div>
+                </section>
 
-                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <section class="space-y-3 border-t border-slate-100 pt-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Batch Coordinator</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="reunionCoordinatorName">Coordinator Name</label>
+                            <input type="text" id="reunionCoordinatorName" maxlength="120" placeholder="e.g. Maria Santos" class="form-input text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label" for="reunionCoordinatorContact">Contact Number</label>
+                            <input type="tel" id="reunionCoordinatorContact" placeholder="e.g. 0917 123 4567" class="form-input text-xs">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="space-y-3 border-t border-slate-100 pt-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">RSVP</h4>
+                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                        <input type="checkbox" id="reunionRsvpEnabled" checked onchange="updateReunionRsvpFields()" class="h-4 w-4 rounded border-slate-300 text-[#801235]">
+                        Allow alumni to RSVP
+                    </label>
+                    <div id="reunionRsvpDeadlineField">
+                        <label class="form-label" for="reunionRsvpDeadline">RSVP Deadline <span class="font-normal text-slate-400">(optional)</span></label>
+                        <input type="date" id="reunionRsvpDeadline" class="form-input text-xs">
+                    </div>
+                </section>
+
+                <section class="space-y-3 border-t border-slate-100 pt-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Invitation Channels</h4>
+                    <div class="p-3.5 rounded-lg bg-[#f8f4ee] border border-amber-900/10">
+                        <div class="flex flex-wrap gap-3 text-xs">
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" id="sendReunionEmail" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
+                                <span class="text-slate-700 font-semibold"><i class="fa-regular fa-envelope text-indigo-500 mr-0.5"></i> Email Invitation</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" id="sendReunionSms" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
+                                <span class="text-slate-700 font-semibold"><i class="fa-solid fa-comment-sms text-emerald-500 mr-0.5"></i> SMS Invitation</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="reunionInvitationSummary" class="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-xs text-slate-600" aria-live="polite">
+                        <p class="font-bold text-slate-700">Invitation Summary</p>
+                        <p id="reunionTargetSummary" class="mt-1">Choose an educational level and batch to preview recipients.</p>
+                        <p id="reunionRecipientCounts" class="mt-2">Eligible alumni: — · With email: — · With mobile: —</p>
+                    </div>
+                </section>
+
+                <div class="flex flex-wrap justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeAddReunionModal()" class="btn btn-secondary text-xs">Cancel</button>
-                    <button type="submit" class="btn btn-primary text-xs">
+                    <button type="submit" name="reunionAction" value="draft" formnovalidate class="btn btn-secondary text-xs">
+                        <i class="fa-regular fa-floppy-disk mr-1"></i> Save Draft
+                    </button>
+                    <button type="submit" name="reunionAction" value="send" class="btn btn-primary text-xs">
                         <i class="fa-solid fa-paper-plane mr-1"></i> Create & Send Invitations
                     </button>
                 </div>

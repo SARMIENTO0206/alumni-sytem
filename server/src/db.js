@@ -120,7 +120,21 @@ export function initDb() {
       venue        TEXT DEFAULT '',
       coordinators TEXT DEFAULT '',
       confirmed    INTEGER DEFAULT 0,
-      attendees    TEXT DEFAULT '[]'
+      attendees    TEXT DEFAULT '[]',
+      education_level TEXT DEFAULT '',
+      batch_year TEXT DEFAULT '',
+      strand TEXT DEFAULT '',
+      title TEXT DEFAULT '',
+      start_time TEXT DEFAULT '',
+      end_time TEXT DEFAULT '',
+      description TEXT DEFAULT '',
+      coordinator_name TEXT DEFAULT '',
+      coordinator_contact TEXT DEFAULT '',
+      rsvp_enabled INTEGER DEFAULT 1,
+      rsvp_deadline TEXT DEFAULT '',
+      invitation_email INTEGER DEFAULT 1,
+      invitation_sms INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'Published'
     );
 
     CREATE TABLE IF NOT EXISTS donations (
@@ -240,6 +254,20 @@ export function initDb() {
   ensureColumn('users', 'lrn', "lrn TEXT DEFAULT ''");
   ensureColumn('users', 'address', "address TEXT DEFAULT ''");
   ensureColumn('users', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
+  ensureColumn('reunions', 'education_level', "education_level TEXT DEFAULT ''");
+  ensureColumn('reunions', 'batch_year', "batch_year TEXT DEFAULT ''");
+  ensureColumn('reunions', 'strand', "strand TEXT DEFAULT ''");
+  ensureColumn('reunions', 'title', "title TEXT DEFAULT ''");
+  ensureColumn('reunions', 'start_time', "start_time TEXT DEFAULT ''");
+  ensureColumn('reunions', 'end_time', "end_time TEXT DEFAULT ''");
+  ensureColumn('reunions', 'description', "description TEXT DEFAULT ''");
+  ensureColumn('reunions', 'coordinator_name', "coordinator_name TEXT DEFAULT ''");
+  ensureColumn('reunions', 'coordinator_contact', "coordinator_contact TEXT DEFAULT ''");
+  ensureColumn('reunions', 'rsvp_enabled', 'rsvp_enabled INTEGER DEFAULT 1');
+  ensureColumn('reunions', 'rsvp_deadline', "rsvp_deadline TEXT DEFAULT ''");
+  ensureColumn('reunions', 'invitation_email', 'invitation_email INTEGER DEFAULT 1');
+  ensureColumn('reunions', 'invitation_sms', 'invitation_sms INTEGER DEFAULT 1');
+  ensureColumn('reunions', 'status', "status TEXT DEFAULT 'Published'");
   ensureColumn('events', 'description', "description TEXT DEFAULT ''");
   ensureColumn('events', 'image_data', "image_data TEXT DEFAULT ''");
   ensureColumn('alumni', 'user_id', 'user_id INTEGER DEFAULT 0');

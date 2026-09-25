@@ -3,12 +3,19 @@ import { db, findAlumniForUser } from '../db.js';
 import { isAdmin, isAlumni, isStaff, ownsLinkedRow, requireRole } from '../auth.js';
 import { mirror, mirrorUpdate, mirrorDelete } from '../sync-supabase.js';
 import { dispatchAlumniAudience, dispatchNotification, dispatchStaffAudience } from '../notify.js';
+import { normalizePhMobile } from '../phone.js';
 
 const router = Router();
 
 const parseJson = (str, fallback) => {
   try { return JSON.parse(str || '[]'); } catch (e) { return fallback; }
 };
+
+function isValidIsoDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}
 
 function validateEventImageData(imageData) {
   if (imageData === undefined || imageData === null || imageData === '') return { data: '' };
@@ -49,6 +56,12 @@ const mapEvent = (e) => ({
 
 const mapReunion = (r) => ({
   id: r.id, batch: r.batch, date: r.date, venue: r.venue, coordinators: r.coordinators,
+  educationLevel: r.education_level || '', batchYear: r.batch_year || '', strand: r.strand || '',
+  title: r.title || r.batch || '', startTime: r.start_time || '', endTime: r.end_time || '',
+  description: r.description || '', coordinatorName: r.coordinator_name || '',
+  coordinatorContact: r.coordinator_contact || '', rsvpEnabled: r.rsvp_enabled !== 0,
+  rsvpDeadline: r.rsvp_deadline || '', sendEmail: r.invitation_email !== 0,
+  sendSms: r.invitation_sms !== 0, status: r.status || 'Published',
   confirmed: Boolean(r.confirmed), attendees: parseJson(r.attendees, [])
 });
 
@@ -219,32 +232,254 @@ router.delete('/events/:id', requireRole('admin', 'staff'), (req, res) => {
 
 /* -------------------------------- Reunions -------------------------------- */
 
+function reunionAudience(educationLevel, batchYear, strand = '') {
+  let sql = `SELECT id, alumni_id, name, email, contact
+    FROM users
+    WHERE role = 'alumni' AND status = 'Active' AND education_level = ?`;
+  const params = [educationLevel];
+  if (batchYear) {
+    sql += ' AND batch = ?';
+    params.push(String(batchYear));
+  }
+  if (strand) {
+    if (strand === 'TVL') {
+      sql += " AND (track = 'TVL' OR strand = 'TVL')";
+    } else {
+      sql += ' AND strand = ?';
+      params.push(strand);
+    }
+  }
+  return db.prepare(sql).all(...params);
+}
+
+function reunionCounts(users) {
+  return {
+    eligible: users.length,
+    withEmail: users.filter((user) => String(user.email || '').trim()).length,
+    withMobile: users.filter((user) => String(user.contact || '').trim()).length
+  };
+}
+
+function mirrorReunion(row, update = false) {
+  const legacyRow = Object.fromEntries(
+    Object.entries(row).filter(([key]) => ![
+      'education_level', 'batch_year', 'strand', 'title', 'start_time', 'end_time',
+      'description', 'coordinator_name', 'coordinator_contact', 'rsvp_enabled',
+      'rsvp_deadline', 'invitation_email', 'invitation_sms', 'status'
+    ].includes(key))
+  );
+  if (update) mirrorUpdate('reunions', legacyRow);
+  else mirror('reunions', legacyRow);
+}
+
 /** GET /api/reunions - list batch reunions. */
 router.get('/reunions', (req, res) => {
   const rows = db.prepare('SELECT * FROM reunions ORDER BY id DESC').all();
-  res.json({ reunions: rows.map(mapReunion) });
+  const visibleRows = isAdmin(req.user) || isStaff(req.user)
+    ? rows
+    : rows.filter((row) => (row.status || 'Published') === 'Published');
+  res.json({ reunions: visibleRows.map(mapReunion) });
 });
 
-/** POST /api/reunions - create a reunion (admin only). */
-router.post('/reunions', requireRole('admin', 'staff'), (req, res) => {
-  const { batch, date, venue, coordinators } = req.body || {};
-  if (!batch) return res.status(400).json({ error: 'Batch label is required.' });
+router.get('/reunions/target-options', requireRole('admin', 'staff'), (req, res) => {
+  const educationLevel = String(req.query.educationLevel || '');
+  if (!['JHS', 'SHS'].includes(educationLevel)) {
+    return res.status(400).json({ error: 'Select Junior High School or Senior High School.' });
+  }
+  const batchRows = db.prepare(
+    `SELECT DISTINCT batch FROM users
+     WHERE role = 'alumni' AND status = 'Active' AND education_level = ?
+       AND batch GLOB '[0-9][0-9][0-9][0-9]'
+     ORDER BY CAST(batch AS INTEGER) DESC`
+  ).all(educationLevel);
+  const years = batchRows.map((row) => row.batch);
+  const strands = educationLevel === 'SHS'
+    ? [...new Set([
+      'STEM', 'ABM', 'HUMSS', 'GAS', 'TVL',
+      ...db.prepare(
+        `SELECT DISTINCT strand FROM users
+         WHERE role = 'alumni' AND status = 'Active' AND education_level = 'SHS'
+           AND TRIM(strand) != ''
+         ORDER BY strand`
+      ).all().map((row) => row.strand)
+    ])]
+    : [];
 
-  const info = db.prepare(
-    "INSERT INTO reunions (batch, date, venue, coordinators, confirmed, attendees) VALUES (?, ?, ?, ?, 0, '[]')"
-  ).run(batch, date || '', venue || '', coordinators || '');
+  const batchYear = String(req.query.batchYear || '');
+  const strand = String(req.query.strand || '');
+  const selectedBatchIsValid = !batchYear || years.includes(batchYear);
+  const selectedStrandIsValid = !strand || (educationLevel === 'SHS' && strands.includes(strand));
+  if (!selectedBatchIsValid || !selectedStrandIsValid) {
+    return res.status(400).json({ error: 'Select a valid target batch and strand.' });
+  }
+  const counts = batchYear
+    ? reunionCounts(reunionAudience(educationLevel, batchYear, strand))
+    : { eligible: 0, withEmail: 0, withMobile: 0 };
+  res.json({ years, strands, counts });
+});
 
-  const row = db.prepare('SELECT * FROM reunions WHERE id = ?').get(info.lastInsertRowid);
-  mirror('reunions', row);
-  res.status(201).json({ reunion: mapReunion(row) });
+/** POST /api/reunions - save a draft or create a reunion and send selected invitations. */
+router.post('/reunions', requireRole('admin', 'staff'), async (req, res) => {
+  const body = req.body || {};
+  const status = body.sendInvitations === true ? 'Published' : 'Draft';
+  const title = String(body.title || '').trim();
+  const educationLevel = String(body.educationLevel || '');
+  const batchYear = String(body.batchYear || '');
+  const strand = String(body.strand || '');
+  const date = String(body.date || '');
+  const startTime = String(body.startTime || '');
+  const endTime = String(body.endTime || '');
+  const venue = String(body.venue || '').trim();
+  const description = String(body.description || '').trim();
+  const coordinatorName = String(body.coordinatorName || '').trim();
+  const coordinatorContactRaw = String(body.coordinatorContact || '').trim();
+  const rsvpEnabled = body.rsvpEnabled !== false;
+  const rsvpDeadline = String(body.rsvpDeadline || '');
+  const sendEmail = body.sendEmail === true;
+  const sendSms = body.sendSms === true;
+
+  if (title.length > 160 || description.length > 5000 || venue.length > 240 || coordinatorName.length > 120) {
+    return res.status(400).json({ error: 'A reunion field exceeds its maximum length.' });
+  }
+  let coordinatorContact = '';
+  try {
+    coordinatorContact = normalizePhMobile(coordinatorContactRaw);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  let audience = [];
+  if (status === 'Published') {
+    if (!title || !['JHS', 'SHS'].includes(educationLevel) ||
+        !/^\d{4}$/.test(batchYear) || Number(batchYear) < 1960 ||
+        Number(batchYear) > new Date().getFullYear()) {
+      return res.status(400).json({ error: 'Enter a reunion title, education level, and valid target batch year.' });
+    }
+    if (!isValidIsoDate(date)) {
+      return res.status(400).json({ error: 'Select a valid reunion date.' });
+    }
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime) ||
+        (endTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime)) ||
+        (endTime && endTime <= startTime)) {
+      return res.status(400).json({ error: 'Enter a valid start time and an end time later than the start time.' });
+    }
+    if (!venue) return res.status(400).json({ error: 'Venue / location is required.' });
+    if (rsvpDeadline && (!isValidIsoDate(rsvpDeadline) ||
+        rsvpDeadline > date)) {
+      return res.status(400).json({ error: 'RSVP deadline must be a valid date on or before the reunion date.' });
+    }
+    const strandExists = educationLevel === 'SHS' && Boolean(db.prepare(
+      `SELECT id FROM users WHERE role = 'alumni' AND status = 'Active'
+       AND education_level = 'SHS' AND batch = ? AND strand = ? LIMIT 1`
+    ).get(batchYear, strand));
+    if (strand && (educationLevel !== 'SHS' ||
+        (!['STEM', 'ABM', 'HUMSS', 'GAS', 'TVL'].includes(strand) && !strandExists))) {
+      return res.status(400).json({ error: 'Select a valid SHS strand or All Strands.' });
+    }
+    if (!sendEmail && !sendSms) {
+      return res.status(400).json({ error: 'Select at least one invitation channel.' });
+    }
+    audience = reunionAudience(educationLevel, batchYear, strand);
+    if (!audience.length) {
+      return res.status(400).json({ error: 'No active alumni match the selected education level, batch, and strand.' });
+    }
+    const canReceiveSelectedChannel = audience.some((user) =>
+      (sendEmail && String(user.email || '').trim()) ||
+      (sendSms && String(user.contact || '').trim())
+    );
+    if (!canReceiveSelectedChannel) {
+      return res.status(400).json({ error: 'No alumni in this target group have contact details for the selected invitation channels.' });
+    }
+  }
+  const batchLabel = title
+    ? `${title} (${educationLevel || 'Alumni'} Batch ${batchYear || 'TBD'}${strand ? ` • ${strand}` : ''})`
+    : `Batch Reunion${batchYear ? ` (${batchYear})` : ''}`;
+  const legacyCoordinator = coordinatorName
+    ? `${coordinatorName}${coordinatorContact ? ` (${coordinatorContact})` : ''}`
+    : coordinatorContact;
+
+  const values = [
+    batchLabel, date, venue, legacyCoordinator, educationLevel, batchYear, strand, title,
+    startTime, endTime, description, coordinatorName, coordinatorContact,
+    rsvpEnabled ? 1 : 0, rsvpDeadline, sendEmail ? 1 : 0, sendSms ? 1 : 0, status
+  ];
+  const reunionId = Number(body.reunionId || 0);
+  let row;
+  if (reunionId) {
+    const existingDraft = db.prepare('SELECT * FROM reunions WHERE id = ?').get(reunionId);
+    if (!existingDraft || (existingDraft.status || 'Published') !== 'Draft') {
+      return res.status(404).json({ error: 'Reunion draft not found.' });
+    }
+    db.prepare(
+      `UPDATE reunions SET batch = ?, date = ?, venue = ?, coordinators = ?, education_level = ?,
+       batch_year = ?, strand = ?, title = ?, start_time = ?, end_time = ?, description = ?,
+       coordinator_name = ?, coordinator_contact = ?, rsvp_enabled = ?, rsvp_deadline = ?,
+       invitation_email = ?, invitation_sms = ?, status = ?
+       WHERE id = ?`
+    ).run(...values, reunionId);
+    row = db.prepare('SELECT * FROM reunions WHERE id = ?').get(reunionId);
+  } else {
+    const info = db.prepare(
+      `INSERT INTO reunions
+        (batch, date, venue, coordinators, confirmed, attendees, education_level, batch_year, strand,
+         title, start_time, end_time, description, coordinator_name, coordinator_contact,
+         rsvp_enabled, rsvp_deadline, invitation_email, invitation_sms, status)
+       VALUES (?, ?, ?, ?, 0, '[]', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(...values);
+    row = db.prepare('SELECT * FROM reunions WHERE id = ?').get(info.lastInsertRowid);
+  }
+
+  if (status === 'Draft') return res.status(201).json({ reunion: mapReunion(row) });
+  mirrorReunion(row, Boolean(reunionId));
+
+  const invitationMessage = [
+    `${title} is scheduled for ${date}${startTime ? ` at ${startTime}` : ''}${endTime ? `–${endTime}` : ''}.`,
+    `Venue: ${venue}.`,
+    rsvpEnabled ? `Please RSVP${rsvpDeadline ? ` by ${rsvpDeadline}` : ''} in the alumni portal.` : '',
+    description
+  ].filter(Boolean).join(' ');
+  const deliveries = await Promise.all(audience.map((user) => dispatchNotification({
+    userId: user.id,
+    alumniId: user.alumni_id || 0,
+    recipient: String(user.email || '').trim() || user.name,
+    channel: 'SYSTEM',
+    subject: `Reunion invitation: ${title}`,
+    message: invitationMessage,
+    relatedType: 'reunion',
+    relatedId: row.id,
+    email: String(user.email || '').trim(),
+    phone: String(user.contact || '').trim(),
+    sendEmail: sendEmail && Boolean(String(user.email || '').trim()),
+    sendSms: sendSms && Boolean(String(user.contact || '').trim()),
+    forceChannels: true
+  })));
+  const invitationCounts = {
+    ...reunionCounts(audience),
+    emailSent: deliveries.filter((item) => item?.emailStatus === 'accepted').length,
+    smsSent: deliveries.filter((item) => item?.smsStatus === 'accepted').length
+  };
+  res.status(201).json({ reunion: mapReunion(row), invitations: invitationCounts });
 });
 
 router.post('/reunions/:id/rsvp', (req, res) => {
   const id = Number(req.params.id);
   const row = db.prepare('SELECT * FROM reunions WHERE id = ?').get(id);
   if (!row) return res.status(404).json({ error: 'Reunion not found.' });
+  if ((row.status || 'Published') !== 'Published') {
+    return res.status(403).json({ error: 'This reunion is still a draft.' });
+  }
+  if (!row.rsvp_enabled) return res.status(403).json({ error: 'RSVP is disabled for this reunion.' });
+  if (row.rsvp_deadline && row.rsvp_deadline < new Date().toISOString().slice(0, 10)) {
+    return res.status(403).json({ error: 'The RSVP deadline has passed.' });
+  }
   const name = String(req.user?.name || '').trim();
   if (!name) return res.status(400).json({ error: 'A user profile name is required to confirm attendance.' });
+  if (req.user?.role === 'alumni' &&
+      (req.user.status !== 'Active' ||
+       req.user.educationLevel !== row.education_level ||
+       String(req.user.batch) !== String(row.batch_year) ||
+       (row.strand && (row.strand === 'TVL' ? req.user.track !== 'TVL' : req.user.strand !== row.strand)))) {
+    return res.status(403).json({ error: 'This reunion is not available for your verified alumni batch.' });
+  }
   const attendees = parseJson(row.attendees, []);
   const idx = attendees.findIndex((a) => String(a.name || '').toLowerCase() === name.toLowerCase());
   if (idx >= 0) attendees.splice(idx, 1);
@@ -254,7 +489,9 @@ router.post('/reunions/:id/rsvp', (req, res) => {
     attendees.length ? 1 : 0,
     id
   );
-  res.json({ reunion: mapReunion(db.prepare('SELECT * FROM reunions WHERE id = ?').get(id)) });
+  const updated = db.prepare('SELECT * FROM reunions WHERE id = ?').get(id);
+  mirrorReunion(updated, true);
+  res.json({ reunion: mapReunion(updated) });
 });
 
 router.put('/reunions/:id/attendance', requireRole('admin', 'staff'), (req, res) => {
@@ -268,7 +505,7 @@ router.put('/reunions/:id/attendance', requireRole('admin', 'staff'), (req, res)
   attendee.present = Boolean(req.body?.present);
   db.prepare('UPDATE reunions SET attendees = ? WHERE id = ?').run(JSON.stringify(attendees), id);
   const updated = db.prepare('SELECT * FROM reunions WHERE id = ?').get(id);
-  mirrorUpdate('reunions', updated);
+  mirrorReunion(updated, true);
   res.json({ reunion: mapReunion(updated) });
 });
 
