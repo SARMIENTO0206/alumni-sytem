@@ -218,7 +218,79 @@
     }
 
     function showForgotPassword() {
-        showToast("Please contact the Alumni Affairs Office at (02) 8361-2345 to reset your password.", "info");
+        document.getElementById("loginForm")?.classList.add("hidden");
+        document.getElementById("forgotPasswordPanel")?.classList.remove("hidden");
+        document.getElementById("resetPasswordPanel")?.classList.add("hidden");
+        document.getElementById("resetIdentifier")?.focus();
+    }
+
+    function showLoginForm() {
+        document.getElementById("loginForm")?.classList.remove("hidden");
+        document.getElementById("forgotPasswordPanel")?.classList.add("hidden");
+        document.getElementById("resetPasswordPanel")?.classList.add("hidden");
+    }
+
+    function showResetMessage(id, message, type) {
+        const box = document.getElementById(id);
+        if (!box) return;
+        box.textContent = message;
+        box.className = `text-xs p-3 rounded-lg ${type === "success" ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-rose-50 border border-rose-200 text-rose-700"}`;
+    }
+
+    async function requestPasswordReset(event) {
+        event.preventDefault();
+        try {
+            await SAA_API.request("/api/auth/password-reset/request", {
+                method: "POST",
+                body: JSON.stringify({ identifier: document.getElementById("resetIdentifier").value.trim() })
+            });
+            showResetMessage("forgotPasswordMessage", "If an account exists for that information, we’ll send password-reset instructions.", "success");
+        } catch (err) {
+            showResetMessage("forgotPasswordMessage", "If an account exists for that information, we’ll send password-reset instructions.", "success");
+        }
+    }
+
+    function updateResetPasswordStrength() {
+        const password = document.getElementById("newResetPassword")?.value || "";
+        const strong = password.length >= 8 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password);
+        const label = document.getElementById("resetPasswordStrength");
+        if (label) label.textContent = strong ? "Password meets the requirements." : "Use 8+ characters with upper, lower, and a number.";
+    }
+
+    async function completePasswordReset(event) {
+        event.preventDefault();
+        const password = document.getElementById("newResetPassword").value;
+        if (password !== document.getElementById("confirmResetPassword").value) {
+            showResetMessage("resetPasswordMessage", "The passwords do not match.", "error");
+            return;
+        }
+        try {
+            const token = new URLSearchParams((location.hash.split("?")[1] || "")).get("token") || "";
+            const result = await SAA_API.request("/api/auth/password-reset/complete", {
+                method: "POST",
+                body: JSON.stringify({ token, newPassword: password })
+            });
+            showResetMessage("resetPasswordMessage", result.message, "success");
+            event.target.reset();
+            setTimeout(showLoginForm, 1200);
+        } catch (err) {
+            showResetMessage("resetPasswordMessage", err.message || "This reset link is invalid or has expired.", "error");
+        }
+    }
+
+    function showResetPasswordFromLocation() {
+        if (location.hash.startsWith("#/reset-password")) {
+            showPublicScreen("login");
+            document.getElementById("loginForm")?.classList.add("hidden");
+            document.getElementById("forgotPasswordPanel")?.classList.add("hidden");
+            document.getElementById("resetPasswordPanel")?.classList.remove("hidden");
+            SAA_API.request("/api/auth/password-reset/verify", {
+                method: "POST",
+                body: JSON.stringify({ token: new URLSearchParams(location.hash.split("?")[1] || "").get("token") || "" })
+            }).catch((err) => {
+                showResetMessage("resetPasswordMessage", err.message || "This reset link is invalid or has expired.", "error");
+            });
+        }
     }
 
     function showContactRegistrar() {
@@ -265,4 +337,3 @@
             "applications", "unauthorized", "payment-return", "payment", "payment-history", "payment-receipt"
         ]
     };
-

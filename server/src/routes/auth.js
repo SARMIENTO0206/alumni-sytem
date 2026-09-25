@@ -1,10 +1,142 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { db, createSession, destroySession, mapUser, mapAlumni, writeAudit, writeLoginLog, linkAlumniAccount } from '../db.js';
+import { createHash, randomBytes } from 'node:crypto';
+import { db, createSession, destroySession, destroyUserSessions, mapUser, mapAlumni, writeAudit, writeLoginLog, linkAlumniAccount } from '../db.js';
 import { isAlumni, requireAuth } from '../auth.js';
 import { normalizePhMobile } from '../phone.js';
+import { sendMail } from '../mail.js';
 
 const router = Router();
+const resetRequestAttempts = new Map();
+const resetTokenAttempts = new Map();
+const RESET_TTL_MINUTES = 30;
+const RESET_WINDOW_MS = 15 * 60 * 1000;
+const RESET_MAX_ATTEMPTS = 5;
+
+function hashResetToken(token) {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function isRateLimited(store, key) {
+  const now = Date.now();
+  const entry = store.get(key);
+  if (!entry || now - entry.startedAt >= RESET_WINDOW_MS) {
+    store.set(key, { startedAt: now, count: 1 });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > RESET_MAX_ATTEMPTS;
+}
+
+function genericResetResponse(res) {
+  return res.status(202).json({
+    message: 'If an account exists for that information, we’ll send password-reset instructions.'
+  });
+}
+
+function passwordPolicyError(password) {
+  const value = String(password || '');
+  if (value.length < 8) return 'Password must be at least 8 characters long.';
+  if (!/[a-z]/.test(value) || !/[A-Z]/.test(value) || !/\d/.test(value)) {
+    return 'Password must include an uppercase letter, a lowercase letter, and a number.';
+  }
+  return '';
+}
+
+function resetUrl(token) {
+  const base = String(process.env.APP_PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
+  return `${base}/#/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+router.post('/password-reset/request', async (req, res, next) => {
+  const identifier = String(req.body?.identifier || '').trim();
+  const key = identifier.toLowerCase() || 'empty';
+  if (isRateLimited(resetRequestAttempts, `${req.ip}:${key}`)) return genericResetResponse(res);
+
+  try {
+    if (!identifier) return genericResetResponse(res);
+    const user = db.prepare(
+      `SELECT * FROM users
+       WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR contact = ?`
+    ).get(identifier, identifier, identifier);
+    if (!user || !user.email || (user.status && user.status !== 'Active')) return genericResetResponse(res);
+
+    db.prepare('UPDATE password_reset_tokens SET used_at = datetime(?) WHERE user_id = ? AND used_at IS NULL')
+      .run(new Date().toISOString(), user.id);
+    const rawToken = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1000).toISOString();
+    db.prepare(
+      'INSERT INTO password_reset_tokens (token_hash, user_id, expires_at) VALUES (?, ?, ?)'
+    ).run(hashResetToken(rawToken), user.id, expiresAt);
+
+    await sendMail({
+      to: user.email,
+      subject: 'Reset your Alumni Portal password',
+      text: [
+        `Hello ${user.name || 'Alumni'},`,
+        '',
+        'Use the link below to create a new password. This link expires in 30 minutes and can only be used once.',
+        resetUrl(rawToken),
+        '',
+        'If you did not request this, you can safely ignore this message.'
+      ].join('\n'),
+      userId: user.id
+    });
+    writeLoginLog({ id: user.id, username: user.username }, 'password_reset_requested');
+    return genericResetResponse(res);
+  } catch (err) {
+    console.error('[auth] Password reset request failed:', err.message);
+    return genericResetResponse(res);
+  }
+});
+
+router.post('/password-reset/verify', (req, res) => {
+  const token = String(req.body?.token || '');
+  if (!token || token.length > 200 || isRateLimited(resetTokenAttempts, req.ip)) {
+    return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+  }
+  const row = db.prepare(
+    `SELECT token_hash FROM password_reset_tokens
+     WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')`
+  ).get(hashResetToken(token));
+  if (!row) return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+  return res.json({ valid: true });
+});
+
+router.post('/password-reset/complete', (req, res) => {
+  const token = String(req.body?.token || '');
+  const policyError = passwordPolicyError(req.body?.newPassword);
+  if (!token || policyError || isRateLimited(resetTokenAttempts, req.ip)) {
+    return res.status(400).json({ error: policyError || 'This reset link is invalid or has expired.' });
+  }
+  const tokenHash = hashResetToken(token);
+  const row = db.prepare(
+    `SELECT * FROM password_reset_tokens
+     WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')`
+  ).get(tokenHash);
+  if (!row) return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+
+  const now = new Date().toISOString();
+  const passwordHash = bcrypt.hashSync(String(req.body.newPassword), 12);
+  const updated = db.prepare(
+    `UPDATE password_reset_tokens SET used_at = ?
+     WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')`
+  ).run(now, tokenHash);
+  if (updated.changes !== 1) return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, row.user_id);
+  destroyUserSessions(row.user_id);
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id);
+  writeLoginLog({ id: user.id, username: user.username }, 'password_reset_completed');
+  writeAudit({ id: user.id, role: user.role, username: user.username }, 'update', 'password_reset', user.id, 'Password reset completed.');
+  sendMail({
+    to: user.email,
+    subject: 'Your Alumni Portal password was changed',
+    text: `Hello ${user.name || 'Alumni'},\n\nYour Alumni Portal password was changed. If you did not make this change, contact the Alumni Affairs Office immediately.`,
+    userId: user.id
+  }).catch(() => {});
+  return res.json({ ok: true, message: 'Your password has been changed. You can now sign in.' });
+});
 
 /** POST /api/auth/login - verifies a bcrypt-hashed password, creates a session token. */
 router.post('/login', (req, res) => {

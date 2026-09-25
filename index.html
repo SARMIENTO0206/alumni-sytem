@@ -365,6 +365,37 @@
                     </button>
                 </form>
 
+                <section id="forgotPasswordPanel" class="hidden mt-6" aria-labelledby="forgotPasswordTitle">
+                    <div class="text-center mb-5">
+                        <h4 id="forgotPasswordTitle" class="text-xl font-extrabold text-slate-800">Reset your password</h4>
+                        <p class="text-sm text-slate-500 mt-1">Enter your email, username, or phone number.</p>
+                    </div>
+                    <form id="forgotPasswordForm" class="space-y-4" onsubmit="requestPasswordReset(event)">
+                        <label class="form-label" for="resetIdentifier">Account identifier</label>
+                        <input id="resetIdentifier" type="text" required autocomplete="username" class="form-input" placeholder="Email, username, or phone number">
+                        <div id="forgotPasswordMessage" class="hidden text-xs p-3 rounded-lg"></div>
+                        <button type="submit" class="btn btn-primary w-full py-3 rounded-xl">Send reset instructions</button>
+                        <button type="button" onclick="showLoginForm()" class="w-full text-xs text-[#801235] font-semibold hover:underline">Back to sign in</button>
+                    </form>
+                </section>
+
+                <section id="resetPasswordPanel" class="hidden mt-6" aria-labelledby="resetPasswordTitle">
+                    <div class="text-center mb-5">
+                        <h4 id="resetPasswordTitle" class="text-xl font-extrabold text-slate-800">Create a new password</h4>
+                        <p class="text-sm text-slate-500 mt-1">Use at least 8 characters, including upper, lower, and a number.</p>
+                    </div>
+                    <form id="resetPasswordForm" class="space-y-4" onsubmit="completePasswordReset(event)">
+                        <label class="form-label" for="newResetPassword">New password</label>
+                        <input id="newResetPassword" type="password" required autocomplete="new-password" class="form-input" oninput="updateResetPasswordStrength()" placeholder="New password">
+                        <div id="resetPasswordStrength" class="text-xs text-slate-500"></div>
+                        <label class="form-label" for="confirmResetPassword">Confirm new password</label>
+                        <input id="confirmResetPassword" type="password" required autocomplete="new-password" class="form-input" placeholder="Confirm new password">
+                        <div id="resetPasswordMessage" class="hidden text-xs p-3 rounded-lg"></div>
+                        <button type="submit" class="btn btn-primary w-full py-3 rounded-xl">Set new password</button>
+                        <button type="button" onclick="showLoginForm()" class="w-full text-xs text-[#801235] font-semibold hover:underline">Back to sign in</button>
+                    </form>
+                </section>
+
                 <div class="mt-6 pt-5 border-t border-slate-100 text-center space-y-2">
                     <button type="button" onclick="openSelfRegisterModal()" class="w-full py-2.5 rounded-xl border-2 border-[#801235] text-[#801235] font-bold text-xs hover:bg-[#801235]/5 transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-user-plus"></i>

@@ -359,6 +359,11 @@
 
     function restoreRouteFromLocation() {
         const parsed = parseAppLocation();
+        if (parsed.first === "reset-password") {
+            showPublicScreen("login");
+            if (typeof showResetPasswordFromLocation === "function") showResetPasswordFromLocation();
+            return;
+        }
         if (!isAuthenticated()) {
             if (parsed.viewId === "home") {
                 showPublicScreen("home");
@@ -757,8 +762,11 @@
     window.addEventListener("DOMContentLoaded", () => {
         const parsed = parseAppLocation();
         if (isAuthenticated()) return;
+        if (parsed.first === "reset-password") {
+            restoreRouteFromLocation();
+            return;
+        }
         if (parsed.viewId && parsed.viewId !== "home" && parsed.viewId !== "login") {
             goToLoginPage(true);
         }
     });
-

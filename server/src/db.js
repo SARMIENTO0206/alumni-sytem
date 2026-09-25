@@ -40,6 +40,14 @@ export function initDb() {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      token_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT DEFAULT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS alumni (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       name         TEXT NOT NULL,
@@ -256,11 +264,6 @@ export function initDb() {
   ensureColumn('reprints', 'released_at', "released_at TEXT DEFAULT ''");
   ensureColumn('reprints', 'cancelled_at', "cancelled_at TEXT DEFAULT ''");
   ensureColumn('reprints', 'correction_notes', "correction_notes TEXT DEFAULT ''");
-  ensureColumn('payments', 'qr_image', "qr_image TEXT DEFAULT ''");
-  ensureColumn('payments', 'qr_expires_at', "qr_expires_at TEXT DEFAULT ''");
-  ensureColumn('payments', 'gateway_method_id', "gateway_method_id TEXT DEFAULT ''");
-  ensureColumn('payments', 'request_code', "request_code TEXT DEFAULT ''");
-  ensureColumn('payments', 'receipt_email_sent', 'receipt_email_sent INTEGER DEFAULT 0');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS request_history (
@@ -371,6 +374,13 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications (user_id, is_read);
   `);
 
+  /* `payments` is created by the block above, so its columns are migrated only now. */
+  ensureColumn('payments', 'qr_image', "qr_image TEXT DEFAULT ''");
+  ensureColumn('payments', 'qr_expires_at', "qr_expires_at TEXT DEFAULT ''");
+  ensureColumn('payments', 'gateway_method_id', "gateway_method_id TEXT DEFAULT ''");
+  ensureColumn('payments', 'request_code', "request_code TEXT DEFAULT ''");
+  ensureColumn('payments', 'receipt_email_sent', 'receipt_email_sent INTEGER DEFAULT 0');
+
   ensureSystemUsers();
   migrateRegistrarToStaff();
   clearLegacyDemoRecords();
@@ -444,6 +454,10 @@ export function createSession(userId) {
 
 export function destroySession(token) {
   db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+}
+
+export function destroyUserSessions(userId) {
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
 }
 
 export function findByToken(token) {
