@@ -171,15 +171,18 @@ router.post('/login', (req, res) => {
 /** POST /api/auth/register - self-registration for alumni (bcrypt-hashes the password). */
 router.post('/register', (req, res) => {
   const {
-    username, password, name, studentId, batch, email, contact, track, strand, lrn, address, consent
+    username, password, name, studentId, batch, email, contact, educationLevel, gradeCompleted, track, strand, lrn, address, consent
   } = req.body || {};
 
   if (!username || !password || !name) {
     return res.status(400).json({ error: 'Username, password and full name are required.' });
   }
   const normalizedStudentId = String(studentId || '').trim();
-  if (!normalizedStudentId || !batch || !track || !strand || !email) {
-    return res.status(400).json({ error: 'Student ID, graduation year, SHS track, strand and email are required.' });
+  if (!normalizedStudentId || !batch || !educationLevel || !email) {
+    return res.status(400).json({ error: 'Student ID, graduation year, educational level and email are required.' });
+  }
+  if (!['JHS', 'SHS'].includes(educationLevel)) {
+    return res.status(400).json({ error: 'Select Junior High School or Senior High School.' });
   }
   const allowedStrands = {
     Academic: ['STEM', 'ABM', 'HUMSS', 'GAS'],
@@ -187,7 +190,16 @@ router.post('/register', (req, res) => {
     Sports: ['Sports Track'],
     'Arts and Design': ['Arts and Design']
   };
-  if (!allowedStrands[track]?.includes(strand)) {
+  if (educationLevel === 'JHS' && gradeCompleted !== 'Grade 10') {
+    return res.status(400).json({ error: 'Select Grade 10 as the completed JHS level.' });
+  }
+  if (educationLevel === 'JHS' && (track || strand)) {
+    return res.status(400).json({ error: 'JHS registrations must not include an SHS track or strand.' });
+  }
+  if (educationLevel === 'SHS' && gradeCompleted) {
+    return res.status(400).json({ error: 'SHS registrations must not include a JHS grade level.' });
+  }
+  if (educationLevel === 'SHS' && !allowedStrands[track]?.includes(strand)) {
     return res.status(400).json({ error: 'Select a valid SHS track and strand combination.' });
   }
   const graduationYear = Number(batch);
@@ -221,8 +233,8 @@ router.post('/register', (req, res) => {
   }
 
   const info = db.prepare(
-    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status, school, track, strand, lrn, address)
-     VALUES (?, ?, 'alumni', ?, ?, ?, ?, ?, ?, '', ?, ?, 'Pending Verification', ?, ?, ?, ?, ?)`
+    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status, school, education_level, grade_completed, track, strand, lrn, address)
+     VALUES (?, ?, 'alumni', ?, ?, ?, ?, ?, ?, '', ?, ?, 'Pending Verification', ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     String(username).trim(),
     bcrypt.hashSync(String(password), 10),
@@ -231,11 +243,13 @@ router.post('/register', (req, res) => {
     avatar,
     normalizedStudentId,
     batch || String(new Date().getFullYear()),
-    strand,
+    educationLevel === 'JHS' ? gradeCompleted : strand,
     email || '',
     mobile,
     'St. Agnes Academy of Caloocan',
-    track,
+    educationLevel,
+    educationLevel === 'JHS' ? gradeCompleted : '',
+    educationLevel === 'SHS' ? track : '',
     strand || '',
     lrn || '',
     address || ''

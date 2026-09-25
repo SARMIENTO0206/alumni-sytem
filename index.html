@@ -2661,15 +2661,40 @@
                 </section>
 
                 <section class="space-y-3 border-t border-slate-100 pt-3">
-                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">School Record</h4>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="form-label" for="regStudentId">Student ID Number *</label>
-                            <input type="text" id="regStudentId" required placeholder="e.g. SAA-2023-0188" class="form-input text-xs">
-                        </div>
-                        <div>
-                            <label class="form-label" for="regBatch">Graduation Batch / Year *</label>
-                            <select id="regBatch" required class="form-select text-xs"></select>
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Educational Background</h4>
+                    <div>
+                        <label class="form-label" for="regEducationLevel">Educational Level *</label>
+                        <select id="regEducationLevel" required onchange="updateRegistrationEducationFields()" class="form-select text-xs">
+                            <option value="">Select educational level</option>
+                            <option value="JHS">Junior High School</option>
+                            <option value="SHS">Senior High School</option>
+                        </select>
+                    </div>
+                    <div id="regJhsFields" class="hidden">
+                        <label class="form-label" for="regGradeCompleted">Grade / Level Completed *</label>
+                        <select id="regGradeCompleted" class="form-select text-xs">
+                            <option value="">Select completed level</option>
+                            <option value="Grade 10">Grade 10</option>
+                        </select>
+                    </div>
+                    <div id="regShsFields" class="hidden">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label" for="regTrack">SHS Track *</label>
+                                <select id="regTrack" onchange="updateRegistrationStrands()" class="form-select text-xs">
+                                    <option value="">Select track</option>
+                                    <option value="Academic">Academic</option>
+                                    <option value="TVL">Technical-Vocational-Livelihood (TVL)</option>
+                                    <option value="Sports">Sports</option>
+                                    <option value="Arts and Design">Arts and Design</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="regStrand">SHS Strand *</label>
+                                <select id="regStrand" disabled class="form-select text-xs">
+                                    <option value="">Select a track first</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     <div>
@@ -2678,20 +2703,12 @@
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="form-label" for="regTrack">SHS Track *</label>
-                            <select id="regTrack" required onchange="updateRegistrationStrands()" class="form-select text-xs">
-                                <option value="">Select track</option>
-                                <option value="Academic">Academic</option>
-                                <option value="TVL">Technical-Vocational-Livelihood (TVL)</option>
-                                <option value="Sports">Sports</option>
-                                <option value="Arts and Design">Arts and Design</option>
-                            </select>
+                            <label class="form-label" for="regStudentId">Student ID Number *</label>
+                            <input type="text" id="regStudentId" required placeholder="e.g. SAA-2023-0188" class="form-input text-xs">
                         </div>
                         <div>
-                            <label class="form-label" for="regStrand">SHS Strand *</label>
-                            <select id="regStrand" required disabled class="form-select text-xs">
-                                <option value="">Select a track first</option>
-                            </select>
+                            <label class="form-label" for="regBatch">Graduation Year *</label>
+                            <select id="regBatch" required class="form-select text-xs"></select>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">

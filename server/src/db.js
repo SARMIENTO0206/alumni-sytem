@@ -234,6 +234,8 @@ export function initDb() {
   ensureColumn('users', 'status', "status TEXT DEFAULT 'Active'");
   ensureColumn('users', 'school', "school TEXT DEFAULT ''");
   ensureColumn('users', 'track', "track TEXT DEFAULT ''");
+  ensureColumn('users', 'education_level', "education_level TEXT DEFAULT ''");
+  ensureColumn('users', 'grade_completed', "grade_completed TEXT DEFAULT ''");
   ensureColumn('users', 'strand', "strand TEXT DEFAULT ''");
   ensureColumn('users', 'lrn', "lrn TEXT DEFAULT ''");
   ensureColumn('users', 'address', "address TEXT DEFAULT ''");
@@ -431,6 +433,8 @@ export function mapUser(row) {
     status: row.status || 'Active',
     school: row.school || '',
     track: row.track || '',
+    educationLevel: row.education_level || '',
+    gradeCompleted: row.grade_completed || '',
     strand: row.strand || '',
     lrn: row.lrn || '',
     name: row.name,
