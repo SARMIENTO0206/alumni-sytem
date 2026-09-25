@@ -244,12 +244,12 @@
                 method: "POST",
                 body: JSON.stringify({ identifier: document.getElementById("resetIdentifier").value.trim() })
             });
-            showResetMessage("forgotPasswordMessage", "If an account exists for that information, we’ll send a verification code.", "success");
+            showResetMessage("forgotPasswordMessage", "If an account exists for that information, we’ll send a 6-digit OTP to the registered email or mobile number.", "success");
             document.getElementById("forgotPasswordPanel")?.classList.add("hidden");
             document.getElementById("resetPasswordPanel")?.classList.remove("hidden");
             document.getElementById("resetOtp")?.focus();
         } catch (err) {
-            showResetMessage("forgotPasswordMessage", "If an account exists for that information, we’ll send a verification code.", "success");
+            showResetMessage("forgotPasswordMessage", "If an account exists for that information, we’ll send a 6-digit OTP to the registered email or mobile number.", "success");
             document.getElementById("forgotPasswordPanel")?.classList.add("hidden");
             document.getElementById("resetPasswordPanel")?.classList.remove("hidden");
         }
