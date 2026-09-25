@@ -232,6 +232,10 @@ export function initDb() {
   `);
 
   ensureColumn('users', 'status', "status TEXT DEFAULT 'Active'");
+  ensureColumn('users', 'school', "school TEXT DEFAULT ''");
+  ensureColumn('users', 'strand', "strand TEXT DEFAULT ''");
+  ensureColumn('users', 'lrn', "lrn TEXT DEFAULT ''");
+  ensureColumn('users', 'address', "address TEXT DEFAULT ''");
   ensureColumn('users', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('alumni', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('alumni', 'education_school', "education_school TEXT DEFAULT ''");
@@ -424,6 +428,9 @@ export function mapUser(row) {
     username: row.username,
     role: row.role === 'registrar' ? 'staff' : row.role,
     status: row.status || 'Active',
+    school: row.school || '',
+    strand: row.strand || '',
+    lrn: row.lrn || '',
     name: row.name,
     title: row.title,
     avatar: row.avatar,

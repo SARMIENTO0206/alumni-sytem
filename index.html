@@ -2661,7 +2661,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="form-label" for="regStudentId">Student ID Number</label>
-                        <input type="text" id="regStudentId" required placeholder="e.g. SAA-2023-0188" class="form-input text-xs">
+                        <input type="text" id="regStudentId" placeholder="e.g. SAA-2023-0188" class="form-input text-xs">
                     </div>
                     <div>
                         <label class="form-label" for="regBatch">Graduation Batch Year</label>
@@ -2670,19 +2670,41 @@
                 </div>
 
                 <div>
-                    <label class="form-label" for="regProgram">Course / Program Graduated</label>
-                    <input type="text" id="regProgram" required placeholder="e.g. BS Accountancy" class="form-input text-xs">
+                    <label class="form-label" for="regSchool">School</label>
+                    <input type="text" id="regSchool" required value="St. Agnes Academy of Caloocan" class="form-input text-xs">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label" for="regStrand">SHS Strand / Track</label>
+                        <input type="text" id="regStrand" required placeholder="e.g. STEM" class="form-input text-xs">
+                    </div>
+                    <div>
+                        <label class="form-label" for="regLrn">Student ID / LRN (optional)</label>
+                        <input type="text" id="regLrn" placeholder="For record matching" class="form-input text-xs">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label" for="regProgram">Program / Track (optional)</label>
+                    <input type="text" id="regProgram" placeholder="e.g. Senior High School" class="form-input text-xs">
+                </div>
+                <div>
+                    <label class="form-label" for="regAddress">Current address / city (optional)</label>
+                    <input type="text" id="regAddress" placeholder="City or municipality" class="form-input text-xs">
                 </div>
 
                 <div>
                     <label class="form-label" for="regEmail">Email Address</label>
                     <input type="email" id="regEmail" required placeholder="e.g. christian.perez@gmail.com" class="form-input text-xs">
                 </div>
+                <label class="flex items-start gap-2 text-[11px] text-slate-500">
+                    <input type="checkbox" id="regConsent" required class="mt-0.5">
+                    <span>I consent to the school processing these details to verify my alumni record.</span>
+                </label>
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeSelfRegisterModal()" class="btn btn-secondary text-xs">Cancel</button>
                     <button type="submit" class="btn btn-primary text-xs">
-                        <i class="fa-solid fa-check mr-1"></i> Register & Sign In
+                        <i class="fa-solid fa-paper-plane mr-1"></i> Submit for Verification
                     </button>
                 </div>
             </form>
@@ -3480,6 +3502,7 @@
                 </select>
                 <select id="userFormStatus" class="form-select text-sm">
                     <option>Active</option>
+                    <option>Pending Verification</option>
                     <option>Inactive</option>
                     <option>Suspended</option>
                     <option>Locked</option>

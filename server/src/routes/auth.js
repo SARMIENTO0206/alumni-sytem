@@ -155,6 +155,9 @@ router.post('/login', (req, res) => {
   }
   if (row.status && row.status !== 'Active') {
     writeLoginLog({ id: row.id, username: row.username }, 'blocked_login');
+    if (row.status === 'Pending Verification') {
+      return res.status(403).json({ error: 'Your registration is pending Registrar verification. You will be able to sign in after approval.' });
+    }
     return res.status(403).json({ error: `This account is ${row.status}. Contact the system administrator.` });
   }
 
@@ -168,11 +171,17 @@ router.post('/login', (req, res) => {
 /** POST /api/auth/register - self-registration for alumni (bcrypt-hashes the password). */
 router.post('/register', (req, res) => {
   const {
-    username, password, name, studentId, batch, program, email, contact
+    username, password, name, studentId, batch, program, email, contact, school, strand, lrn, address, consent
   } = req.body || {};
 
   if (!username || !password || !name) {
     return res.status(400).json({ error: 'Username, password and full name are required.' });
+  }
+  if (!school || !strand || !batch) {
+    return res.status(400).json({ error: 'School, graduation year and SHS strand/track are required.' });
+  }
+  if (consent !== true) {
+    return res.status(400).json({ error: 'Please accept the privacy consent before submitting.' });
   }
   if (String(password).length < 6) {
     return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
@@ -191,8 +200,8 @@ router.post('/register', (req, res) => {
   }
 
   const info = db.prepare(
-    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact)
-     VALUES (?, ?, 'alumni', ?, ?, ?, ?, ?, ?, '', ?, ?)`
+    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status, school, strand, lrn, address)
+     VALUES (?, ?, 'alumni', ?, ?, ?, ?, ?, ?, '', ?, ?, 'Pending Verification', ?, ?, ?, ?)`
   ).run(
     String(username).trim(),
     bcrypt.hashSync(String(password), 10),
@@ -203,13 +212,19 @@ router.post('/register', (req, res) => {
     batch || String(new Date().getFullYear()),
     program || '',
     email || '',
-    mobile
+    mobile,
+    school || '',
+    strand || '',
+    lrn || '',
+    address || ''
   );
 
-  linkAlumniAccount(info.lastInsertRowid);
-  const token = createSession(info.lastInsertRowid);
   const user = mapUser(db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid));
-  return res.status(201).json({ token, user });
+  return res.status(201).json({
+    user,
+    pendingVerification: true,
+    message: 'Your registration was submitted and is pending Registrar verification.'
+  });
 });
 
 /** GET /api/auth/me - current authenticated user. */

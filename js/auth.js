@@ -97,14 +97,16 @@
         const batch = document.getElementById("regBatch").value;
         const program = document.getElementById("regProgram").value.trim();
         const email = document.getElementById("regEmail").value.trim();
+        const school = document.getElementById("regSchool").value.trim();
+        const strand = document.getElementById("regStrand").value.trim();
+        const lrn = document.getElementById("regLrn").value.trim();
+        const address = document.getElementById("regAddress").value.trim();
+        const consent = document.getElementById("regConsent").checked;
 
         const finishRegistration = (displayName) => {
             closeSelfRegisterModal();
             event.target.reset();
-            showDashboardScreen();
-            history.replaceState({ viewId: "dashboard", auth: true }, "", "#/dashboard");
-            applyUserRole();
-            showToast(`Welcome, ${displayName}! Your alumni registration was successful.`, "success");
+            showToast(`Registration submitted for ${displayName}. Please wait for Registrar verification before signing in.`, "success");
         };
 
         /* Primary path: register through the backend - the password is bcrypt-hashed server-side. */
@@ -112,18 +114,9 @@
             if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
                 const data = await SAA_API.request("/api/auth/register", {
                     method: "POST",
-                    body: JSON.stringify({ username, password, name, studentId, batch, program, email })
+                    body: JSON.stringify({ username, password, name, studentId, batch, program, email, school, strand, lrn, address, consent })
                 });
-                currentUser = data.user;
-                sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
-                if (data.token) sessionStorage.setItem("saaToken", data.token); else sessionStorage.removeItem("saaToken");
                 finishRegistration(name);
-                if (typeof SAA_API !== "undefined" && SAA_API.refreshAllData) {
-                    SAA_API.refreshAllData().then(() => {
-                        if (typeof renderAlumniTable === "function") renderAlumniTable();
-                        if (typeof updateStatCounters === "function") updateStatCounters();
-                    });
-                }
                 return;
             }
         } catch (err) {

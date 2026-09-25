@@ -6,7 +6,7 @@ import { requireRole } from '../auth.js';
 const router = Router();
 
 const ALLOWED_ROLES = ['admin', 'staff', 'alumni'];
-const ALLOWED_STATUS = ['Active', 'Inactive', 'Suspended', 'Locked'];
+const ALLOWED_STATUS = ['Active', 'Pending Verification', 'Inactive', 'Suspended', 'Locked'];
 
 router.get('/', requireRole('admin'), (req, res) => {
   const rows = db.prepare('SELECT * FROM users ORDER BY id DESC').all();
