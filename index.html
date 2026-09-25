@@ -3070,35 +3070,17 @@
                 <section class="space-y-3 border-t border-slate-100 pt-3">
                     <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Event Schedule</h4>
                     <div>
-                        <label class="form-label" for="newEventScheduleType">Schedule Type</label>
-                        <select id="newEventScheduleType" class="form-select text-xs" onchange="updateEventScheduleFields()">
-                            <option value="one-day" selected>One-Day Event</option>
-                            <option value="multi-day">Multi-Day Event</option>
-                            <option value="all-day">All-Day Event</option>
-                        </select>
-                    </div>
-                    <div id="newEventSingleDateFields">
                         <label class="form-label" for="newEventDate">Event Date <span class="text-rose-600">*</span></label>
-                        <input type="date" id="newEventDate" required class="form-input text-xs" onchange="updateEventScheduleFields()">
-                    </div>
-                    <div id="newEventMultiDateFields" class="grid grid-cols-2 gap-3" hidden>
-                        <div>
-                            <label class="form-label" for="newEventStartDate">Start Date <span class="text-rose-600">*</span></label>
-                            <input type="date" id="newEventStartDate" class="form-input text-xs" onchange="updateEventScheduleFields()">
-                        </div>
-                        <div>
-                            <label class="form-label" for="newEventEndDate">End Date <span class="text-rose-600">*</span></label>
-                            <input type="date" id="newEventEndDate" class="form-input text-xs" onchange="updateEventScheduleFields()">
-                        </div>
+                        <input type="date" id="newEventDate" required class="form-input text-xs">
                     </div>
                     <div id="newEventTimeFields" class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="form-label" for="newEventStartTime">Start Time <span class="text-rose-600">*</span></label>
-                            <input type="time" id="newEventStartTime" required class="form-input text-xs" onchange="updateEventScheduleFields()">
+                            <input type="time" id="newEventStartTime" required class="form-input text-xs" onchange="validateEventTimeFields()">
                         </div>
                         <div>
                             <label class="form-label" for="newEventEndTime">End Time <span class="text-rose-600">*</span></label>
-                            <input type="time" id="newEventEndTime" required class="form-input text-xs" onchange="updateEventScheduleFields()">
+                            <input type="time" id="newEventEndTime" required class="form-input text-xs" onchange="validateEventTimeFields()">
                         </div>
                     </div>
                 </section>
