@@ -398,6 +398,35 @@
         </div>
     </div>
 
+    <div id="contactRegistrarModal" class="modal-backdrop">
+        <div class="modal-box p-6 sm:p-8 max-w-lg">
+            <div class="flex items-start justify-between mb-5">
+                <div>
+                    <h3 class="text-xl font-extrabold text-slate-800">Contact Registrar</h3>
+                    <p class="text-sm text-slate-500 mt-1">Tell us how we can help with your account or alumni records.</p>
+                </div>
+                <button type="button" onclick="closeContactRegistrar()" class="text-slate-400 hover:text-slate-600 p-1" aria-label="Close contact registrar form">✕</button>
+            </div>
+            <form id="contactRegistrarForm" class="space-y-3" onsubmit="submitRegistrarInquiry(event)">
+                <input id="registrarName" required class="form-input" placeholder="Full name">
+                <input id="registrarEmail" required type="email" class="form-input" placeholder="Email address">
+                <input id="registrarContact" class="form-input" placeholder="Contact number">
+                <input id="registrarStudentId" class="form-input" placeholder="Student/alumni ID (optional)">
+                <select id="registrarConcern" required class="form-select">
+                    <option value="">Select concern</option>
+                    <option>Registration problem</option>
+                    <option>Cannot find my records</option>
+                    <option>Incorrect information</option>
+                    <option>Account/login issue</option>
+                    <option>Other inquiry</option>
+                </select>
+                <textarea id="registrarMessage" required minlength="10" rows="4" class="form-input" placeholder="Describe your concern"></textarea>
+                <div id="registrarInquiryMessage" class="hidden text-xs p-3 rounded-lg"></div>
+                <button type="submit" class="btn btn-primary w-full py-3 rounded-xl">Submit Inquiry</button>
+            </form>
+        </div>
+    </div>
+
 
     <!-- =========================================================
          MAIN APPLICATION DASHBOARD

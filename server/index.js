@@ -18,6 +18,7 @@ import usersRoutes from './src/routes/users.js';
 import settingsRoutes from './src/routes/settings.js';
 import paymentsRoutes, { handlePaymongoWebhook } from './src/routes/payments.js';
 import notificationRoutes from './src/routes/notifications.js';
+import publicRoutes from './src/routes/public.js';
 import { paymongoConfig } from './src/paymongo.js';
 import { mailAndSmsHealth } from './src/notify.js';
 
@@ -135,6 +136,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/public', publicRoutes);
 app.use('/api/alumni', requireAuth, alumniRoutes);
 app.use('/api/tracking', requireAuth, trackingRoutes);
 app.use('/api/reports', requireAuth, reportsRoutes);

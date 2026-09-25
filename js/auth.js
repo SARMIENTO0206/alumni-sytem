@@ -288,7 +288,36 @@
     }
 
     function showContactRegistrar() {
-        showToast("Contact Registrar at registrar@stagnes.edu.ph or call (02) 8288-1234.", "info");
+        document.getElementById("contactRegistrarModal")?.classList.add("active");
+    }
+
+    function closeContactRegistrar() {
+        document.getElementById("contactRegistrarModal")?.classList.remove("active");
+    }
+
+    async function submitRegistrarInquiry(event) {
+        event.preventDefault();
+        const payload = {
+            name: document.getElementById("registrarName").value.trim(),
+            email: document.getElementById("registrarEmail").value.trim(),
+            contact: document.getElementById("registrarContact").value.trim(),
+            studentId: document.getElementById("registrarStudentId").value.trim(),
+            concern: document.getElementById("registrarConcern").value,
+            message: document.getElementById("registrarMessage").value.trim()
+        };
+        const box = document.getElementById("registrarInquiryMessage");
+        try {
+            const result = await SAA_API.request("/api/public/registrar-inquiries", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+            box.textContent = `${result.message} Reference/Ticket No.: ${result.referenceNo}`;
+            box.className = "text-xs p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700";
+            event.target.reset();
+        } catch (err) {
+            box.textContent = err.message || "Unable to send your inquiry. Please try again.";
+            box.className = "text-xs p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700";
+        }
     }
 
     function toggleSidebar() {

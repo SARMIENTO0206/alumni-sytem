@@ -217,6 +217,18 @@ export function initDb() {
       action     TEXT DEFAULT 'login',
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS registrar_inquiries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reference_no TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      contact TEXT DEFAULT '',
+      student_id TEXT DEFAULT '',
+      concern TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   ensureColumn('users', 'status', "status TEXT DEFAULT 'Active'");
