@@ -196,11 +196,72 @@
         document.getElementById("addEventModal").classList.remove("active");
     }
 
+    function updateEventScheduleFields() {
+        const scheduleType = document.getElementById("newEventScheduleType").value;
+        const isMultiDay = scheduleType === "multi-day";
+        const isAllDay = scheduleType === "all-day";
+        const singleDateFields = document.getElementById("newEventSingleDateFields");
+        const multiDateFields = document.getElementById("newEventMultiDateFields");
+        const timeFields = document.getElementById("newEventTimeFields");
+        const eventDate = document.getElementById("newEventDate");
+        const startDate = document.getElementById("newEventStartDate");
+        const endDate = document.getElementById("newEventEndDate");
+        const startTime = document.getElementById("newEventStartTime");
+        const endTime = document.getElementById("newEventEndTime");
+
+        singleDateFields.hidden = isMultiDay;
+        multiDateFields.hidden = !isMultiDay;
+        timeFields.hidden = isAllDay;
+        eventDate.required = !isMultiDay;
+        startDate.required = isMultiDay;
+        endDate.required = isMultiDay;
+        startTime.required = !isAllDay;
+        endTime.required = !isAllDay;
+        endDate.min = startDate.value || "";
+        endDate.setCustomValidity(
+            isMultiDay && startDate.value && endDate.value && endDate.value < startDate.value
+                ? "End date must be on or after the start date."
+                : ""
+        );
+
+        const invalidSameDayTime = !isAllDay &&
+            (!isMultiDay || startDate.value === endDate.value) &&
+            startTime.value && endTime.value && endTime.value <= startTime.value;
+        endTime.setCustomValidity(invalidSameDayTime ? "End time must be later than start time." : "");
+    }
+
     async function saveNewEvent(event) {
         event.preventDefault();
         const title = document.getElementById("newEventTitle").value.trim();
-        const date = document.getElementById("newEventDate").value.trim();
+        const scheduleType = document.getElementById("newEventScheduleType").value;
+        const eventDate = document.getElementById("newEventDate").value;
+        const startDate = document.getElementById("newEventStartDate").value;
+        const endDate = document.getElementById("newEventEndDate").value;
+        const startTime = document.getElementById("newEventStartTime").value;
+        const endTime = document.getElementById("newEventEndTime").value;
         const location = document.getElementById("newEventLocation").value.trim();
+        const formatDate = (value) => {
+            const [year, month, day] = value.split("-").map(Number);
+            return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric"
+            });
+        };
+        const formatTime = (value) => {
+            const [hour, minute] = value.split(":").map(Number);
+            return new Date(2000, 0, 1, hour, minute).toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit"
+            });
+        };
+        const dateLabel = scheduleType === "multi-day"
+            ? `${formatDate(startDate)} – ${formatDate(endDate)}`
+            : formatDate(eventDate);
+        const date = scheduleType === "all-day"
+            ? `${dateLabel} • All day`
+            : `${dateLabel} • ${formatTime(startTime)} – ${formatTime(endTime)}`;
+
         try {
             await SAA_API.request("/api/events", {
                 method: "POST",
@@ -210,6 +271,7 @@
             renderEventsGrid();
             closeAddEventModal();
             event.target.reset();
+            updateEventScheduleFields();
             showToast(`"${title}" published.`, "success");
         } catch (err) {
             showToast(err.message || "Unable to create event.", "error");
@@ -1442,5 +1504,4 @@
         if (bar) bar.style.width = pct + "%";
         if (count) count.textContent = donors + (donors === 1 ? " alumni donor" : " alumni donors");
     }
-
 

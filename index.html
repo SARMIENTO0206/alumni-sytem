@@ -3046,44 +3046,82 @@
                 </button>
             </div>
 
-            <form onsubmit="saveNewEvent(event)" class="space-y-3.5">
-                <div>
-                    <label class="form-label" for="newEventTitle">Event Title</label>
-                    <input type="text" id="newEventTitle" required placeholder="e.g. Agnesian Grand Homecoming 2025" class="form-input text-xs">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
+            <form onsubmit="saveNewEvent(event)" class="space-y-4">
+                <section class="space-y-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Event Details</h4>
                     <div>
-                        <label class="form-label" for="newEventDate">Event Date & Time</label>
-                        <input type="text" id="newEventDate" required placeholder="e.g. June 15, 2025 • 9:00 AM" class="form-input text-xs">
+                        <label class="form-label" for="newEventTitle">Event Title</label>
+                        <input type="text" id="newEventTitle" required placeholder="e.g. Agnesian Grand Homecoming 2025" class="form-input text-xs">
                     </div>
+                    <div>
+                        <label class="form-label" for="newEventDescription">Event Description</label>
+                        <textarea id="newEventDescription" rows="3" placeholder="Describe the event highlights, program flow, and what alumni can expect..." class="form-textarea text-xs"></textarea>
+                    </div>
+                </section>
+
+                <section class="space-y-3 border-t border-slate-100 pt-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Event Schedule</h4>
+                    <div>
+                        <label class="form-label" for="newEventScheduleType">Schedule Type</label>
+                        <select id="newEventScheduleType" class="form-select text-xs" onchange="updateEventScheduleFields()">
+                            <option value="one-day" selected>One-Day Event</option>
+                            <option value="multi-day">Multi-Day Event</option>
+                            <option value="all-day">All-Day Event</option>
+                        </select>
+                    </div>
+                    <div id="newEventSingleDateFields">
+                        <label class="form-label" for="newEventDate">Event Date <span class="text-rose-600">*</span></label>
+                        <input type="date" id="newEventDate" required class="form-input text-xs" onchange="updateEventScheduleFields()">
+                    </div>
+                    <div id="newEventMultiDateFields" class="grid grid-cols-2 gap-3" hidden>
+                        <div>
+                            <label class="form-label" for="newEventStartDate">Start Date <span class="text-rose-600">*</span></label>
+                            <input type="date" id="newEventStartDate" class="form-input text-xs" onchange="updateEventScheduleFields()">
+                        </div>
+                        <div>
+                            <label class="form-label" for="newEventEndDate">End Date <span class="text-rose-600">*</span></label>
+                            <input type="date" id="newEventEndDate" class="form-input text-xs" onchange="updateEventScheduleFields()">
+                        </div>
+                    </div>
+                    <div id="newEventTimeFields" class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="newEventStartTime">Start Time <span class="text-rose-600">*</span></label>
+                            <input type="time" id="newEventStartTime" required class="form-input text-xs" onchange="updateEventScheduleFields()">
+                        </div>
+                        <div>
+                            <label class="form-label" for="newEventEndTime">End Time <span class="text-rose-600">*</span></label>
+                            <input type="time" id="newEventEndTime" required class="form-input text-xs" onchange="updateEventScheduleFields()">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="space-y-3 border-t border-slate-100 pt-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Venue / Location</h4>
                     <div>
                         <label class="form-label" for="newEventLocation">Venue / Location</label>
                         <input type="text" id="newEventLocation" required placeholder="e.g. SAA Main Campus Grounds" class="form-input text-xs">
                     </div>
-                </div>
-
-                <div>
-                    <label class="form-label" for="newEventDescription">Event Description</label>
-                    <textarea id="newEventDescription" rows="3" placeholder="Describe the event highlights, program flow, and what alumni can expect..." class="form-textarea text-xs"></textarea>
-                </div>
+                </section>
 
                 <!-- Invitation Channel Preference -->
-                <div class="p-3.5 rounded-lg bg-[#f8f4ee] border border-amber-900/10">
-                    <p class="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                        <i class="fa-solid fa-paper-plane text-amber-600 mr-1"></i> Auto Invitation Channels
-                    </p>
-                    <div class="flex flex-wrap gap-3 text-xs">
-                        <label class="flex items-center gap-1.5 cursor-pointer">
-                            <input type="checkbox" id="sendEmailInvite" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
-                            <span class="text-slate-700 font-semibold"><i class="fa-regular fa-envelope text-indigo-500 mr-0.5"></i> Gmail Invitation</span>
-                        </label>
-                        <label class="flex items-center gap-1.5 cursor-pointer">
-                            <input type="checkbox" id="sendSmsInvite" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
-                            <span class="text-slate-700 font-semibold"><i class="fa-solid fa-comment-sms text-emerald-500 mr-0.5"></i> SMS Invitation</span>
-                        </label>
+                <section class="space-y-2 border-t border-slate-100 pt-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Invitation Channels</h4>
+                    <div class="p-3.5 rounded-lg bg-[#f8f4ee] border border-amber-900/10">
+                        <p class="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                            <i class="fa-solid fa-paper-plane text-amber-600 mr-1"></i> Auto Invitation Channels
+                        </p>
+                        <div class="flex flex-wrap gap-3 text-xs">
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" id="sendEmailInvite" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
+                                <span class="text-slate-700 font-semibold"><i class="fa-regular fa-envelope text-indigo-500 mr-0.5"></i> Gmail Invitation</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" id="sendSmsInvite" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
+                                <span class="text-slate-700 font-semibold"><i class="fa-solid fa-comment-sms text-emerald-500 mr-0.5"></i> SMS Invitation</span>
+                            </label>
+                        </div>
                     </div>
-                </div>
+                </section>
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeAddEventModal()" class="btn btn-secondary text-xs">Cancel</button>
