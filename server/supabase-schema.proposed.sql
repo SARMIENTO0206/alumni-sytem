@@ -233,9 +233,11 @@ CREATE TABLE IF NOT EXISTS public.job_opportunities (
   application_method TEXT DEFAULT 'Portal',
   application_details TEXT DEFAULT '',
   deadline TEXT DEFAULT '',
-  target_education_level TEXT DEFAULT 'All Alumni',
-  target_batch TEXT DEFAULT '',
-  target_strand TEXT DEFAULT ''
+  created_by BIGINT DEFAULT 0,
+  created_by_name TEXT DEFAULT '',
+  created_by_role TEXT DEFAULT '',
+  notify_in_app INTEGER DEFAULT 1,
+  notify_email INTEGER DEFAULT 0
 );
 
 ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS industry TEXT DEFAULT '';
@@ -244,9 +246,11 @@ ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS qualifications TEX
 ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS application_method TEXT DEFAULT 'Portal';
 ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS application_details TEXT DEFAULT '';
 ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS deadline TEXT DEFAULT '';
-ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS target_education_level TEXT DEFAULT 'All Alumni';
-ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS target_batch TEXT DEFAULT '';
-ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS target_strand TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS created_by BIGINT DEFAULT 0;
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS created_by_name TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS created_by_role TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS notify_in_app INTEGER DEFAULT 1;
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS notify_email INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.job_applications (
   id            BIGSERIAL PRIMARY KEY,

@@ -148,7 +148,21 @@ export async function dispatchAlumniAudience(subject, message, relatedType, rela
       'SELECT * FROM notifications WHERE user_id = ? AND related_type = ? AND related_id = ? ORDER BY id DESC'
     ).get(user.id, relatedType || '', String(relatedId || ''));
     if (note) {
-      results.push(await deliverChannels(note, { userId: user.id, email: user.email, phone: user.contact, sendSms: extras.sendSms }));
+      results.push(await deliverChannels(note, {
+        userId: user.id,
+        email: user.email,
+        phone: user.contact,
+        sendSms: extras.sendSms,
+        sendEmail: extras.sendEmail,
+        forceChannels: extras.forceChannels
+      }));
+    } else if (extras.sendEmail === true) {
+      results.push(await sendMail({
+        to: user.email,
+        subject,
+        text: message,
+        userId: user.id
+      }));
     }
   }
   return results;

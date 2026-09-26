@@ -15,6 +15,11 @@ function validateJobInput(input, existing = {}) {
   const field = (key) => String(input[key] ?? existing[key] ?? '').trim();
   const title = field('title');
   if (!title) return { error: 'Job title is required.' };
+  if (!field('company')) return { error: 'Company or employer is required.' };
+  if (!field('location')) return { error: 'Job location is required.' };
+  if (!field('industry')) return { error: 'Job industry is required.' };
+  if (!field('employment_type')) return { error: 'Employment type is required.' };
+  if (!field('description')) return { error: 'Job description is required.' };
   const status = field('status') || 'Published';
   if (!['Draft', 'Published', 'Archived'].includes(status)) {
     return { error: 'Choose Draft, Published, or Archived for the job status.' };
@@ -22,6 +27,12 @@ function validateJobInput(input, existing = {}) {
   const applicationMethod = field('application_method') || 'Portal';
   if (!['Portal', 'Link', 'Email', 'Contact Information'].includes(applicationMethod)) {
     return { error: 'Choose a valid application method.' };
+  }
+  if (applicationMethod !== 'Portal' && !field('application_details')) {
+    return { error: 'Application details are required for the selected method.' };
+  }
+  if (applicationMethod === 'Email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field('application_details'))) {
+    return { error: 'Enter a valid employer email address.' };
   }
   const deadline = field('deadline');
   if (deadline && !isValidIsoDate(deadline)) return { error: 'Enter a valid application deadline.' };
@@ -33,15 +44,13 @@ function validateJobInput(input, existing = {}) {
       return { error: 'Application links must use a valid HTTPS URL.' };
     }
   }
-  const targetEducationLevel = field('target_education_level') || 'All Alumni';
-  if (!['All Alumni', 'JHS', 'SHS'].includes(targetEducationLevel)) {
-    return { error: 'Choose All Alumni, JHS, or SHS for job targeting.' };
-  }
-  if (field('target_strand') && targetEducationLevel !== 'SHS') {
-    return { error: 'SHS strand targeting is available only for SHS alumni.' };
-  }
   if (applicationDetails.length > 1000) return { error: 'Application details must be 1,000 characters or fewer.' };
+  const notification = (key, fallback) => input[key] === undefined
+    ? Boolean(Number(existing[key] ?? Number(fallback)))
+    : input[key] === true;
   return {
+    notifyInApp: notification('notify_in_app', true),
+    notifyEmail: notification('notify_email', false),
     values: [
       title,
       field('company'),
@@ -53,38 +62,13 @@ function validateJobInput(input, existing = {}) {
       field('qualifications'),
       applicationMethod,
       applicationDetails,
-      deadline,
-      targetEducationLevel,
-      field('target_batch'),
-      field('target_strand')
+      deadline
     ]
   };
 }
 
-function jobVisibleToAlumni(job, user) {
-  if (job.deadline && job.deadline < new Date().toISOString().slice(0, 10)) return false;
-  const targetLevel = job.target_education_level || 'All Alumni';
-  if (targetLevel === 'All Alumni' && !job.target_batch && !job.target_strand) return true;
-
-  const alumnus = findAlumniForUser(user);
-  if (!alumnus) return false;
-  const account = db.prepare(
-    'SELECT users.education_level, users.strand, alumni.program FROM users LEFT JOIN alumni ON alumni.user_id = users.id WHERE users.id = ?'
-  ).get(user.id);
-  if (job.target_batch && String(alumnus.batch || '') !== String(job.target_batch)) return false;
-  if (job.target_strand && String(account?.strand || '') !== String(job.target_strand)) return false;
-  if (targetLevel === 'All Alumni') return true;
-
-  const educationLevel = String(account?.education_level || account?.program || alumnus.program || '').toUpperCase();
-  return targetLevel === 'JHS'
-    ? educationLevel.includes('JHS') || educationLevel.includes('JUNIOR')
-    : educationLevel.includes('SHS') || educationLevel.includes('SENIOR');
-}
-
-function hasBroadJobAudience(job) {
-  return (job.target_education_level || 'All Alumni') === 'All Alumni'
-    && !job.target_batch
-    && !job.target_strand;
+function jobIsExpired(job) {
+  return Boolean(job.deadline && job.deadline < new Date().toISOString().slice(0, 10));
 }
 
 function isValidIsoDate(value) {
@@ -927,34 +911,68 @@ router.put('/feedback/:id', requireRole('admin', 'staff'), (req, res) => {
 /* --------------------------- Job opportunities ---------------------------- */
 
 router.get('/jobs', (req, res) => {
-  const rows = db.prepare('SELECT * FROM job_opportunities ORDER BY id DESC').all();
+  const rows = db.prepare(`
+    SELECT j.*, COALESCE(u.name, j.created_by_name, 'Legacy posting') AS posted_by,
+      COALESCE(u.role, j.created_by_role, '') AS posted_by_role
+    FROM job_opportunities j
+    LEFT JOIN users u ON u.id = j.created_by
+    ORDER BY j.id DESC
+  `).all();
   const visible = (isAdmin(req.user) || isStaff(req.user))
     ? rows
-    : rows.filter((job) => job.status === 'Published' && jobVisibleToAlumni(job, req.user));
+    : rows.filter((job) => job.status === 'Published' && !jobIsExpired(job));
   res.json({ jobs: visible });
 });
 
-router.post('/jobs', requireRole('admin', 'staff'), (req, res) => {
+router.post('/jobs', requireRole('admin', 'staff'), async (req, res) => {
   const validated = validateJobInput(req.body || {});
   if (validated.error) return res.status(400).json({ error: validated.error });
   const info = db.prepare(
     `INSERT INTO job_opportunities
       (title, company, location, description, status, industry, employment_type, qualifications,
-       application_method, application_details, deadline, target_education_level, target_batch, target_strand)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(...validated.values);
-  const created = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(info.lastInsertRowid);
-  if (created.status === 'Published' && hasBroadJobAudience(created)) {
-    dispatchAlumniAudience(`New job opportunity: ${created.title}`, `${created.title} at ${created.company || 'an employer'} is now open.`, 'job', created.id).catch(() => {});
+       application_method, application_details, deadline, created_by, created_by_name, created_by_role,
+       notify_in_app, notify_email)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    ...validated.values,
+    Number(req.user.id),
+    String(req.user.name || req.user.username || 'Staff'),
+    isAdmin(req.user) ? 'admin' : 'staff',
+    validated.notifyInApp ? 1 : 0,
+    validated.notifyEmail ? 1 : 0
+  );
+  const created = db.prepare(`
+    SELECT j.*, ? AS posted_by, ? AS posted_by_role FROM job_opportunities j WHERE j.id = ?
+  `).get(String(req.user.name || req.user.username || 'Staff'), isAdmin(req.user) ? 'admin' : 'staff', info.lastInsertRowid);
+  writeAudit(req.user, 'create', 'job_opportunity', created.id, `${created.status}: ${created.title}`);
+  let notificationResult = null;
+  let notificationError = '';
+  if (created.status === 'Published' && (validated.notifyInApp || validated.notifyEmail)) {
+    try {
+      notificationResult = await dispatchAlumniAudience(
+        `New job opportunity: ${created.title}`,
+        `${created.title} at ${created.company} is now open. View the Job Opportunities page for application details.`,
+        'job',
+        created.id,
+        { inApp: validated.notifyInApp, sendEmail: validated.notifyEmail, forceChannels: true, sendSms: false }
+      );
+    } catch (error) {
+      console.error('Unable to notify alumni about a job opportunity:', error);
+      notificationError = error.message || 'Unable to dispatch alumni notifications.';
+    }
   }
   mirror('job_opportunities', created);
-  res.status(201).json({ job: created });
+  res.status(201).json({ job: created, notificationRequested: Boolean(created.status === 'Published' && (validated.notifyInApp || validated.notifyEmail)), notificationResult, notificationError });
 });
 
 router.get('/jobs/:id', (req, res) => {
-  const job = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(Number(req.params.id));
+  const job = db.prepare(`
+    SELECT j.*, COALESCE(u.name, j.created_by_name, 'Legacy posting') AS posted_by,
+      COALESCE(u.role, j.created_by_role, '') AS posted_by_role
+    FROM job_opportunities j LEFT JOIN users u ON u.id = j.created_by WHERE j.id = ?
+  `).get(Number(req.params.id));
   if (!job) return res.status(404).json({ error: 'Job opportunity not found.' });
-  if ((job.status !== 'Published' || !jobVisibleToAlumni(job, req.user)) && !isAdmin(req.user) && !isStaff(req.user)) {
+  if ((job.status !== 'Published' || jobIsExpired(job)) && !isAdmin(req.user) && !isStaff(req.user)) {
     return res.status(403).json({ error: 'This job opportunity is not available.' });
   }
   res.json({ job });
@@ -973,6 +991,12 @@ router.get('/applications', (req, res) => {
 router.post('/jobs/:id/apply', (req, res) => {
   const jobId = Number(req.params.id) || 0;
   const job = jobId ? db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(jobId) : null;
+  if (!job || job.status !== 'Published' || jobIsExpired(job)) {
+    return res.status(404).json({ error: 'This job opportunity is no longer available.' });
+  }
+  if (job.application_method && job.application_method !== 'Portal') {
+    return res.status(400).json({ error: 'Apply directly using the employer application details on the job listing.' });
+  }
   const { name, email, resumeName, title, company } = req.body || {};
   const applicant = String(name || req.user?.name || '').trim();
   if (!applicant) return res.status(400).json({ error: 'Applicant name is required.' });
@@ -1012,7 +1036,7 @@ router.post('/jobs/:id/apply', (req, res) => {
   res.status(201).json({ application: row });
 });
 
-router.put('/jobs/:id', requireRole('admin', 'staff'), (req, res) => {
+router.put('/jobs/:id', requireRole('admin', 'staff'), async (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'Job opportunity not found.' });
@@ -1021,21 +1045,51 @@ router.put('/jobs/:id', requireRole('admin', 'staff'), (req, res) => {
   db.prepare(
     `UPDATE job_opportunities SET title = ?, company = ?, location = ?, description = ?, status = ?,
        industry = ?, employment_type = ?, qualifications = ?, application_method = ?,
-       application_details = ?, deadline = ?, target_education_level = ?, target_batch = ?, target_strand = ?
+       application_details = ?, deadline = ?, notify_in_app = ?, notify_email = ?
      WHERE id = ?`
-  ).run(...validated.values, id);
-  const job = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(id);
-  if (job.status === 'Published' && existing.status !== 'Published' && hasBroadJobAudience(job)) {
-    dispatchAlumniAudience(`New job opportunity: ${job.title}`, `${job.title} at ${job.company || 'an employer'} is now open.`, 'job', job.id).catch(() => {});
+  ).run(...validated.values, validated.notifyInApp ? 1 : 0, validated.notifyEmail ? 1 : 0, id);
+  const job = db.prepare(`
+    SELECT j.*, COALESCE(u.name, j.created_by_name, 'Legacy posting') AS posted_by,
+      COALESCE(u.role, j.created_by_role, '') AS posted_by_role
+    FROM job_opportunities j LEFT JOIN users u ON u.id = j.created_by WHERE j.id = ?
+  `).get(id);
+  writeAudit(req.user, 'update', 'job_opportunity', id, `${job.status}: ${job.title}`);
+  let notificationResult = null;
+  let notificationError = '';
+  if (job.status === 'Published' && existing.status !== 'Published' && (validated.notifyInApp || validated.notifyEmail)) {
+    try {
+      notificationResult = await dispatchAlumniAudience(
+        `New job opportunity: ${job.title}`,
+        `${job.title} at ${job.company} is now open. View the Job Opportunities page for application details.`,
+        'job',
+        job.id,
+        { inApp: validated.notifyInApp, sendEmail: validated.notifyEmail, forceChannels: true, sendSms: false }
+      );
+    } catch (error) {
+      console.error('Unable to notify alumni about a job opportunity:', error);
+      notificationError = error.message || 'Unable to dispatch alumni notifications.';
+    }
   }
   mirrorUpdate('job_opportunities', job);
-  res.json({ job });
+  res.json({ job, notificationRequested: Boolean(job.status === 'Published' && existing.status !== 'Published' && (validated.notifyInApp || validated.notifyEmail)), notificationResult, notificationError });
 });
 
-router.delete('/jobs/:id', requireRole('admin', 'staff'), (req, res) => {
+router.delete('/jobs/:id', requireRole('admin'), (req, res) => {
   const id = Number(req.params.id);
-  const info = db.prepare('DELETE FROM job_opportunities WHERE id = ?').run(id);
-  if (info.changes === 0) return res.status(404).json({ error: 'Job opportunity not found.' });
+  const job = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(id);
+  if (!job) return res.status(404).json({ error: 'Job opportunity not found.' });
+  const applications = db.prepare('SELECT id FROM job_applications WHERE job_id = ?').all(id);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.prepare('DELETE FROM job_applications WHERE job_id = ?').run(id);
+    db.prepare('DELETE FROM job_opportunities WHERE id = ?').run(id);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+  for (const application of applications) mirrorDelete('job_applications', application.id);
+  writeAudit(req.user, 'delete', 'job_opportunity', id, job.title);
   mirrorDelete('job_opportunities', id);
   res.status(204).end();
 });

@@ -28,6 +28,18 @@
         return `<span class="text-xs text-slate-500">${escapeHtml(details || "See application instructions for employer contact details.")}</span>`;
     }
 
+    function refreshJobFilterOptions(selectId, field, label) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        const selected = select.value;
+        const values = [...new Set(jobsList.map((job) => String(job[field] || "").trim()).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b));
+        select.innerHTML = `<option value="">${label}</option>${values.map((value) =>
+            `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`
+        ).join("")}`;
+        if (values.includes(selected)) select.value = selected;
+    }
+
     async function showJobDetails(id, silent) {
         let job = (jobsList || []).find((j) => String(j.id) === String(id));
         if (!job && typeof SAA_API !== "undefined") {
@@ -65,7 +77,9 @@
             }
             if (actions) {
                 actions.innerHTML = `${canManageJobListings()
-                    ? `<button type="button" onclick="editJobOpportunity(${Number(job.id)})" class="btn btn-secondary text-xs">Edit Listing</button>`
+                    ? `<button type="button" onclick="editJobOpportunity(${Number(job.id)})" class="btn btn-secondary text-xs">Edit Listing</button>
+                       <button type="button" onclick="setJobOpportunityStatus(${Number(job.id)}, '${job.status === "Archived" ? "Published" : "Archived"}')" class="btn btn-secondary text-xs">${job.status === "Archived" ? "Republish" : "Archive"}</button>
+                       ${isAdminRole() ? `<button type="button" onclick="deleteJobOpportunity(${Number(job.id)})" class="btn btn-secondary text-xs text-rose-700">Delete</button>` : ""}`
                     : jobApplicationAction(job)}`;
             }
         } else {
@@ -86,26 +100,40 @@
         const grid = document.getElementById("jobsGridContainer");
         if (!grid) return;
         const canManage = canManageJobListings();
+        const isAdmin = isAdminRole();
         const activeCount = jobsList.filter((job) => job.status === "Published" && !isJobExpired(job)).length;
-        const inactiveCount = jobsList.filter((job) => job.status === "Archived" || isJobExpired(job)).length;
+        const expiredCount = jobsList.filter(isJobExpired).length;
         const summary = document.getElementById("jobManagementSummary");
-        if (summary) summary.classList.toggle("hidden", !canManage);
+        if (summary) summary.classList.toggle("hidden", !isAdmin);
+        const totalCountEl = document.getElementById("totalJobsCount");
+        if (totalCountEl) totalCountEl.textContent = String(jobsList.length);
         const activeCountEl = document.getElementById("activeJobsCount");
         const inactiveCountEl = document.getElementById("inactiveJobsCount");
         if (activeCountEl) activeCountEl.textContent = String(activeCount);
-        if (inactiveCountEl) inactiveCountEl.textContent = String(inactiveCount);
+        if (inactiveCountEl) inactiveCountEl.textContent = String(expiredCount);
 
+        refreshJobFilterOptions("jobsIndustryFilter", "industry", "All Industries");
+        refreshJobFilterOptions("jobsEmploymentTypeFilter", "employment_type", "All Employment Types");
+        refreshJobFilterOptions("jobsLocationFilter", "location", "All Locations");
         const search = String(document.getElementById("jobsSearchInput")?.value || "").trim().toLowerCase();
         const statusFilter = String(document.getElementById("jobsStatusFilter")?.value || "active");
+        const industryFilter = String(document.getElementById("jobsIndustryFilter")?.value || "");
+        const typeFilter = String(document.getElementById("jobsEmploymentTypeFilter")?.value || "");
+        const locationFilter = String(document.getElementById("jobsLocationFilter")?.value || "");
+        const statusSelect = document.getElementById("jobsStatusFilter");
+        if (statusSelect) statusSelect.classList.toggle("hidden", !canManage);
         const filteredJobs = jobsList.filter((job) => {
             const expired = isJobExpired(job);
             const matchesSearch = !search || [job.title, job.company, job.location, job.industry].some((value) => String(value || "").toLowerCase().includes(search));
-            const matchesStatus = statusFilter === "all"
+            const matchesStatus = !canManage || statusFilter === "all"
                 || (statusFilter === "active" && job.status === "Published" && !expired)
                 || (statusFilter === "expired" && expired)
                 || (statusFilter === "draft" && job.status === "Draft")
                 || (statusFilter === "archived" && job.status === "Archived");
-            return matchesSearch && matchesStatus;
+            return matchesSearch && matchesStatus
+                && (!industryFilter || job.industry === industryFilter)
+                && (!typeFilter || job.employment_type === typeFilter)
+                && (!locationFilter || job.location === locationFilter);
         });
         if (!filteredJobs.length) {
             const emptyMessage = jobsList.length ? "No job opportunities match these filters." : "No job opportunities yet.";
@@ -128,11 +156,13 @@
                     <p class="text-xs text-slate-400 mt-2">${escapeHtml([job.location, job.industry, job.employment_type].filter(Boolean).join(" • "))}</p>
                     <p class="text-xs text-slate-500 mt-3">${escapeHtml(job.description || "")}</p>
                     ${job.deadline ? `<p class="text-[11px] text-slate-400 mt-2">Deadline: ${escapeHtml(job.deadline)}</p>` : ""}
+                    ${isAdmin ? `<p class="text-[11px] text-slate-400 mt-2">Posted by ${escapeHtml(job.posted_by || job.created_by_name || "Legacy posting")}</p>` : ""}
                 </div>
                 <div class="flex flex-wrap gap-2 mt-4">
                     ${canManage
                         ? `<button type="button" onclick="editJobOpportunity(${Number(job.id)})" class="btn btn-secondary text-xs">Edit</button>
-                           <button type="button" onclick="setJobOpportunityStatus(${Number(job.id)}, '${job.status === "Archived" ? "Published" : "Archived"}')" class="btn btn-secondary text-xs">${job.status === "Archived" ? "Republish" : "Archive"}</button>`
+                           <button type="button" onclick="setJobOpportunityStatus(${Number(job.id)}, '${job.status === "Archived" ? "Published" : "Archived"}')" class="btn btn-secondary text-xs">${job.status === "Archived" ? "Republish" : "Archive"}</button>
+                           ${isAdmin ? `<button type="button" onclick="deleteJobOpportunity(${Number(job.id)})" class="btn btn-secondary text-xs text-rose-700">Delete</button>` : ""}`
                         : jobApplicationAction(job)}
                 </div>
             </div>`;
@@ -2267,21 +2297,24 @@
             document.getElementById("newJobApplicationMethod").value = job.application_method || "Portal";
             document.getElementById("newJobApplicationDetails").value = job.application_details || "";
             document.getElementById("newJobDeadline").value = job.deadline || "";
-            document.getElementById("newJobTargetLevel").value = job.target_education_level || "All Alumni";
-            document.getElementById("newJobTargetBatch").value = job.target_batch || "";
-            document.getElementById("newJobTargetStrand").value = job.target_strand || "";
             document.getElementById("newJobStatus").value = job.status || "Published";
+            document.getElementById("newJobNotifyInApp").checked = Number(job.notify_in_app ?? 1) === 1;
+            document.getElementById("newJobNotifyEmail").checked = Number(job.notify_email || 0) === 1;
         }
-        toggleJobTargetStrand();
+        updateJobApplicationInput();
         document.getElementById("addJobOpportunityModal").classList.add("active");
     }
 
-    function toggleJobTargetStrand() {
-        const level = document.getElementById("newJobTargetLevel")?.value;
-        const strand = document.getElementById("newJobTargetStrand");
-        if (!strand) return;
-        strand.disabled = level !== "SHS";
-        if (strand.disabled) strand.value = "";
+    function updateJobApplicationInput() {
+        const method = document.getElementById("newJobApplicationMethod")?.value || "";
+        const details = document.getElementById("newJobApplicationDetails");
+        if (!details) return;
+        details.required = method !== "" && method !== "Portal";
+        details.type = method === "Email" ? "email" : "text";
+        details.placeholder = method === "Link" ? "https://example.com/apply"
+            : method === "Email" ? "careers@example.com"
+                : method === "Contact Information" ? "Phone number or contact instructions"
+                    : "Application details";
     }
 
     function editJobOpportunity(jobId) {
@@ -2308,6 +2341,20 @@
         }
     }
 
+    async function deleteJobOpportunity(jobId) {
+        const job = jobsList.find((item) => Number(item.id) === Number(jobId));
+        if (!job || !isAdminRole()) return;
+        if (!window.confirm(`Permanently delete "${job.title}"? This cannot be undone.`)) return;
+        try {
+            await SAA_API.request(`/api/jobs/${jobId}`, { method: "DELETE" });
+            await SAA_API.refreshAllData();
+            renderJobsGrid();
+            showToast("Job opportunity deleted.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to delete job opportunity.", "error");
+        }
+    }
+
     async function saveNewJobOpportunity(event) {
         event.preventDefault();
         const id = Number(document.getElementById("editingJobOpportunityId").value) || 0;
@@ -2322,15 +2369,12 @@
             application_method: document.getElementById("newJobApplicationMethod").value,
             application_details: document.getElementById("newJobApplicationDetails").value.trim(),
             deadline: document.getElementById("newJobDeadline").value,
-            target_education_level: document.getElementById("newJobTargetLevel").value,
-            target_batch: document.getElementById("newJobTargetBatch").value.trim(),
-            target_strand: document.getElementById("newJobTargetLevel").value === "SHS"
-                ? document.getElementById("newJobTargetStrand").value.trim()
-                : "",
-            status: document.getElementById("newJobStatus").value
+            status: document.getElementById("newJobStatus").value,
+            notify_in_app: document.getElementById("newJobNotifyInApp").checked,
+            notify_email: document.getElementById("newJobNotifyEmail").checked
         };
         try {
-            await SAA_API.request(id ? `/api/jobs/${id}` : "/api/jobs", {
+            const saved = await SAA_API.request(id ? `/api/jobs/${id}` : "/api/jobs", {
                 method: id ? "PUT" : "POST",
                 body: JSON.stringify(payload)
             });
@@ -2339,7 +2383,15 @@
             closeAddJobOpportunityModal();
             event.target.reset();
             editingJobOpportunityId = 0;
-            showToast(id ? "Job opportunity updated." : "Job opportunity saved.", "success");
+            const deliveryFailed = (saved.notificationResult || []).some((item) =>
+                item.status === "not_configured" || item.status === "failed" || item.email_status === "not_configured" || item.email_status === "failed" || item.email_status === "skipped"
+            );
+            const notificationMessage = saved.notificationError
+                ? ` The job was saved, but notifications failed: ${saved.notificationError}`
+                : saved.notificationRequested && deliveryFailed
+                    ? " The job was saved, but one or more notifications could not be delivered."
+                : "";
+            showToast((id ? "Job opportunity updated." : "Job opportunity saved.") + notificationMessage, notificationMessage ? "warning" : "success");
         } catch (err) {
             showToast(err.message || "Unable to publish job opportunity.", "error");
         }

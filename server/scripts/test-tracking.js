@@ -82,6 +82,20 @@ const registrarReview = await req(registrar.token, 'PUT', `/api/tracking/${ownRe
 assert(registrarReview.status === 200 && registrarReview.data.alumni.trackingReviewStatus === 'Verified', 'Registrar can verify alumni status information');
 const adminReview = await req(admin.token, 'PUT', `/api/tracking/${ownRecord.id}/review`, { status: 'Verified' });
 assert(adminReview.status === 403, 'Admin monitors tracking data but cannot perform Registrar review');
+const placementsBeforeEmploymentUpdate = await req(registrar.token, 'GET', '/api/placements');
+const employmentUpdate = await req(alumni.token, 'PUT', `/api/tracking/${ownRecord.id}/employment`, {
+  status: 'Employed',
+  company: 'Reported Employer',
+  title: 'Service Associate',
+  industry: 'Business/Retail',
+  employmentType: 'Full-time'
+});
+assert(employmentUpdate.status === 200, 'alumni can update their own employment record');
+const placementsAfterEmploymentUpdate = await req(registrar.token, 'GET', '/api/placements');
+assert(
+  placementsAfterEmploymentUpdate.data.placements.length === placementsBeforeEmploymentUpdate.data.placements.length,
+  'alumni-reported employment must not be recorded as a school placement'
+);
 
 const alumniSettings = await req(alumni.token, 'GET', '/api/tracking/settings');
 assert(alumniSettings.status === 403, 'reminder configuration must not be visible to Alumni');
@@ -105,21 +119,34 @@ assert(adminSendsAlumniStatus.status === 403 && registrarSendsReminders.status =
 const job = await req(registrar.token, 'POST', '/api/jobs', {
   title: `Career Test ${Date.now()}`,
   company: 'Test Employer',
+  location: 'Caloocan City',
   industry: 'BPO / Customer Service',
   employment_type: 'Full-time',
+  description: 'Provide customer support to clients.',
   qualifications: 'Clear communication skills',
   application_method: 'Link',
   application_details: 'https://example.test/apply',
-  target_education_level: 'All Alumni',
-  status: 'Published'
+  status: 'Published',
+  notify_in_app: true,
+  notify_email: false
 });
 assert(job.status === 201 && job.data.job.industry === 'BPO / Customer Service', 'Registrar can publish a job with career details');
+assert(job.data.job.posted_by === registrar.user.name, 'published jobs identify their author for Admin oversight');
 const alumniJobs = await req(alumni.token, 'GET', '/api/jobs');
 assert(alumniJobs.status === 200 && alumniJobs.data.jobs.some((item) => item.id === job.data.job.id), 'alumni can see published opportunities');
+const alumniNotifications = await req(alumni.token, 'GET', '/api/notifications');
+assert(alumniNotifications.data.notifications.some((item) => Number(item.relatedId) === Number(job.data.job.id)), 'selected in-app job notifications are delivered to Alumni');
+const adminJobs = await req(admin.token, 'GET', '/api/jobs');
+assert(adminJobs.data.jobs.some((item) => item.id === job.data.job.id && item.posted_by === registrar.user.name), 'Admin sees all jobs and their authors');
 const alumniPostJob = await req(alumni.token, 'POST', '/api/jobs', { title: 'Unauthorized job' });
 assert(alumniPostJob.status === 403, 'alumni cannot publish job opportunities');
 const invalidJobLink = await req(registrar.token, 'POST', '/api/jobs', {
   title: 'Invalid Link Test',
+  company: 'Test Employer',
+  location: 'Caloocan City',
+  industry: 'BPO',
+  employment_type: 'Full-time',
+  description: 'Test description',
   application_method: 'Link',
   application_details: 'javascript:alert(1)'
 });
@@ -128,6 +155,9 @@ const archivedJob = await req(registrar.token, 'PUT', `/api/jobs/${job.data.job.
 assert(archivedJob.status === 200 && archivedJob.data.job.status === 'Archived', 'Registrar can archive a job');
 const alumniJobsAfterArchive = await req(alumni.token, 'GET', '/api/jobs');
 assert(!alumniJobsAfterArchive.data.jobs.some((item) => item.id === job.data.job.id), 'alumni cannot see archived opportunities');
-await req(registrar.token, 'DELETE', `/api/jobs/${job.data.job.id}`);
+const registrarDelete = await req(registrar.token, 'DELETE', `/api/jobs/${job.data.job.id}`);
+assert(registrarDelete.status === 403, 'Registrar can archive but cannot delete job listings');
+const adminDelete = await req(admin.token, 'DELETE', `/api/jobs/${job.data.job.id}`);
+assert(adminDelete.status === 204, `Admin can delete job listings (received ${adminDelete.status}: ${JSON.stringify(adminDelete.data)})`);
 
 console.log('Graduate tracking and Career Management role, status, review, and listing checks passed.');

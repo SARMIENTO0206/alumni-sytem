@@ -319,9 +319,11 @@ export function initDb() {
   ensureColumn('job_opportunities', 'application_method', "application_method TEXT DEFAULT 'Portal'");
   ensureColumn('job_opportunities', 'application_details', "application_details TEXT DEFAULT ''");
   ensureColumn('job_opportunities', 'deadline', "deadline TEXT DEFAULT ''");
-  ensureColumn('job_opportunities', 'target_education_level', "target_education_level TEXT DEFAULT 'All Alumni'");
-  ensureColumn('job_opportunities', 'target_batch', "target_batch TEXT DEFAULT ''");
-  ensureColumn('job_opportunities', 'target_strand', "target_strand TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'created_by', 'created_by INTEGER DEFAULT 0');
+  ensureColumn('job_opportunities', 'created_by_name', "created_by_name TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'created_by_role', "created_by_role TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'notify_in_app', 'notify_in_app INTEGER DEFAULT 1');
+  ensureColumn('job_opportunities', 'notify_email', 'notify_email INTEGER DEFAULT 0');
   ensureColumn('notifications', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('notifications', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('notifications', 'related_type', "related_type TEXT DEFAULT ''");
@@ -749,17 +751,19 @@ export function notifyUser({
 export function notifyAlumniAudience(subject, message, relatedType, relatedId, extras = {}) {
   const alumniUsers = db.prepare("SELECT * FROM users WHERE role = 'alumni' AND (status IS NULL OR status = 'Active')").all();
   for (const row of alumniUsers) {
-    notifyUser({
-      userId: row.id,
-      alumniId: row.alumni_id || 0,
-      recipient: row.email || row.name,
-      channel: extras.channel || 'SYSTEM',
-      subject,
-      message,
-      relatedType,
-      relatedId,
-      notificationType: extras.notificationType || relatedType
-    });
+    if (extras.inApp !== false) {
+      notifyUser({
+        userId: row.id,
+        alumniId: row.alumni_id || 0,
+        recipient: row.email || row.name,
+        channel: extras.channel || 'SYSTEM',
+        subject,
+        message,
+        relatedType,
+        relatedId,
+        notificationType: extras.notificationType || relatedType
+      });
+    }
   }
   return alumniUsers;
 }

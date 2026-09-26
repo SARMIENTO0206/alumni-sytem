@@ -1224,7 +1224,7 @@
                             <div>
                                 <span class="status-badge status-freelance mb-1">Career Management</span>
                                 <h3 class="text-xl font-extrabold text-slate-800">Job Opportunities</h3>
-                                <p class="text-xs text-slate-400 font-medium">Browse current openings or manage verified opportunities for alumni.</p>
+                                <p class="text-xs text-slate-400 font-medium">All published opportunities are shared with the alumni community.</p>
                             </div>
                             <button type="button" id="adminAddJobOpportunityBtn" onclick="openAddJobOpportunityModal()" class="btn btn-primary text-xs hidden">
                                 <i class="fa-solid fa-plus"></i>
@@ -1232,15 +1232,19 @@
                             </button>
                         </div>
 
-                        <div id="jobManagementSummary" class="hidden grid grid-cols-2 gap-3 mb-4">
-                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3"><p class="text-[10px] uppercase font-bold text-emerald-700">Active Jobs</p><p id="activeJobsCount" class="text-xl font-extrabold text-emerald-800">0</p></div>
-                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] uppercase font-bold text-slate-500">Expired / Archived</p><p id="inactiveJobsCount" class="text-xl font-extrabold text-slate-700">0</p></div>
+                        <div id="jobManagementSummary" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                            <div class="rounded-xl border border-indigo-100 bg-indigo-50 p-3"><p class="text-[10px] uppercase font-bold text-indigo-700">Total Jobs</p><p id="totalJobsCount" class="text-xl font-extrabold text-indigo-800">0</p></div>
+                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3"><p class="text-[10px] uppercase font-bold text-emerald-700">Active</p><p id="activeJobsCount" class="text-xl font-extrabold text-emerald-800">0</p></div>
+                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] uppercase font-bold text-slate-500">Expired</p><p id="inactiveJobsCount" class="text-xl font-extrabold text-slate-700">0</p></div>
                         </div>
-                        <div class="flex flex-col sm:flex-row gap-3 mb-5">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
                             <input id="jobsSearchInput" type="search" oninput="renderJobsGrid()" placeholder="Search job title, company, or location..." class="form-input text-xs flex-1">
-                            <select id="jobsStatusFilter" onchange="renderJobsGrid()" class="form-input text-xs sm:w-48">
+                            <select id="jobsIndustryFilter" onchange="renderJobsGrid()" class="form-input text-xs"><option value="">All Industries</option></select>
+                            <select id="jobsEmploymentTypeFilter" onchange="renderJobsGrid()" class="form-input text-xs"><option value="">All Employment Types</option></select>
+                            <select id="jobsLocationFilter" onchange="renderJobsGrid()" class="form-input text-xs"><option value="">All Locations</option></select>
+                            <select id="jobsStatusFilter" onchange="renderJobsGrid()" class="form-input text-xs sm:col-span-2 lg:col-span-1">
                                 <option value="active">Active jobs</option>
-                                <option value="all">All available</option>
+                                <option value="all">All statuses</option>
                                 <option value="expired">Expired</option>
                                 <option value="draft">Draft</option>
                                 <option value="archived">Archived</option>
@@ -3499,16 +3503,16 @@
                 </div>
                 <div>
                     <label class="form-label" for="newJobLocation">Location</label>
-                    <input type="text" id="newJobLocation" placeholder="e.g. Caloocan / Remote" class="form-input text-xs">
+                    <input type="text" id="newJobLocation" required placeholder="e.g. Caloocan City / Remote" class="form-input text-xs">
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="form-label" for="newJobIndustry">Industry</label>
-                        <input type="text" id="newJobIndustry" placeholder="e.g. BPO / Customer Service" class="form-input text-xs">
+                        <input type="text" id="newJobIndustry" required placeholder="e.g. BPO / Customer Service" class="form-input text-xs">
                     </div>
                     <div>
                         <label class="form-label" for="newJobEmploymentType">Employment Type</label>
-                        <select id="newJobEmploymentType" class="form-input text-xs">
+                        <select id="newJobEmploymentType" required class="form-input text-xs">
                             <option value="">Select type</option>
                             <option>Full-time</option><option>Part-time</option><option>Contract</option><option>Temporary</option><option>Internship</option>
                         </select>
@@ -3516,7 +3520,7 @@
                 </div>
                 <div>
                     <label class="form-label" for="newJobDescription">Description</label>
-                    <textarea id="newJobDescription" rows="3" placeholder="Role summary, requirements, and how to apply..." class="form-textarea text-xs"></textarea>
+                    <textarea id="newJobDescription" rows="3" required placeholder="Job description and responsibilities..." class="form-textarea text-xs"></textarea>
                 </div>
                 <div>
                     <label class="form-label" for="newJobQualifications">Qualifications</label>
@@ -3525,13 +3529,13 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="form-label" for="newJobApplicationMethod">Application Method</label>
-                        <select id="newJobApplicationMethod" class="form-input text-xs">
-                            <option value="Portal">Apply through portal</option><option value="Link">Application link</option><option value="Email">Email</option><option value="Contact Information">Contact information</option>
+                        <select id="newJobApplicationMethod" onchange="updateJobApplicationInput()" required class="form-input text-xs">
+                            <option value="">Select method</option><option value="Link">Application link</option><option value="Email">Email</option><option value="Contact Information">Contact information</option><option value="Portal">Apply through portal (legacy)</option>
                         </select>
                     </div>
                     <div>
                         <label class="form-label" for="newJobApplicationDetails">Application Link / Email / Contact</label>
-                        <input type="text" id="newJobApplicationDetails" placeholder="Optional details" class="form-input text-xs">
+                        <input type="text" id="newJobApplicationDetails" placeholder="Required link, email, or contact details" class="form-input text-xs">
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3539,27 +3543,14 @@
                         <label class="form-label" for="newJobDeadline">Application Deadline</label>
                         <input type="date" id="newJobDeadline" class="form-input text-xs">
                     </div>
-                    <div>
-                        <label class="form-label" for="newJobTargetLevel">Target Alumni</label>
-                        <select id="newJobTargetLevel" onchange="toggleJobTargetStrand()" class="form-input text-xs">
-                            <option>All Alumni</option><option>JHS</option><option>SHS</option>
-                        </select>
-                    </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="form-label" for="newJobTargetBatch">Target Batch (optional)</label>
-                        <input type="text" id="newJobTargetBatch" placeholder="e.g. 2022" class="form-input text-xs">
-                    </div>
-                    <div>
-                        <label class="form-label" for="newJobTargetStrand">SHS Strand (optional)</label>
-                        <input type="text" id="newJobTargetStrand" placeholder="Optional filter only" class="form-input text-xs">
-                    </div>
-                </div>
-                <div>
+                <fieldset class="rounded-xl border border-slate-200 p-3 space-y-2">
+                    <legend class="form-label px-1">Publishing</legend>
                     <label class="form-label" for="newJobStatus">Listing Status</label>
-                    <select id="newJobStatus" class="form-input text-xs"><option>Draft</option><option>Published</option></select>
-                </div>
+                    <select id="newJobStatus" required class="form-input text-xs"><option>Draft</option><option selected>Published</option><option>Archived</option></select>
+                    <label class="flex items-center gap-2 text-xs text-slate-700"><input type="checkbox" id="newJobNotifyInApp" checked> Notify alumni through in-app notification</label>
+                    <label class="flex items-center gap-2 text-xs text-slate-700"><input type="checkbox" id="newJobNotifyEmail"> Send email notification</label>
+                </fieldset>
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeAddJobOpportunityModal()" class="btn btn-secondary text-xs">Cancel</button>
                     <button type="submit" class="btn btn-primary text-xs">Save Opportunity</button>
