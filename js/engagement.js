@@ -1717,6 +1717,11 @@
         document.getElementById("notificationCenterModal").classList.add("active");
     }
 
+    function openNotificationsInbox() {
+        closeNotificationCenterModal();
+        switchView("notifications");
+    }
+
     function closeNotificationCenterModal() {
         document.getElementById("notificationCenterModal").classList.remove("active");
     }

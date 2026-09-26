@@ -73,6 +73,10 @@ function applyRoleChrome() {
         const wrap = el && el.closest("div");
         if (wrap) wrap.classList.toggle("hidden", !isAlumniRole());
     });
+    const alumniIdentity = document.getElementById("profileAlumniIdentity");
+    if (alumniIdentity) alumniIdentity.classList.toggle("hidden", !isAlumniRole());
+    const staffIdentity = document.getElementById("profileStaffIdentity");
+    if (staffIdentity) staffIdentity.classList.toggle("hidden", isAlumniRole());
     const resumeBlock = document.getElementById("resumeEmptyState");
     if (resumeBlock && resumeBlock.parentElement) {
         resumeBlock.parentElement.classList.toggle("hidden", !isAlumniRole());
@@ -88,9 +92,11 @@ function applyRoleChrome() {
             <p><span class="font-bold text-slate-600">Username:</span> ${escapeHtml(currentUser.username || "—")}</p>
             <p><span class="font-bold text-slate-600">Role:</span> ${escapeHtml(roleLabel(currentUser.role))}</p>
             <p><span class="font-bold text-slate-600">Account status:</span> ${escapeHtml(currentUser.status || "Active")}</p>
-            ${currentUser.studentId ? `<p><span class="font-bold text-slate-600">ID:</span> ${escapeHtml(currentUser.studentId)}</p>` : ""}
         `;
     }
+    const viewTitle = document.getElementById("currentViewTitle");
+    const profileView = document.getElementById("view-profile");
+    if (viewTitle && profileView && !profileView.classList.contains("hidden")) viewTitle.textContent = "My Profile";
 
     const pwBox = document.getElementById("profilePasswordBox");
     if (pwBox) pwBox.classList.remove("hidden");
@@ -136,12 +142,9 @@ function escapeHtml(value) {
 
 async function changeOwnPassword(event) {
     if (event) event.preventDefault();
-    const currentPassword = (document.getElementById("ownCurrentPassword") || {}).value
-        || (document.getElementById("settingsCurrentPassword") || {}).value;
-    const newPassword = (document.getElementById("ownNewPassword") || {}).value
-        || (document.getElementById("settingsNewPassword") || {}).value;
-    const confirm = (document.getElementById("ownConfirmPassword") || {}).value
-        || (document.getElementById("settingsConfirmPassword") || {}).value;
+    const currentPassword = (document.getElementById("ownCurrentPassword") || {}).value;
+    const newPassword = (document.getElementById("ownNewPassword") || {}).value;
+    const confirm = (document.getElementById("ownConfirmPassword") || {}).value;
     if (!currentPassword || !newPassword) {
         showToast("Enter your current password and a new password.", "error");
         return;
@@ -155,35 +158,13 @@ async function changeOwnPassword(event) {
             method: "PUT",
             body: JSON.stringify({ currentPassword, newPassword })
         });
-        ["ownCurrentPassword", "ownNewPassword", "ownConfirmPassword", "settingsCurrentPassword", "settingsNewPassword", "settingsConfirmPassword"].forEach((id) => {
+        ["ownCurrentPassword", "ownNewPassword", "ownConfirmPassword"].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.value = "";
         });
         showToast("Password updated.", "success");
     } catch (err) {
         showToast(err.message || "Unable to update password.", "error");
-    }
-}
-
-async function saveOwnProfileFromSettings(event) {
-    if (event) event.preventDefault();
-    const name = (document.getElementById("settingsAccountName") || {}).value;
-    const email = (document.getElementById("settingsAccountEmail") || {}).value;
-    const contact = (document.getElementById("settingsAccountContact") || {}).value;
-    try {
-        const data = await SAA_API.request("/api/auth/profile", {
-            method: "PUT",
-            body: JSON.stringify({ name, email, contact })
-        });
-        currentUser = Object.assign({}, currentUser, data.user);
-        sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
-        if (typeof applyUserRole === "function") {
-            document.getElementById("headerUserName").textContent = currentUser.name;
-            document.getElementById("sidebarRoleName").textContent = currentUser.title || roleLabel(currentUser.role);
-        }
-        showToast("Account details saved.", "success");
-    } catch (err) {
-        showToast(err.message || "Unable to save account details.", "error");
     }
 }
 
@@ -211,10 +192,10 @@ async function loadLoginActivity() {
 function settingsSectionsForRole(role) {
     const r = normalizeRole(role);
     if (r === "admin") {
-        return ["account", "notifications", "general", "documents", "alumni", "security", "communications", "ai", "history"];
+        return ["general", "documents", "communications", "notifications", "ai", "security", "history", "alumni"];
     }
-    if (r === "staff") return ["account", "notifications", "security"];
-    return ["account", "notifications", "privacy", "security"];
+    if (r === "staff") return ["notifications", "security"];
+    return ["notifications", "privacy", "security"];
 }
 
 function showSettingsTab(tab) {
@@ -237,13 +218,6 @@ async function loadSettingsView() {
         el.classList.toggle("hidden", !allowed.includes(key) || key !== allowed[0]);
     });
     showSettingsTab(allowed[0]);
-
-    if (document.getElementById("settingsAccountName")) {
-        document.getElementById("settingsAccountName").value = currentUser.name || "";
-        document.getElementById("settingsAccountEmail").value = currentUser.email || "";
-        document.getElementById("settingsAccountContact").value = currentUser.contact || "";
-        document.getElementById("settingsAccountUsername").value = currentUser.username || "";
-    }
 
     const prefs = JSON.parse(localStorage.getItem("saaNotifyPrefs") || "{}");
     ["prefSystem", "prefEmail", "prefSms", "prefDocs", "prefEvents", "prefJobs", "prefSurveys", "prefAnnounce"].forEach((id) => {

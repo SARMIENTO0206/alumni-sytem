@@ -479,16 +479,16 @@
                     </div>
                 </div>
                 <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('transcript')" id="nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Document Requests Overview</span></button>
                         <button type="button" onclick="switchView('reprint')" id="nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprint Overview</span></button>
                     </div>
                 </div>
-                <button type="button" onclick="switchView('tracking')" id="nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
                 <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career & Tracking</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('tracking')" id="nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
                         <button type="button" onclick="switchView('placement')" id="nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Alumni Employment</span></button>
                         <button type="button" onclick="switchView('job-opportunities')" id="nav-job-opportunities" class="sidebar-link"><i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Opportunities</span></button>
                     </div>
@@ -507,28 +507,42 @@
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('announcements')" id="nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
-                        <button type="button" onclick="switchView('notifications')" id="nav-notifications" class="sidebar-link"><i class="fa-regular fa-bell"></i><span>Notifications</span></button>
-                        <button type="button" onclick="switchView('sms')" id="nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
-                        <button type="button" onclick="switchView('gmail')" id="nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Gmail / Email</span></button>
+                        <div class="sidebar-group">
+                            <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Message Center</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                            <div class="sidebar-group-items">
+                                <button type="button" onclick="switchView('sms')" id="nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
+                                <button type="button" onclick="switchView('gmail')" id="nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Email</span></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="sidebar-group">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>AI Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('ai-tools')" id="nav-ai-tools" class="sidebar-link"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AI Assistant Tools</span></button>
                         <button type="button" onclick="switchView('ai-chat')" id="nav-ai-chat" class="sidebar-link"><i class="fa-solid fa-comments"></i><span>AI Chat Support</span></button>
                     </div>
                 </div>
-                <button type="button" onclick="switchView('reports')" id="nav-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>System Reports</span></button>
-                <button type="button" onclick="switchView('users')" id="nav-users" class="sidebar-link"><i class="fa-solid fa-user-shield"></i><span>User & Access Management</span></button>
-                <button type="button" onclick="switchView('profile')" id="nav-profile" class="sidebar-link"><i class="fa-solid fa-user-circle"></i><span>Profile</span></button>
-                <button type="button" onclick="switchView('settings')" id="nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Reports</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('reports')" id="nav-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>System Reports</span></button>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Administration</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('users')" id="nav-users" class="sidebar-link"><i class="fa-solid fa-user-shield"></i><span>User & Access Management</span></button>
+                        <button type="button" onclick="switchView('settings')" id="nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
+                        <button type="button" onclick="switchView('request-history')" id="nav-request-history" class="sidebar-link"><i class="fa-solid fa-clock-rotate-left"></i><span>Audit Trail</span></button>
+                    </div>
+                </div>
             </div>
 
             <!-- ALUMNI SIDEBAR LINKS -->
             <div id="alumniSidebar" class="hidden flex-grow overflow-y-auto p-3 space-y-1">
                 <p class="text-[10px] font-extrabold tracking-widest text-gold-accent uppercase px-3 py-2">Alumni Portal</p>
                 <button type="button" onclick="switchView('dashboard')" id="alumni-nav-dashboard" class="sidebar-link active"><i class="fa-solid fa-chart-line"></i><span>Dashboard</span></button>
-                <button type="button" onclick="switchView('profile')" id="alumni-nav-profile" class="sidebar-link"><i class="fa-solid fa-user-circle"></i><span>My Profile</span></button>
                 <div class="sidebar-group open">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
@@ -564,13 +578,6 @@
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('announcements')" id="alumni-nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
-                        <button type="button" onclick="switchView('notifications')" id="alumni-nav-notifications" class="sidebar-link"><i class="fa-regular fa-bell"></i><span>Notifications</span></button>
-                    </div>
-                </div>
-                <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>AI Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                    <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('ai-chat')" id="alumni-nav-ai-chat" class="sidebar-link"><i class="fa-solid fa-comments"></i><span>AI Chat Support</span></button>
                     </div>
                 </div>
                 <button type="button" onclick="switchView('settings')" id="alumni-nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
@@ -587,7 +594,7 @@
                     </div>
                 </div>
                 <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('transcript')" id="registrar-nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Academic Record Requests</span></button>
                         <button type="button" onclick="switchView('reprint')" id="registrar-nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
@@ -595,10 +602,10 @@
                         <button type="button" onclick="switchView('release-claiming')" id="registrar-nav-release-claiming" class="sidebar-link"><i class="fa-solid fa-box-open"></i><span>Release & Claiming</span></button>
                     </div>
                 </div>
-                <button type="button" onclick="switchView('tracking')" id="staff-nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
                 <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career & Tracking</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('tracking')" id="staff-nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
                         <button type="button" onclick="switchView('placement')" id="staff-nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Alumni Employment</span></button>
                         <button type="button" onclick="switchView('job-opportunities')" id="staff-nav-job-opportunities" class="sidebar-link"><i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Opportunities</span></button>
                     </div>
@@ -617,20 +624,16 @@
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('announcements')" id="staff-nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
-                        <button type="button" onclick="switchView('notifications')" id="staff-nav-notifications" class="sidebar-link"><i class="fa-regular fa-bell"></i><span>Notifications</span></button>
-                        <button type="button" onclick="switchView('sms')" id="staff-nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
-                        <button type="button" onclick="switchView('gmail')" id="staff-nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Gmail / Email</span></button>
-                    </div>
-                </div>
-                <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>AI Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                    <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('ai-chat')" id="staff-nav-ai-chat" class="sidebar-link"><i class="fa-solid fa-comments"></i><span>AI Chat Support</span></button>
+                        <div class="sidebar-group">
+                            <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Message Center</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                            <div class="sidebar-group-items">
+                                <button type="button" onclick="switchView('sms')" id="staff-nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
+                                <button type="button" onclick="switchView('gmail')" id="staff-nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Email</span></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <button type="button" onclick="switchView('registrar-reports')" id="registrar-nav-registrar-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>Reports</span></button>
-                <button type="button" onclick="switchView('profile')" id="staff-nav-profile" class="sidebar-link"><i class="fa-solid fa-user-circle"></i><span>Profile</span></button>
-                <button type="button" onclick="switchView('settings')" id="staff-nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
             </div>
 
             <!-- Logout Link -->
@@ -668,29 +671,29 @@
 
                 <!-- User Profile & Quick Actions -->
                 <div class="flex items-center space-x-3">
-                    <button onclick="toggleChatWindow()" class="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-amber-50 hover:text-[#801235] px-3 py-1.5 rounded-full transition hidden sm:inline-flex items-center gap-1.5">
+                    <button type="button" onclick="toggleChatWindow()" class="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-amber-50 hover:text-[#801235] px-3 py-1.5 rounded-full transition hidden sm:inline-flex items-center gap-1.5">
                         <i class="fa-solid fa-wand-magic-sparkles text-[#801235]"></i>
                         <span>AI Assistant</span>
                     </button>
 
                     <!-- Notification Bell Button -->
-                    <button onclick="openNotificationCenterModal()" class="relative p-2 text-slate-600 hover:text-[#801235] hover:bg-amber-50 rounded-full transition" title="Notification Activity Log">
+                    <button type="button" onclick="openNotificationCenterModal()" class="relative p-2 text-slate-600 hover:text-[#801235] hover:bg-amber-50 rounded-full transition" title="Open notifications" aria-label="Open notifications">
                         <i class="fa-regular fa-bell text-lg"></i>
                         <span id="notificationBadgeCount" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#801235] text-white text-[9px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">0</span>
                     </button>
 
-                    <div class="text-right hidden sm:block">
+                    <button type="button" onclick="switchView('profile')" class="text-right hidden sm:block rounded-md focus:outline-none focus:ring-2 focus:ring-[#801235]" title="Open My Profile" aria-label="Open My Profile">
                         <p class="text-sm font-extrabold text-slate-800 leading-none" id="headerUserName">
                             Admin User
                         </p>
                         <p class="text-[11px] text-slate-400 font-semibold mt-0.5" id="headerUserRole">
                             System Administrator
                         </p>
-                    </div>
+                    </button>
 
-                    <div class="w-10 h-10 rounded-full bg-brand-magenta text-white flex items-center justify-center font-extrabold text-sm shadow-md border-2 border-white ring-2 ring-pink-100 overflow-hidden flex-shrink-0 cursor-pointer" id="headerAvatar" onclick="switchView('profile')" title="View Profile">
+                    <button type="button" class="w-10 h-10 rounded-full bg-brand-magenta text-white flex items-center justify-center font-extrabold text-sm shadow-md border-2 border-white ring-2 ring-pink-100 overflow-hidden flex-shrink-0 cursor-pointer" id="headerAvatar" onclick="switchView('profile')" title="View Profile" aria-label="Open My Profile">
                         AD
-                    </div>
+                    </button>
                     <button type="button" onclick="confirmLogout()" title="Log Out" aria-label="Log Out"
                         class="text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-full transition inline-flex items-center gap-1.5">
                         <i class="fa-solid fa-right-from-bracket"></i>
@@ -1063,7 +1066,7 @@
 
 
                 <!-- =================================================
-                     VIEW: ALUMNI PROFILE (ALUMNI ONLY - WITH PHOTO UPLOAD)
+                     VIEW: MY PROFILE (ROLE-SPECIFIC FIELDS)
                      ================================================= -->
                 <div id="view-profile" class="hidden space-y-6 fade-in">
                     <div class="app-card p-6 sm:p-8 max-w-4xl mx-auto">
@@ -1085,7 +1088,7 @@
                                 <input type="file" id="profilePhotoInput" accept="image/*" class="hidden" title="Upload profile photo" aria-label="Upload profile photo" onchange="handleProfilePhotoSelected(event)">
 
                                 <div>
-                                    <span class="status-badge status-verified mb-1">Alumni Verified</span>
+                                    <span class="status-badge status-verified mb-1">Account</span>
                                     <h3 class="text-xl font-extrabold text-slate-800" id="profileHeadingName">Alumni Profile</h3>
                                     <div id="profileRoleMeta" class="hidden mt-2 space-y-0.5 text-xs text-slate-500"></div>
                                     <p class="text-xs text-slate-400 font-medium mt-1">Click your avatar or upload button to personalize your profile picture</p>
@@ -1122,9 +1125,13 @@
                                 <label class="form-label" for="profileAddress">Address</label>
                                 <input id="profileAddress" type="text" class="form-input text-sm" placeholder="City / Province">
                             </div>
-                            <div>
+                            <div id="profileAlumniIdentity">
                                 <label class="form-label" for="profileAlumniId">Alumni ID</label>
                                 <input id="profileAlumniId" type="text" class="form-input text-sm bg-slate-50" readonly>
+                            </div>
+                            <div id="profileStaffIdentity" class="hidden">
+                                <label class="form-label" for="profileStaffId">Staff/System ID</label>
+                                <input id="profileStaffId" type="text" class="form-input text-sm bg-slate-50" readonly>
                             </div>
                             <div>
                                 <label class="form-label" for="profileBatch">Batch Year</label>
@@ -2270,73 +2277,47 @@
                                 </div>
                             </div>
                         </div>
-<!-- AI SaaS TOOLS (OpenAI API) -->
-                    <div class="app-card p-6 sm:p-8 mt-6">
+                    </div>
+                </div>
+
+                <div id="view-ai-tools" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6 sm:p-8">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#801235] to-[#1b1124] text-white flex items-center justify-center">
-                                    <i class="fa-solid fa-brain"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-extrabold text-slate-800">AI Assistant Tools</h3>
-                                    <p class="text-xs text-slate-400 font-medium">OpenAI API for chat support, Gmail auto-reply, survey summaries and dashboard insights.</p>
-                                </div>
+                            <div>
+                                <h3 class="text-xl font-extrabold text-slate-800">AI Assistant Tools</h3>
+                                <p class="text-xs text-slate-400 font-medium">AI-assisted operations and analysis, separate from system reporting.</p>
                             </div>
                             <span id="aiEngineBadge" class="status-badge status-pending text-[10px]">
                                 <i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Checking AI engine...
                             </span>
                         </div>
-
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                            <!-- Gmail Auto-Reply -->
                             <div class="border border-slate-200 rounded-xl p-4 bg-white">
-                                <p class="font-extrabold text-slate-800 text-sm mb-1">
-                                    <i class="fa-regular fa-envelope text-indigo-500 mr-1"></i> Gmail Auto-Reply
-                                </p>
-                                <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
-                                    Simulates an inbound alumni email: OpenAI analyzes the content and drafts the reply automatically.
-                                </p>
+                                <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-regular fa-envelope text-indigo-500 mr-1"></i> Gmail Auto-Reply</p>
+                                <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Draft a response to an alumni inquiry for staff review.</p>
                                 <form onsubmit="runGmailAutoReply(event)" class="space-y-2">
-                                    <input id="aiGmailFrom" type="email" required placeholder="Alumni email (e.g. maria.santos@example.com)" class="form-input text-xs">
-                                    <input id="aiGmailSubject" type="text" placeholder="Subject (e.g. Transcript requirements)" class="form-input text-xs">
+                                    <input id="aiGmailFrom" type="email" required placeholder="Alumni email" class="form-input text-xs">
+                                    <input id="aiGmailSubject" type="text" placeholder="Email subject" class="form-input text-xs">
                                     <textarea id="aiGmailBody" rows="3" required placeholder="Inbound message body..." class="form-input text-xs"></textarea>
-                                    <button type="submit" class="btn btn-primary text-xs w-full py-2">
-                                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Auto-Reply
-                                    </button>
+                                    <button type="submit" class="btn btn-primary text-xs w-full py-2"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Auto-Reply</button>
                                 </form>
                                 <div id="aiGmailReply" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
                             </div>
-
-                            <!-- Survey Summary + Dashboard Insights -->
                             <div class="space-y-5">
                                 <div class="border border-slate-200 rounded-xl p-4 bg-white">
-                                    <p class="font-extrabold text-slate-800 text-sm mb-1">
-                                        <i class="fa-regular fa-comments text-brand-magenta mr-1"></i> Survey Response Summary
-                                    </p>
-                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
-                                        OpenAI summarizes collected alumni feedback into sentiment, themes and recommendations.
-                                    </p>
-                                    <button onclick="runSurveySummary()" class="btn btn-secondary text-xs w-full py-2">
-                                        <i class="fa-solid fa-file-lines text-[#801235] mr-1"></i> Summarize Survey Responses
-                                    </button>
+                                    <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-regular fa-comments text-brand-magenta mr-1"></i> Survey Response Summary</p>
+                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Summarize alumni feedback into sentiment, themes, and recommendations.</p>
+                                    <button onclick="runSurveySummary()" class="btn btn-secondary text-xs w-full py-2"><i class="fa-solid fa-file-lines text-[#801235] mr-1"></i> Summarize Survey Responses</button>
                                     <div id="aiSurveySummary" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
                                 </div>
-
                                 <div class="border border-slate-200 rounded-xl p-4 bg-white">
-                                    <p class="font-extrabold text-slate-800 text-sm mb-1">
-                                        <i class="fa-solid fa-chart-line text-emerald-600 mr-1"></i> Dashboard Insights
-                                    </p>
-                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
-                                        AI narrative analysis of live metrics: employment, tracer freshness, document requests and engagement.
-                                    </p>
-                                    <button onclick="runDashboardInsights()" class="btn btn-secondary text-xs w-full py-2">
-                                        <i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Generate Dashboard Insights
-                                    </button>
+                                    <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-solid fa-chart-line text-emerald-600 mr-1"></i> Dashboard Insights</p>
+                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Generate an AI narrative from graduate tracking, requests, and engagement metrics.</p>
+                                    <button onclick="runDashboardInsights()" class="btn btn-secondary text-xs w-full py-2"><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Generate Dashboard Insights</button>
                                     <div id="aiDashboardInsights" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
                                 </div>
                             </div>
                         </div>
-                    </div>
                     </div>
                 </div>
 
@@ -2550,36 +2531,15 @@
                     <div class="app-card p-6">
                         <h3 class="text-lg font-extrabold text-slate-800 mb-4">Settings</h3>
                         <div class="flex flex-wrap gap-2 mb-6">
-                            <button type="button" data-settings-tab="account" class="btn btn-primary text-xs" onclick="showSettingsTab('account')">Account</button>
-                            <button type="button" data-settings-tab="notifications" class="btn btn-secondary text-xs" onclick="showSettingsTab('notifications')">Notifications</button>
-                            <button type="button" data-settings-tab="privacy" class="btn btn-secondary text-xs" onclick="showSettingsTab('privacy')">Privacy</button>
-                            <button type="button" data-settings-tab="security" class="btn btn-secondary text-xs" onclick="showSettingsTab('security')">Security</button>
-                            <button type="button" data-settings-tab="general" class="btn btn-secondary text-xs" onclick="showSettingsTab('general')">General</button>
+                            <button type="button" data-settings-tab="general" class="btn btn-primary text-xs" onclick="showSettingsTab('general')">General</button>
                             <button type="button" data-settings-tab="documents" class="btn btn-secondary text-xs" onclick="showSettingsTab('documents')">Documents</button>
                             <button type="button" data-settings-tab="alumni" class="btn btn-secondary text-xs" onclick="showSettingsTab('alumni')">Alumni</button>
-                            <button type="button" data-settings-tab="communications" class="btn btn-secondary text-xs" onclick="showSettingsTab('communications')">Communication</button>
-                            <button type="button" data-settings-tab="ai" class="btn btn-secondary text-xs" onclick="showSettingsTab('ai')">AI</button>
-                            <button type="button" data-settings-tab="history" class="btn btn-secondary text-xs" onclick="showSettingsTab('history')">History</button>
+                            <button type="button" data-settings-tab="communications" class="btn btn-secondary text-xs" onclick="showSettingsTab('communications')">Communications</button>
+                            <button type="button" data-settings-tab="notifications" class="btn btn-secondary text-xs" onclick="showSettingsTab('notifications')">Notifications</button>
+                            <button type="button" data-settings-tab="ai" class="btn btn-secondary text-xs" onclick="showSettingsTab('ai')">AI Integration</button>
+                            <button type="button" data-settings-tab="security" class="btn btn-secondary text-xs" onclick="showSettingsTab('security')">Security</button>
+                            <button type="button" data-settings-tab="history" class="btn btn-secondary text-xs" onclick="showSettingsTab('history')">Audit Logs</button>
                         </div>
-
-                        <form data-settings-panel="account" onsubmit="saveOwnProfileFromSettings(event)" class="space-y-4 max-w-xl">
-                            <label class="form-label">Username</label>
-                            <input id="settingsAccountUsername" class="form-input text-sm" disabled>
-                            <label class="form-label">Full name</label>
-                            <input id="settingsAccountName" class="form-input text-sm">
-                            <label class="form-label">Email</label>
-                            <input id="settingsAccountEmail" type="email" class="form-input text-sm">
-                            <label class="form-label">Contact</label>
-                            <input id="settingsAccountContact" class="form-input text-sm">
-                            <button type="submit" class="btn btn-primary text-xs">Save Account Settings</button>
-                            <div class="pt-4 border-t border-slate-100">
-                                <h4 class="font-bold text-sm mb-2">Change Password</h4>
-                                <input id="settingsCurrentPassword" type="password" class="form-input text-sm mb-2" placeholder="Current password">
-                                <input id="settingsNewPassword" type="password" class="form-input text-sm mb-2" placeholder="New password">
-                                <input id="settingsConfirmPassword" type="password" class="form-input text-sm mb-2" placeholder="Confirm new password">
-                                <button type="button" class="btn btn-secondary text-xs" onclick="changeOwnPassword()">Update Password</button>
-                            </div>
-                        </form>
 
                         <div data-settings-panel="notifications" class="hidden space-y-3 max-w-xl">
                             <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="prefSystem" checked> System notifications</label>
@@ -3777,7 +3737,7 @@
         </div>
     </div>
 
-    <!-- Notification Activity Center Modal -->
+    <!-- Notification Center Modal -->
     <div id="notificationCenterModal" class="modal-backdrop">
         <div class="modal-box p-6 max-w-lg">
             <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
@@ -3786,8 +3746,8 @@
                         <i class="fa-regular fa-bell"></i>
                     </div>
                     <div>
-                        <h3 class="font-extrabold text-slate-800 text-sm">Automated Email & SMS Activity Log</h3>
-                        <p class="text-[10px] text-slate-400 font-medium">Real-time notification engine triggers</p>
+                        <h3 class="font-extrabold text-slate-800 text-sm">Notifications</h3>
+                        <p class="text-[10px] text-slate-400 font-medium">Your latest system alerts</p>
                     </div>
                 </div>
                 <button onclick="closeNotificationCenterModal()" title="Close notification center" aria-label="Close notification center" class="text-slate-400 hover:text-slate-600 p-1">
@@ -3797,6 +3757,11 @@
 
             <div id="notificationLogsList" class="space-y-3 max-h-[380px] overflow-y-auto pr-1 text-xs">
                 <!-- Populated dynamically -->
+            </div>
+            <div class="flex justify-end border-t border-slate-100 mt-4 pt-3">
+                <button type="button" onclick="openNotificationsInbox()" class="btn btn-primary text-xs py-2">
+                    View all notifications
+                </button>
             </div>
         </div>
     </div>

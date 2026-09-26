@@ -11,7 +11,7 @@
         "tracking", "placement", "events", "reunions", "donor", "newsletter", "feedback",
         "reports", "verification", "request-approval", "document-processing", "release-claiming",
         "request-history", "registrar-reports", "academic-records", "users", "settings",
-        "announcements", "notifications", "sms", "gmail", "ai-chat", "request-status",
+        "announcements", "notifications", "sms", "gmail", "ai-tools", "ai-chat", "request-status",
         "applications", "unauthorized", "payment", "payment-receipt"
     ];
 
@@ -28,6 +28,7 @@
         feedback: "/surveys",
         "job-opportunities": "/jobs",
         reports: "/reports",
+        "ai-tools": "/ai-tools",
         profile: "/profile",
         idcard: "/idcard",
         placement: "/placement",
@@ -77,6 +78,7 @@
         jobs: "job-opportunities",
         "job-opportunities": "job-opportunities",
         reports: "reports",
+        "ai-tools": "ai-tools",
         profile: "profile",
         idcard: "idcard",
         placement: "placement",
@@ -258,8 +260,8 @@
         if (viewId === "academic-records" && typeof renderAcademicRecords === "function") renderAcademicRecords();
         if (viewId === "reports") {
             if (typeof updateReports === "function") updateReports();
-            if (typeof refreshAiStatus === "function") refreshAiStatus();
         }
+        if (viewId === "ai-tools" && typeof refreshAiStatus === "function") refreshAiStatus();
         if (viewId === "request-approval" && typeof renderRequestApproval === "function") renderRequestApproval();
         if (viewId === "document-processing" && typeof renderDocumentPreparation === "function") renderDocumentPreparation();
         if (viewId === "release-claiming" && typeof renderReleaseClaiming === "function") renderReleaseClaiming();
@@ -406,7 +408,8 @@
             dashboard: "Dashboard Overview",
             idcard: "Digital Alumni Identification",
             database: "Alumni Records Database",
-            profile: "My Alumni Profile",
+            profile: "My Profile",
+            "ai-tools": "AI Assistant Tools",
             "job-opportunities": "Job Opportunities Board",
             transcript: "Transcript Request Portal",
             reprint: "Certificate Reprint Requests",
@@ -637,6 +640,7 @@
         setVal("profileContact", user.contact || alumni.contact || "");
         setVal("profileAddress", user.address || alumni.address || "");
         setVal("profileAlumniId", user.studentId || alumni.studentId || "");
+        setVal("profileStaffId", user.studentId || "");
         setVal("profileBatch", user.batch || alumni.batch || "");
         setVal("profileProgram", user.program || alumni.program || "");
         setVal("profileEmployment", alumni.status || "Employed");
@@ -662,13 +666,17 @@
             email: document.getElementById("profileEmail").value.trim(),
             contact: document.getElementById("profileContact").value.trim(),
             address: (document.getElementById("profileAddress") || {}).value || "",
-            batch: document.getElementById("profileBatch").value,
-            program: document.getElementById("profileProgram").value.trim(),
-            employment: document.getElementById("profileEmployment").value,
-            company: document.getElementById("profileCompany").value.trim(),
-            jobTitle: document.getElementById("profileJobTitle").value.trim(),
             photoUrl: currentUser.photoUrl || ""
         };
+        if (isAlumniRole()) {
+            Object.assign(profile, {
+                batch: document.getElementById("profileBatch").value,
+                program: document.getElementById("profileProgram").value.trim(),
+                employment: document.getElementById("profileEmployment").value,
+                company: document.getElementById("profileCompany").value.trim(),
+                jobTitle: document.getElementById("profileJobTitle").value.trim()
+            });
+        }
 
         try {
             if (typeof SAA_API === "undefined") throw new Error("The server is offline.");

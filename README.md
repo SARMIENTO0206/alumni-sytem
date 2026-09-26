@@ -42,7 +42,7 @@ repo, delete any old `server/data/saa.db`, then run `npm start` in `server/`.
 | `navigation.js` | View router, counters, digital ID, profile, page navigation |
 | `records.js`    | Alumni database, transcripts, reprints, employment records, academic records |
 | `engagement.js` | Events, reunions, donations, resume, notifications engine, newsletter, feedback, AI assistant chat |
-| `reports.js`    | Graduate tracking, outcome charts, Registrar review, AI tools, initialization |
+| `reports.js`    | Graduate tracking, outcome charts, Registrar review, AI tool initialization |
 
 ## 🧩 System modules
 
@@ -61,25 +61,27 @@ automated communication flows and AI features:
 | 8 | Certificate Reprint Request | Alumni submit; Registrar reviews and processes; Admin monitors |
 | 9 | Alumni Newsletter | Registrar drafts and submits; Admin reviews and publishes; Alumni read published editions |
 | 10 | Alumni Feedback & Survey | *Surveys & Feedback* |
-| 11 | **Communications** | Admin/Registrar manage announcements and manual SMS/email; Notifications is each user's automatic inbox |
+| 11 | **Communications** | Admin/Registrar manage announcements and manual SMS/email from Communications → Message Center; each user's Notifications inbox is opened from the header bell |
 | 12 | **AI Chat Support** (OpenAI) | Chat bubble (bottom-right) |
 | + | **Profile Update Reminders** | Admin configures the reminder period and confirms each send from Graduate Tracking |
-| + | **Gmail Auto-Reply** (OpenAI) | Admin → *System Reports* → **AI Assistant Tools** |
-| + | **AI Survey Summaries / Dashboard Insights** | Admin → *System Reports* → **AI Assistant Tools** |
+| + | **Gmail Auto-Reply** (OpenAI) | Admin → *AI Services* → **AI Assistant Tools** |
+| + | **AI Survey Summaries / Dashboard Insights** | Admin → *AI Services* → **AI Assistant Tools** |
 
 ### User roles
 
 | Role | Access |
 | ---- | ------ |
-| **Administrator** | System oversight, graduate outcome analytics, reports/exports, communications oversight, and reminder-period configuration; does not submit or process alumni requests |
+| **Administrator** | System oversight, graduate outcome analytics, reports/exports, user/access management, AI integrations, communications oversight, and reminder-period configuration; does not submit or process alumni requests |
 | **Registrar** | Alumni records, graduate-status review, document-request review and processing, release/claiming, announcements, manual SMS/email, request history, registrar reports |
 | **Alumni** | Own profile and graduate status, digital ID, transcript/certificate requests, job board, announcements, notifications, events, reunions, newsletter, surveys |
+
+Profile and password updates are managed from **My Profile** using the header name or avatar; Profile is not a sidebar item. Settings contains system and notification preferences rather than a duplicate account editor. Staff accounts display a Staff/System ID; Alumni ID and graduate details are shown only for Alumni accounts. The Admin sidebar separates **AI Services** from **Reports** and places user/access management, system settings, and the request audit trail under **Administration**. Registrar navigation focuses on operational work; Alumni use the header bell for Notifications and the header profile controls for My Profile.
 
 Document requests are free and no longer use online checkout. The Payments history page is removed for all roles. Alumni donation checkout remains available in Donation Campaigns.
 
 Newsletters are general to all Alumni. Registrar staff can save drafts, edit their own drafts, and submit them for approval; Admin can approve and publish or return a draft with an editing note. In-app, email, and short SMS notifications are sent to the selected active Alumni audience only when Admin publishes. Newsletter delivery counts are recorded for staff review.
 
-Communications keeps content and alerts separate: announcements can be saved as drafts, published immediately, or scheduled with an optional expiration date and selected in-app/email/SMS channels; Notifications is the signed-in user's inbox for system-generated alerts. Admin and Registrar can send SMS or email to one, selected, or all active Alumni accounts and review delivery history. Manual email supports an optional PDF attachment up to 1 MB; broadcast sends are limited to 500 recipients.
+Communications keeps content and alerts separate: announcements can be saved as drafts, published immediately, or scheduled with an optional expiration date and selected in-app/email/SMS channels; Notifications is the signed-in user's inbox for system-generated alerts, reachable from the header bell. Admin and Registrar can send SMS or email through the nested **Message Center** menu and review delivery history. Manual email supports an optional PDF attachment up to 1 MB; broadcast sends are limited to 500 recipients.
 
 Graduate tracking is designed for JHS and SHS alumni. It reports employed, self-employed, seeking-employment, further-study/training, not-currently-seeking, and no-status-data outcomes without treating missing information as unemployment. SHS pathways are shown separately from JHS records, and strand filters are available only for SHS. Industry charts use alumni-reported categories; the Registrar verifies submitted tracking records, while only Alumni can update their own status. Reminder timing is configurable by Admin, and every reminder send requires confirmation.
 
@@ -189,7 +191,7 @@ powershell -ExecutionPolicy Bypass -File scripts/test-api.ps1
 
 The **Agnesian AI Assistant** (chat bubble, bottom-right of every dashboard),
 the newsletter **AI Compose** button, and the **AI Assistant Tools** panel in
-*System Reports* (Administrator) call OpenAI's `chat/completions` API when a key
+*AI Services* (Administrator) call OpenAI's `chat/completions` API when a key
 is configured. Without a key the system uses a built-in fallback engine that
 reads the live database, so every feature still works.
 
@@ -199,9 +201,9 @@ reads the live database, so every feature still works.
 | ------- | -------- |
 | AI Chat Support | Chat bubble (bottom-right) — available to all roles |
 | AI Compose (SMS / newsletter draft) | *Alumni Newsletter* → composer → **AI Compose** |
-| Gmail Auto-Reply | *System Reports* → **AI Assistant Tools** → *Generate Auto-Reply* |
-| Survey Response Summary | *System Reports* → **AI Assistant Tools** → *Summarize Survey Responses* |
-| Dashboard Insights | *System Reports* → **AI Assistant Tools** → *Generate Dashboard Insights* |
+| Gmail Auto-Reply | *AI Services* → **AI Assistant Tools** → *Generate Auto-Reply* |
+| Survey Response Summary | *AI Services* → **AI Assistant Tools** → *Summarize Survey Responses* |
+| Dashboard Insights | *AI Services* → **AI Assistant Tools** → *Generate Dashboard Insights* |
 
 The panel header shows a badge indicating which engine is active
 (*OpenAI API* or *Built-in AI fallback*).

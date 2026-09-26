@@ -837,6 +837,7 @@
     function applyTrackingRoleView() {
         const role = currentUser?.role || "";
         const viewTitle = document.getElementById("currentViewTitle");
+        const isTrackingView = !document.getElementById("view-tracking")?.classList.contains("hidden");
         document.querySelectorAll("[data-tracking-role]").forEach((element) => {
             const scope = element.getAttribute("data-tracking-role");
             const visible = scope === "admin"
@@ -853,16 +854,16 @@
         const alumniSelect = document.getElementById("trackAlumniSelectContainer");
         if (alumniSelect) alumniSelect.classList.toggle("hidden", role === "alumni");
         if (role === "alumni") {
-            if (viewTitle) viewTitle.textContent = "My Graduate Status";
+            if (viewTitle && isTrackingView) viewTitle.textContent = "My Graduate Status";
             if (title) title.textContent = "My Graduate Tracking";
             if (description) description.textContent = "Update your own education and employment information.";
             renderMyTrackingSummary();
         } else if (role === "staff" || role === "registrar") {
-            if (viewTitle) viewTitle.textContent = "Graduate Record Review";
+            if (viewTitle && isTrackingView) viewTitle.textContent = "Graduate Record Review";
             if (title) title.textContent = "Graduate Record Review";
             if (description) description.textContent = "Review and verify education and employment information reported by alumni.";
         } else {
-            if (viewTitle) viewTitle.textContent = "Graduate Tracking Analytics";
+            if (viewTitle && isTrackingView) viewTitle.textContent = "Graduate Tracking Analytics";
             if (title) title.textContent = "Graduate Tracking Analytics";
             if (description) description.textContent = "Monitor JHS and SHS education pathways and employment outcomes.";
         }
@@ -882,7 +883,7 @@
 /* Source: index.html lines 5625-5650 */
 /* ------------------------------------------------------------------------- */
     /* ------------------------------------------------------------------ *
-     * AI Assistant Tools (OpenAI API) - Gmail auto-reply, survey summary
+     * AI service actions (OpenAI API) - Gmail auto-reply, survey summary,
      * and dashboard insights. All calls are API-first with local fallback.
      * ------------------------------------------------------------------ */
 
