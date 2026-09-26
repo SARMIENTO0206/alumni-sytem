@@ -115,10 +115,8 @@ function applyRoleChrome() {
     const quickAccess = document.getElementById("alumniQuickAccessPanel");
     if (quickAccess) quickAccess.classList.toggle("hidden", !isAlumniRole());
 
-    const growthCard = document.getElementById("dashboardGrowthCard");
-    const activityCard = document.getElementById("dashboardActivityCard");
-    if (growthCard) growthCard.classList.toggle("hidden", !isAdminRole());
-    if (activityCard) activityCard.classList.toggle("lg:col-span-2", !isAdminRole());
+    const analyticsRow = document.getElementById("dashboardAnalyticsRow");
+    if (analyticsRow) analyticsRow.classList.toggle("hidden", !isAdminRole());
 
     const welcomeBadge = document.getElementById("dashboardWelcomeBadge");
     const welcomeSubtitle = document.getElementById("dashboardWelcomeSubtitle");
@@ -236,32 +234,72 @@ function renderRegistrarQueueWidget() {
     `).join("");
 }
 
+function renderRegistrarAttentionWidget() {
+    const box = document.getElementById("registrarDashAttention");
+    if (!box) return;
+    const rows = documentRequestRows();
+    const items = [];
+    const pending = rows.filter((r) => ["Pending", "For Correction"].includes(r.status)).length;
+    if (pending) items.push({ text: `${pending} request${pending === 1 ? "" : "s"} awaiting your review`, target: "transcript" });
+    const processing = rows.filter((r) => ["Approved", "Processing", "Ready for Release"].includes(r.status)).length;
+    if (processing) items.push({ text: `${processing} request${processing === 1 ? "" : "s"} currently in processing`, target: "transcript" });
+    const recordsToVerify = (alumniList || []).filter((a) => (a.trackingReviewStatus || "Pending") === "Pending").length;
+    if (recordsToVerify) items.push({ text: `${recordsToVerify} graduate record${recordsToVerify === 1 ? "" : "s"} pending verification`, target: "tracking" });
+    box.innerHTML = items.length
+        ? items.map((item) => `<button type="button" onclick="openDashboardModule('${item.target}')" class="w-full text-left text-xs py-1.5 border-b border-slate-100 last:border-0 flex items-start gap-2 hover:text-brand-magenta transition"><i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i><span>${escapeHtml(item.text)}</span></button>`).join("")
+        : `<p class="text-xs text-slate-400">Nothing needs attention right now.</p>`;
+}
+
+function renderRegistrarActivityWidget() {
+    const box = document.getElementById("registrarDashActivity");
+    if (!box) return;
+    const rows = documentRequestRows();
+    const items = [];
+    const recentRequest = rows[0];
+    if (recentRequest) items.push({ title: "Latest request update", detail: `${recentRequest.name || "Alumnus"} • ${recentRequest.type || recentRequest.purpose || "Request"} • ${recentRequest.status || "Pending"}` });
+    const reviewed = (alumniList || []).find((a) => a.trackingReviewStatus && a.trackingReviewStatus !== "Pending");
+    if (reviewed) items.push({ title: "Record reviewed", detail: `${reviewed.name} marked ${reviewed.trackingReviewStatus}` });
+    const completedCount = rows.filter((r) => ["Released", "Completed"].includes(r.status)).length;
+    if (completedCount) items.push({ title: "Requests released", detail: `${completedCount} document request${completedCount === 1 ? "" : "s"} completed` });
+    box.innerHTML = items.length
+        ? items.map((item) => `<p class="text-xs py-1.5 border-b border-slate-100 last:border-0"><span class="font-bold text-slate-700">${escapeHtml(item.title)}</span><br><span class="text-slate-400">${escapeHtml(item.detail)}</span></p>`).join("")
+        : `<p class="text-xs text-slate-400">No recent activity yet.</p>`;
+}
+
+function renderAlumniRemindersWidget() {
+    const box = document.getElementById("alumniDashReminders");
+    if (!box) return;
+    const items = [];
+    const profileFields = { email: "email address", contact: "contact number", batch: "batch year", program: "program" };
+    Object.entries(profileFields).forEach(([key, label]) => {
+        if (!currentUser || !currentUser[key]) items.push({ text: `Complete your ${label} in your profile`, target: "profile" });
+    });
+    const own = (alumniList || []).find((a) => currentUser && (
+        (currentUser.studentId && a.studentId === currentUser.studentId) ||
+        (a.name && currentUser.name && a.name.toLowerCase() === currentUser.name.toLowerCase())
+    ));
+    if (own && (own.trackingReviewStatus || "Pending") !== "Verified") items.push({ text: "Update your employment / graduate status", target: "tracking" });
+    const needsCorrection = documentRequestRows().filter((r) => r.status === "For Correction").length;
+    if (needsCorrection) items.push({ text: `${needsCorrection} document request${needsCorrection === 1 ? "" : "s"} needs correction`, target: "transcript" });
+    box.innerHTML = items.length
+        ? items.slice(0, 4).map((item) => `<button type="button" onclick="openDashboardModule('${item.target}')" class="w-full text-left text-xs py-1.5 border-b border-slate-100 last:border-0 flex items-start gap-2 hover:text-brand-magenta transition"><i class="fa-regular fa-bell text-brand-magenta mt-0.5"></i><span>${escapeHtml(item.text)}</span></button>`).join("")
+        : `<p class="text-xs text-slate-400">You're all caught up!</p>`;
+}
+
 function renderRoleDashboard() {
     if (typeof applyRoleChrome === "function") applyRoleChrome();
     renderDashboardStats();
     if (isAdminRole()) {
         renderDashboardAnnouncementsWidget("adminDashAnnouncements");
         renderAdminAttentionWidget();
-    }
-    if (isStaffRole()) {
+    } else if (isStaffRole()) {
         renderDashboardAnnouncementsWidget("registrarDashAnnouncements");
+        renderRegistrarAttentionWidget();
         renderRegistrarQueueWidget();
-    }
-    if (!isAlumniRole()) return;
-    const reqBox = document.getElementById("alumniDashRequests");
-    if (reqBox) {
-        const rows = documentRequestRows();
-        reqBox.innerHTML = rows.length
-            ? rows.slice(0, 5).map((r) => `<p class="text-xs py-1 border-b border-slate-100">${escapeHtml(r.type || r.purpose || "Request")} — <strong>${escapeHtml(r.status)}</strong></p>`).join("")
-            : `<p class="text-xs text-slate-400">You have no document requests yet.</p>`;
-    }
-    renderDashboardAnnouncementsWidget("alumniDashAnnouncements");
-    const jobs = document.getElementById("alumniDashJobs");
-    if (jobs) {
-        const open = (jobsList || []).filter((j) => j.status === "Published");
-        jobs.innerHTML = open.length
-            ? open.slice(0, 4).map((j) => `<p class="text-xs py-1 border-b border-slate-100">${escapeHtml(j.title)} — ${escapeHtml(j.company || "")}</p>`).join("")
-            : `<p class="text-xs text-slate-400">No published jobs yet.</p>`;
+        renderRegistrarActivityWidget();
+    } else if (isAlumniRole()) {
+        renderDashboardAnnouncementsWidget("alumniDashAnnouncements");
+        renderAlumniRemindersWidget();
     }
 }
 

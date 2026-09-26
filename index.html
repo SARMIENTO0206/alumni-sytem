@@ -752,55 +752,66 @@
                         </div>
                     </div>
 
-                    <!-- REGISTRAR: Announcements + Request Queue -->
-                    <div id="registrarDashboardPanel" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- REGISTRAR: Announcements + Requires Attention, then Request Queue + Recent Activities -->
+                    <div id="registrarDashboardPanel" class="hidden space-y-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="app-card p-6 lg:col-span-2">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h3 class="font-extrabold text-slate-800 text-base">Announcements</h3>
+                                    <button type="button" onclick="switchView('announcements')" class="text-xs text-brand-magenta font-bold hover:underline">View All</button>
+                                </div>
+                                <div id="registrarDashAnnouncements" class="space-y-2 text-sm text-slate-500">No announcements yet.</div>
+                            </div>
+                            <div class="app-card p-6">
+                                <h3 class="font-extrabold text-slate-800 text-base mb-3">Requires Attention</h3>
+                                <div id="registrarDashAttention" class="space-y-2 text-sm text-slate-500">Nothing needs attention right now.</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="app-card p-6 lg:col-span-2">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h3 class="font-extrabold text-slate-800 text-base">Request Queue</h3>
+                                    <button type="button" onclick="openDashboardModule('transcript')" class="text-xs text-brand-magenta font-bold hover:underline">View All Requests</button>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-xs">
+                                        <thead>
+                                            <tr class="text-left text-slate-400 uppercase tracking-wider text-[10px]">
+                                                <th class="pb-2 font-bold">Alumnus</th>
+                                                <th class="pb-2 font-bold">Type</th>
+                                                <th class="pb-2 font-bold">Date</th>
+                                                <th class="pb-2 font-bold">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="registrarDashQueue">
+                                            <tr><td colspan="4" class="py-6 text-center text-slate-400">No pending requests.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="app-card p-6">
+                                <h3 class="font-extrabold text-slate-800 text-base mb-3">Recent Activities</h3>
+                                <div id="registrarDashActivity" class="space-y-2 text-sm text-slate-500">No recent activity yet.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ALUMNI: Announcements + Reminders, then Quick Services -->
+                    <div id="alumniDashboardPanel" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div class="app-card p-6">
                             <div class="flex items-center justify-between mb-3">
                                 <h3 class="font-extrabold text-slate-800 text-base">Announcements</h3>
                                 <button type="button" onclick="switchView('announcements')" class="text-xs text-brand-magenta font-bold hover:underline">View All</button>
                             </div>
-                            <div id="registrarDashAnnouncements" class="space-y-2 text-sm text-slate-500">No announcements yet.</div>
-                        </div>
-                        <div class="app-card p-6 lg:col-span-2">
-                            <div class="flex items-center justify-between mb-3">
-                                <h3 class="font-extrabold text-slate-800 text-base">Request Queue</h3>
-                                <button type="button" onclick="openDashboardModule('transcript')" class="text-xs text-brand-magenta font-bold hover:underline">View All Requests</button>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-xs">
-                                    <thead>
-                                        <tr class="text-left text-slate-400 uppercase tracking-wider text-[10px]">
-                                            <th class="pb-2 font-bold">Alumnus</th>
-                                            <th class="pb-2 font-bold">Type</th>
-                                            <th class="pb-2 font-bold">Date</th>
-                                            <th class="pb-2 font-bold">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="registrarDashQueue">
-                                        <tr><td colspan="4" class="py-6 text-center text-slate-400">No pending requests.</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ALUMNI: My Requests + Announcements + Open Jobs, plus Quick Access -->
-                    <div id="alumniDashboardPanel" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="app-card p-6">
-                            <h3 class="font-extrabold text-slate-800 text-base mb-3">My Document Requests</h3>
-                            <div id="alumniDashRequests" class="text-sm text-slate-500">No requests yet.</div>
+                            <div id="alumniDashAnnouncements" class="space-y-2 text-sm text-slate-500">No announcements yet.</div>
                         </div>
                         <div class="app-card p-6">
-                            <h3 class="font-extrabold text-slate-800 text-base mb-3">Announcements</h3>
-                            <div id="alumniDashAnnouncements" class="text-sm text-slate-500">No announcements yet.</div>
-                        </div>
-                        <div class="app-card p-6">
-                            <h3 class="font-extrabold text-slate-800 text-base mb-3">Open Jobs</h3>
-                            <div id="alumniDashJobs" class="text-sm text-slate-500">No published jobs yet.</div>
+                            <h3 class="font-extrabold text-slate-800 text-base mb-3">Reminders</h3>
+                            <div id="alumniDashReminders" class="space-y-2 text-sm text-slate-500">You're all caught up!</div>
                         </div>
                     </div>
                     <div id="alumniQuickAccessPanel" class="hidden">
-                        <h3 class="font-extrabold text-slate-800 text-base mb-3">My Quick Access</h3>
+                        <h3 class="font-extrabold text-slate-800 text-base mb-3">Quick Services</h3>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <button type="button" onclick="openDashboardModule('transcript')" class="app-card p-4 text-center hover:shadow-md transition">
                                 <i class="fa-solid fa-file-lines text-brand-magenta text-lg"></i>
@@ -821,8 +832,8 @@
                         </div>
                     </div>
 
-                    <!-- ANALYTICS & ACTIVITIES (chart is admin-only; hidden for Registrar/Alumni) -->
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- ADMIN-ONLY: ANALYTICS & SYSTEM-WIDE ACTIVITIES -->
+                    <div id="dashboardAnalyticsRow" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <!-- Chart Card -->
                         <div class="app-card p-6 lg:col-span-2" id="dashboardGrowthCard">
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
