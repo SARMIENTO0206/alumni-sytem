@@ -479,17 +479,17 @@
                     </div>
                 </div>
                 <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('transcript')" id="nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Document Requests Overview</span></button>
                         <button type="button" onclick="switchView('reprint')" id="nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprint Overview</span></button>
                     </div>
                 </div>
-                <button type="button" onclick="switchView('tracking')" id="nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
                 <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career & Tracking</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('placement')" id="nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Job Placement Logs</span></button>
+                        <button type="button" onclick="switchView('tracking')" id="nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
+                        <button type="button" onclick="switchView('placement')" id="nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Alumni Employment</span></button>
                         <button type="button" onclick="switchView('job-opportunities')" id="nav-job-opportunities" class="sidebar-link"><i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Opportunities</span></button>
                     </div>
                 </div>
@@ -507,27 +507,35 @@
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('announcements')" id="nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
-                        <button type="button" onclick="switchView('notifications')" id="nav-notifications" class="sidebar-link"><i class="fa-regular fa-bell"></i><span>Notifications</span></button>
-                        <button type="button" onclick="switchView('sms')" id="nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
-                        <button type="button" onclick="switchView('gmail')" id="nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Gmail / Email</span></button>
+                        <div class="sidebar-group">
+                            <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Message Center</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                            <div class="sidebar-group-items">
+                                <button type="button" onclick="switchView('sms')" id="nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
+                                <button type="button" onclick="switchView('gmail')" id="nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Email</span></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="sidebar-group">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>AI Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('ai-tools')" id="nav-ai-tools" class="sidebar-link"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AI Assistant Tools</span></button>
                         <button type="button" onclick="switchView('ai-chat')" id="nav-ai-chat" class="sidebar-link"><i class="fa-solid fa-comments"></i><span>AI Chat Support</span></button>
                     </div>
                 </div>
-                <button type="button" onclick="switchView('reports')" id="nav-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>System Reports</span></button>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Reports</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('reports')" id="nav-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>System Reports</span></button>
+                    </div>
+                </div>
                 <button type="button" onclick="switchView('settings')" id="nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
-                <button type="button" onclick="switchView('profile')" id="nav-profile" class="sidebar-link"><i class="fa-solid fa-user-circle"></i><span>Profile</span></button>
             </div>
 
             <!-- ALUMNI SIDEBAR LINKS -->
             <div id="alumniSidebar" class="hidden flex-grow overflow-y-auto p-3 space-y-1">
                 <p class="text-[10px] font-extrabold tracking-widest text-gold-accent uppercase px-3 py-2">Alumni Portal</p>
                 <button type="button" onclick="switchView('dashboard')" id="alumni-nav-dashboard" class="sidebar-link active"><i class="fa-solid fa-chart-line"></i><span>Dashboard</span></button>
-                <button type="button" onclick="switchView('profile')" id="alumni-nav-profile" class="sidebar-link"><i class="fa-solid fa-user-circle"></i><span>My Profile</span></button>
                 <div class="sidebar-group open">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
@@ -563,13 +571,6 @@
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('announcements')" id="alumni-nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
-                        <button type="button" onclick="switchView('notifications')" id="alumni-nav-notifications" class="sidebar-link"><i class="fa-regular fa-bell"></i><span>Notifications</span></button>
-                    </div>
-                </div>
-                <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>AI Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                    <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('ai-chat')" id="alumni-nav-ai-chat" class="sidebar-link"><i class="fa-solid fa-comments"></i><span>AI Chat Support</span></button>
                     </div>
                 </div>
                 <button type="button" onclick="switchView('settings')" id="alumni-nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
@@ -586,7 +587,7 @@
                     </div>
                 </div>
                 <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('transcript')" id="registrar-nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Academic Record Requests</span></button>
                         <button type="button" onclick="switchView('reprint')" id="registrar-nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
@@ -594,11 +595,11 @@
                         <button type="button" onclick="switchView('release-claiming')" id="registrar-nav-release-claiming" class="sidebar-link"><i class="fa-solid fa-box-open"></i><span>Release & Claiming</span></button>
                     </div>
                 </div>
-                <button type="button" onclick="switchView('tracking')" id="staff-nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
                 <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career & Tracking</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('placement')" id="staff-nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Job Placement Logs</span></button>
+                        <button type="button" onclick="switchView('tracking')" id="staff-nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
+                        <button type="button" onclick="switchView('placement')" id="staff-nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Alumni Employment</span></button>
                         <button type="button" onclick="switchView('job-opportunities')" id="staff-nav-job-opportunities" class="sidebar-link"><i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Opportunities</span></button>
                     </div>
                 </div>
@@ -616,20 +617,16 @@
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('announcements')" id="staff-nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
-                        <button type="button" onclick="switchView('notifications')" id="staff-nav-notifications" class="sidebar-link"><i class="fa-regular fa-bell"></i><span>Notifications</span></button>
-                        <button type="button" onclick="switchView('sms')" id="staff-nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
-                        <button type="button" onclick="switchView('gmail')" id="staff-nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Gmail / Email</span></button>
-                    </div>
-                </div>
-                <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>AI Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                    <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('ai-chat')" id="staff-nav-ai-chat" class="sidebar-link"><i class="fa-solid fa-comments"></i><span>AI Chat Support</span></button>
+                        <div class="sidebar-group">
+                            <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Message Center</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                            <div class="sidebar-group-items">
+                                <button type="button" onclick="switchView('sms')" id="staff-nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
+                                <button type="button" onclick="switchView('gmail')" id="staff-nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Email</span></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <button type="button" onclick="switchView('registrar-reports')" id="registrar-nav-registrar-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>Reports</span></button>
-                <button type="button" onclick="switchView('profile')" id="staff-nav-profile" class="sidebar-link"><i class="fa-solid fa-user-circle"></i><span>Profile</span></button>
-                <button type="button" onclick="switchView('settings')" id="staff-nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
             </div>
 
             <!-- Logout Link -->
@@ -667,29 +664,29 @@
 
                 <!-- User Profile & Quick Actions -->
                 <div class="flex items-center space-x-3">
-                    <button onclick="toggleChatWindow()" class="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-amber-50 hover:text-[#801235] px-3 py-1.5 rounded-full transition hidden sm:inline-flex items-center gap-1.5">
+                    <button type="button" onclick="toggleChatWindow()" class="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-amber-50 hover:text-[#801235] px-3 py-1.5 rounded-full transition hidden sm:inline-flex items-center gap-1.5">
                         <i class="fa-solid fa-wand-magic-sparkles text-[#801235]"></i>
                         <span>AI Assistant</span>
                     </button>
 
                     <!-- Notification Bell Button -->
-                    <button onclick="openNotificationCenterModal()" class="relative p-2 text-slate-600 hover:text-[#801235] hover:bg-amber-50 rounded-full transition" title="Notification Activity Log">
+                    <button type="button" onclick="openNotificationCenterModal()" class="relative p-2 text-slate-600 hover:text-[#801235] hover:bg-amber-50 rounded-full transition" title="Open notifications" aria-label="Open notifications">
                         <i class="fa-regular fa-bell text-lg"></i>
                         <span id="notificationBadgeCount" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#801235] text-white text-[9px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">0</span>
                     </button>
 
-                    <div class="text-right hidden sm:block">
+                    <button type="button" onclick="switchView('profile')" class="text-right hidden sm:block rounded-md focus:outline-none focus:ring-2 focus:ring-[#801235]" title="Open My Profile" aria-label="Open My Profile">
                         <p class="text-sm font-extrabold text-slate-800 leading-none" id="headerUserName">
                             Admin User
                         </p>
                         <p class="text-[11px] text-slate-400 font-semibold mt-0.5" id="headerUserRole">
                             System Administrator
                         </p>
-                    </div>
+                    </button>
 
-                    <div class="w-10 h-10 rounded-full bg-brand-magenta text-white flex items-center justify-center font-extrabold text-sm shadow-md border-2 border-white ring-2 ring-pink-100 overflow-hidden flex-shrink-0 cursor-pointer" id="headerAvatar" onclick="switchView('profile')" title="View Profile">
+                    <button type="button" class="w-10 h-10 rounded-full bg-brand-magenta text-white flex items-center justify-center font-extrabold text-sm shadow-md border-2 border-white ring-2 ring-pink-100 overflow-hidden flex-shrink-0 cursor-pointer" id="headerAvatar" onclick="switchView('profile')" title="View Profile" aria-label="Open My Profile">
                         AD
-                    </div>
+                    </button>
                     <button type="button" onclick="confirmLogout()" title="Log Out" aria-label="Log Out"
                         class="text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-full transition inline-flex items-center gap-1.5">
                         <i class="fa-solid fa-right-from-bracket"></i>
@@ -971,22 +968,22 @@
 
 
                 <!-- =================================================
-                     VIEW: ALUMNI DATABASE (ADMIN)
+                     VIEW: ALUMNI DATABASE (ADMIN / REGISTRAR)
                      ================================================= -->
                 <div id="view-database" class="hidden space-y-6 fade-in">
                     <div id="alumniListPanel" class="app-card p-6">
                         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                             <div>
                                 <h3 class="text-lg font-extrabold text-slate-800">Alumni Directory & Records</h3>
-                                <p class="text-xs text-slate-400 font-medium">Search, filter, manage, and export official alumni database records.</p>
+                                <p id="alumniDatabaseDescription" class="text-xs text-slate-400 font-medium">Search, filter, manage, and export official alumni database records.</p>
                             </div>
 
                             <div class="flex flex-wrap items-center gap-2.5">
-                                <button onclick="exportToCSV()" class="btn btn-secondary text-xs">
+                                <button type="button" id="exportAlumniCsvButton" onclick="exportToCSV()" class="btn btn-secondary text-xs">
                                     <i class="fa-solid fa-file-csv text-emerald-600"></i>
                                     <span>Export CSV</span>
                                 </button>
-                                <button onclick="openAddAlumniModal()" class="btn btn-primary text-xs">
+                                <button type="button" id="addAlumniRecordButton" onclick="openAddAlumniModal()" class="btn btn-primary text-xs">
                                     <i class="fa-solid fa-plus"></i>
                                     <span>Add New Alumnus</span>
                                 </button>
@@ -994,7 +991,7 @@
                         </div>
 
                         <!-- Filter Bar -->
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-5">
                             <div class="relative sm:col-span-2">
                                 <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                                     <i class="fa-solid fa-magnifying-glass"></i>
@@ -1012,6 +1009,15 @@
                                     <option value="Post-grad">Post-grad Study</option>
                                 </select>
                             </div>
+                            <div>
+                                <select id="filterRecordStatus" aria-label="Filter alumni record status" onchange="searchAlumniTable()" class="form-select text-xs sm:text-sm">
+                                    <option value="">Active Records</option>
+                                    <option value="Pending Verification">Pending Verification</option>
+                                    <option value="Verified">Verified</option>
+                                    <option value="All">All Records</option>
+                                    <option value="Archived">Archived</option>
+                                </select>
+                            </div>
                         </div>
 
                         <!-- Table -->
@@ -1027,6 +1033,7 @@
                                         </th>
                                         <th>Program / Track</th>
                                         <th>Employment Status</th>
+                                        <th>Record Status</th>
                                         <th class="text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -1047,6 +1054,7 @@
                                 <p class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Alumni Profile</p>
                                 <h3 id="alumniDetailName" class="text-xl font-extrabold text-slate-800">Alumni</h3>
                                 <p id="alumniDetailStudentId" class="text-xs font-mono text-slate-400 mt-1"></p>
+                                <span id="alumniDetailRecordStatus" class="status-badge status-pending mt-2">Pending Verification</span>
                             </div>
                             <span id="alumniDetailStatus" class="status-badge status-employed">Employed</span>
                         </div>
@@ -1062,7 +1070,7 @@
 
 
                 <!-- =================================================
-                     VIEW: ALUMNI PROFILE (ALUMNI ONLY - WITH PHOTO UPLOAD)
+                     VIEW: MY PROFILE (ROLE-SPECIFIC FIELDS)
                      ================================================= -->
                 <div id="view-profile" class="hidden space-y-6 fade-in">
                     <div class="app-card p-6 sm:p-8 max-w-4xl mx-auto">
@@ -1084,7 +1092,7 @@
                                 <input type="file" id="profilePhotoInput" accept="image/*" class="hidden" title="Upload profile photo" aria-label="Upload profile photo" onchange="handleProfilePhotoSelected(event)">
 
                                 <div>
-                                    <span class="status-badge status-verified mb-1">Alumni Verified</span>
+                                    <span class="status-badge status-verified mb-1">Account</span>
                                     <h3 class="text-xl font-extrabold text-slate-800" id="profileHeadingName">Alumni Profile</h3>
                                     <div id="profileRoleMeta" class="hidden mt-2 space-y-0.5 text-xs text-slate-500"></div>
                                     <p class="text-xs text-slate-400 font-medium mt-1">Click your avatar or upload button to personalize your profile picture</p>
@@ -1236,9 +1244,9 @@
                     <div id="jobsListPanel" class="app-card p-6 sm:p-8">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div>
-                                <span class="status-badge status-freelance mb-1">Career Services</span>
-                                <h3 class="text-xl font-extrabold text-slate-800">Alumni Career & Job Opportunities</h3>
-                                <p class="text-xs text-slate-400 font-medium">Job openings saved in the database. Add a listing to publish it for alumni.</p>
+                                <span class="status-badge status-freelance mb-1">Career Management</span>
+                                <h3 class="text-xl font-extrabold text-slate-800">Job Opportunities</h3>
+                                <p class="text-xs text-slate-400 font-medium">All published opportunities are shared with the alumni community.</p>
                             </div>
                             <button type="button" id="adminAddJobOpportunityBtn" onclick="openAddJobOpportunityModal()" class="btn btn-primary text-xs hidden">
                                 <i class="fa-solid fa-plus"></i>
@@ -1246,6 +1254,24 @@
                             </button>
                         </div>
 
+                        <div id="jobManagementSummary" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                            <div class="rounded-xl border border-indigo-100 bg-indigo-50 p-3"><p class="text-[10px] uppercase font-bold text-indigo-700">Total Jobs</p><p id="totalJobsCount" class="text-xl font-extrabold text-indigo-800">0</p></div>
+                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3"><p class="text-[10px] uppercase font-bold text-emerald-700">Active</p><p id="activeJobsCount" class="text-xl font-extrabold text-emerald-800">0</p></div>
+                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] uppercase font-bold text-slate-500">Expired</p><p id="inactiveJobsCount" class="text-xl font-extrabold text-slate-700">0</p></div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+                            <input id="jobsSearchInput" type="search" oninput="renderJobsGrid()" placeholder="Search job title, company, or location..." class="form-input text-xs flex-1">
+                            <select id="jobsIndustryFilter" onchange="renderJobsGrid()" class="form-input text-xs"><option value="">All Industries</option></select>
+                            <select id="jobsEmploymentTypeFilter" onchange="renderJobsGrid()" class="form-input text-xs"><option value="">All Employment Types</option></select>
+                            <select id="jobsLocationFilter" onchange="renderJobsGrid()" class="form-input text-xs"><option value="">All Locations</option></select>
+                            <select id="jobsStatusFilter" onchange="renderJobsGrid()" class="form-input text-xs sm:col-span-2 lg:col-span-1">
+                                <option value="active">Active jobs</option>
+                                <option value="all">All statuses</option>
+                                <option value="expired">Expired</option>
+                                <option value="draft">Draft</option>
+                                <option value="archived">Archived</option>
+                            </select>
+                        </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="jobsGridContainer">
                             <div class="col-span-full text-center py-10 text-slate-400 font-semibold">No job opportunities yet.</div>
                         </div>
@@ -1624,29 +1650,28 @@
 
 
                 <!-- =================================================
-                     VIEW: JOB PLACEMENT LOGS
+                     VIEW: ALUMNI EMPLOYMENT RECORDS
                      ================================================= -->
                 <div id="view-placement" class="hidden space-y-6 fade-in">
                     <div class="app-card p-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div>
-                                <h3 class="text-lg font-extrabold text-slate-800">Job Placement Records</h3>
-                                <p class="text-xs text-slate-400 font-medium">Historical records of alumni career positions and company hires.</p>
+                                <h3 class="text-lg font-extrabold text-slate-800">Alumni Employment Records</h3>
+                                <p class="text-xs text-slate-400 font-medium">Current employment details reported by alumni and synced from Graduate Tracking. These records do not imply school placement.</p>
                             </div>
-                            <button onclick="openAddJobModal()" class="btn btn-primary text-xs">
-                                <i class="fa-solid fa-plus"></i>
-                                <span>Log New Placement</span>
-                            </button>
                         </div>
 
                         <div class="data-table-container">
                             <table class="modern-table">
                                 <thead>
                                     <tr>
-                                        <th>Alumnus</th>
-                                        <th>Company / Employer</th>
+                                        <th>Alumni</th>
+                                        <th>Level / Batch</th>
+                                        <th>Employer</th>
                                         <th>Job Title</th>
-                                        <th>Date Logged</th>
+                                        <th>Employment Status</th>
+                                        <th>Last Updated</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="placementTableBody">
@@ -1870,7 +1895,7 @@
                      VIEW: ALUMNI NEWSLETTER
                      ================================================= -->
                 <div id="view-newsletter" class="hidden space-y-6 fade-in">
-                    <!-- Admin Composer / Alumni Archive Header -->
+                    <!-- Newsletter drafting, approval, and alumni archive -->
                     <div class="app-card p-6 sm:p-8 max-w-4xl mx-auto">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div class="text-left">
@@ -1879,18 +1904,17 @@
                                         <i class="fa-regular fa-envelope-open"></i>
                                     </div>
                                     <div>
-                                        <h3 class="text-xl font-extrabold text-slate-800">Alumni Newsletter</h3>
+                                        <h3 id="newsletterPageTitle" class="text-xl font-extrabold text-slate-800">Newsletter Management</h3>
                                         <p class="text-xs text-slate-400 font-medium mt-0.5">Quarterly announcements, alumni highlights, and school updates.</p>
                                     </div>
                                 </div>
                             </div>
-                            <span class="status-badge status-approved text-xs"><i class="fa-solid fa-arrow-trend-up"></i> SMS + Email Broadcast System</span>
+                            <span class="status-badge status-approved text-xs"><i class="fa-solid fa-users"></i> Alumni Communications</span>
                         </div>
 
-                        <!-- Admin: Create New Newsletter Composer -->
                         <div id="newsletterComposer" class="hidden">
                             <div class="mb-4 flex items-center justify-between">
-                                <h4 class="font-extrabold text-slate-800 text-sm"><i class="fa-solid fa-pen-nib text-[#801235] mr-1"></i> Compose New Newsletter</h4>
+                                <h4 id="newsletterComposerTitle" class="font-extrabold text-slate-800 text-sm"><i class="fa-solid fa-pen-nib text-[#801235] mr-1"></i> Create Newsletter</h4>
                                 <div class="flex items-center gap-2">
                                     <button type="button" id="aiComposeBtn" onclick="aiComposeNewsletter()" class="btn btn-secondary text-xs px-3 py-1.5" title="Let AI draft a professional announcement for this topic (OpenAI API when configured)">
                                         <i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> AI Compose
@@ -1898,53 +1922,79 @@
                                     <button type="button" onclick="closeNewsletterComposer()" class="text-xs text-slate-400 hover:text-slate-600 font-semibold"><i class="fa-solid fa-xmark mr-1"></i>Cancel</button>
                                 </div>
                             </div>
-                            <form onsubmit="sendNewsletter(event)" class="space-y-4">
+                            <form id="newsletterForm" onsubmit="sendNewsletter(event)" class="space-y-4">
                                 <div>
-                                    <label class="form-label" for="newsletterSubject">Subject Title</label>
-                                    <input type="text" id="newsletterSubject" required placeholder="e.g. Agnesian Chronicles - Q3 2024 Edition" class="form-input text-sm">
+                                    <label class="form-label" for="newsletterTitle">Newsletter Title</label>
+                                    <input type="text" id="newsletterTitle" required maxlength="160" placeholder="e.g. September 2026 Alumni Newsletter" class="form-input text-sm">
                                 </div>
-
+                                <div>
+                                    <label class="form-label" for="newsletterSubject">Email Subject</label>
+                                    <input type="text" id="newsletterSubject" required maxlength="200" placeholder="e.g. School & Alumni Updates" class="form-input text-sm">
+                                </div>
                                 <div>
                                     <label class="form-label" for="newsletterBody">Newsletter Content</label>
-                                    <textarea id="newsletterBody" required rows="6" placeholder="Write your newsletter announcement, upcoming events, and alumni highlights..." class="form-textarea text-sm"></textarea>
+                                    <textarea id="newsletterBody" required maxlength="20000" rows="8" placeholder="Write school updates, alumni highlights, and announcements..." class="form-textarea text-sm"></textarea>
                                 </div>
-
-                                <!-- Announcement Channel Preference -->
                                 <div class="p-3.5 rounded-lg bg-[#f8f4ee] border border-amber-900/10">
                                     <p class="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                                        <i class="fa-solid fa-paper-plane text-amber-600 mr-1"></i> Auto Announcement Channels
+                                        <i class="fa-solid fa-paper-plane text-amber-600 mr-1"></i> Notify all alumni when published
                                     </p>
                                     <div class="flex flex-wrap gap-3 text-xs">
                                         <label class="flex items-center gap-1.5 cursor-pointer">
-                                            <input type="checkbox" id="sendNewsletterSMS" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
-                                            <span class="text-slate-700 font-semibold"><i class="fa-solid fa-comment-sms text-emerald-500 mr-0.5"></i> SMS Announcement</span>
+                                            <input type="checkbox" id="sendNewsletterInApp" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
+                                            <span class="text-slate-700 font-semibold">In-app notification</span>
                                         </label>
                                         <label class="flex items-center gap-1.5 cursor-pointer">
                                             <input type="checkbox" id="sendNewsletterEmail" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
-                                            <span class="text-slate-700 font-semibold"><i class="fa-regular fa-envelope text-indigo-500 mr-0.5"></i> Email Broadcast</span>
+                                            <span class="text-slate-700 font-semibold">Email</span>
+                                        </label>
+                                        <label class="flex items-center gap-1.5 cursor-pointer">
+                                            <input type="checkbox" id="sendNewsletterSMS" class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
+                                            <span class="text-slate-700 font-semibold">SMS notification</span>
                                         </label>
                                     </div>
+                                    <p class="text-[11px] text-slate-500 mt-2">SMS sends a short notice and portal reminder, not the full newsletter.</p>
                                 </div>
-
-                                <button type="submit" class="btn btn-primary w-full py-2.5 text-xs font-bold">
-                                    <i class="fa-solid fa-bullhorn mr-1"></i> Publish Newsletter & Send Announcements
-                                </button>
+                                <div class="flex flex-col sm:flex-row gap-2">
+                                    <button type="submit" name="action" value="draft" class="btn btn-secondary flex-1 py-2.5 text-xs font-bold">
+                                        <i class="fa-regular fa-floppy-disk mr-1"></i> Save Draft
+                                    </button>
+                                    <button type="submit" name="action" value="submit" class="btn btn-primary flex-1 py-2.5 text-xs font-bold">
+                                        <i class="fa-solid fa-paper-plane mr-1"></i> Submit for Approval
+                                    </button>
+                                </div>
                             </form>
                         </div>
 
-                        <!-- Admin New Button / Alumni Header -->
-                        <div id="newsletterListHeader" class="flex items-center justify-between mb-3">
-                            <h4 class="font-extrabold text-slate-800 text-sm">
-                                <i class="fa-solid fa-layer-group text-[#801235] mr-1"></i> Published Editions
+                        <div id="newsletterListHeader" class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <h4 id="newsletterListTitle" class="min-w-0 font-extrabold text-slate-800 text-sm">
+                                <i class="fa-solid fa-layer-group text-[#801235] mr-1"></i> Newsletters
                             </h4>
-                            <button id="adminNewsletterBtn" onclick="openNewsletterComposer()" class="btn btn-primary text-xs hidden">
+                            <button id="adminNewsletterBtn" onclick="openNewsletterComposer()" class="btn btn-primary ml-auto w-auto max-w-full shrink-0 whitespace-nowrap text-xs hidden">
                                 <i class="fa-solid fa-pen-nib mr-1"></i> Create Newsletter
                             </button>
                         </div>
+                        <div id="newsletterStatusTabs" class="flex min-w-0 flex-wrap items-center gap-2 mb-4 hidden" role="tablist" aria-label="Newsletter status">
+                            <button type="button" onclick="setNewsletterFilter('All')" class="btn btn-secondary whitespace-nowrap text-xs" data-newsletter-filter="All">All</button>
+                            <button type="button" onclick="setNewsletterFilter('Draft')" class="btn btn-secondary whitespace-nowrap text-xs" data-newsletter-filter="Draft">Drafts</button>
+                            <button type="button" onclick="setNewsletterFilter('For Approval')" class="btn btn-secondary whitespace-nowrap text-xs" data-newsletter-filter="For Approval">For Approval</button>
+                            <button type="button" onclick="setNewsletterFilter('Published')" class="btn btn-secondary whitespace-nowrap text-xs" data-newsletter-filter="Published">Published</button>
+                        </div>
 
-                        <!-- Published Newsletters List -->
                         <div id="newsletterArchiveList" class="space-y-3">
-                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div id="newsletterReadModal" class="hidden fixed inset-0 z-[100] bg-slate-950/60 p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="newsletterReadTitle">
+                        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6">
+                            <div class="flex items-start justify-between gap-4 mb-4">
+                                <div>
+                                    <span id="newsletterReadDate" class="status-badge status-approved text-[10px]"></span>
+                                    <h3 id="newsletterReadTitle" class="text-xl font-extrabold text-slate-800 mt-2"></h3>
+                                    <p id="newsletterReadSubject" class="text-sm text-slate-500 mt-1"></p>
+                                </div>
+                                <button type="button" onclick="closeNewsletterRead()" class="text-slate-400 hover:text-slate-700" aria-label="Close newsletter"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <div id="newsletterReadBody" class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-y-auto"></div>
                         </div>
                     </div>
                 </div>
@@ -2228,7 +2278,7 @@
                                 </div>
                                 <div>
                                     <p class="text-2xl font-extrabold text-slate-800" id="reportPlacementCount">0</p>
-                                    <p class="text-xs font-semibold text-slate-400">Job Placements</p>
+                                    <p class="text-xs font-semibold text-slate-400">Alumni Employed</p>
                                 </div>
                             </div>
 
@@ -2242,73 +2292,47 @@
                                 </div>
                             </div>
                         </div>
-<!-- AI SaaS TOOLS (OpenAI API) -->
-                    <div class="app-card p-6 sm:p-8 mt-6">
+                    </div>
+                </div>
+
+                <div id="view-ai-tools" class="hidden space-y-6 fade-in">
+                    <div class="app-card p-6 sm:p-8">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#801235] to-[#1b1124] text-white flex items-center justify-center">
-                                    <i class="fa-solid fa-brain"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-extrabold text-slate-800">AI Assistant Tools</h3>
-                                    <p class="text-xs text-slate-400 font-medium">OpenAI API for chat support, Gmail auto-reply, survey summaries and dashboard insights.</p>
-                                </div>
+                            <div>
+                                <h3 class="text-xl font-extrabold text-slate-800">AI Assistant Tools</h3>
+                                <p class="text-xs text-slate-400 font-medium">AI-assisted operations and analysis, separate from system reporting.</p>
                             </div>
                             <span id="aiEngineBadge" class="status-badge status-pending text-[10px]">
                                 <i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Checking AI engine...
                             </span>
                         </div>
-
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                            <!-- Gmail Auto-Reply -->
                             <div class="border border-slate-200 rounded-xl p-4 bg-white">
-                                <p class="font-extrabold text-slate-800 text-sm mb-1">
-                                    <i class="fa-regular fa-envelope text-indigo-500 mr-1"></i> Gmail Auto-Reply
-                                </p>
-                                <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
-                                    Simulates an inbound alumni email: OpenAI analyzes the content and drafts the reply automatically.
-                                </p>
+                                <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-regular fa-envelope text-indigo-500 mr-1"></i> Gmail Auto-Reply</p>
+                                <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Draft a response to an alumni inquiry for staff review.</p>
                                 <form onsubmit="runGmailAutoReply(event)" class="space-y-2">
-                                    <input id="aiGmailFrom" type="email" required placeholder="Alumni email (e.g. maria.santos@example.com)" class="form-input text-xs">
-                                    <input id="aiGmailSubject" type="text" placeholder="Subject (e.g. Transcript requirements)" class="form-input text-xs">
+                                    <input id="aiGmailFrom" type="email" required placeholder="Alumni email" class="form-input text-xs">
+                                    <input id="aiGmailSubject" type="text" placeholder="Email subject" class="form-input text-xs">
                                     <textarea id="aiGmailBody" rows="3" required placeholder="Inbound message body..." class="form-input text-xs"></textarea>
-                                    <button type="submit" class="btn btn-primary text-xs w-full py-2">
-                                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Auto-Reply
-                                    </button>
+                                    <button type="submit" class="btn btn-primary text-xs w-full py-2"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Auto-Reply</button>
                                 </form>
                                 <div id="aiGmailReply" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
                             </div>
-
-                            <!-- Survey Summary + Dashboard Insights -->
                             <div class="space-y-5">
                                 <div class="border border-slate-200 rounded-xl p-4 bg-white">
-                                    <p class="font-extrabold text-slate-800 text-sm mb-1">
-                                        <i class="fa-regular fa-comments text-brand-magenta mr-1"></i> Survey Response Summary
-                                    </p>
-                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
-                                        OpenAI summarizes collected alumni feedback into sentiment, themes and recommendations.
-                                    </p>
-                                    <button onclick="runSurveySummary()" class="btn btn-secondary text-xs w-full py-2">
-                                        <i class="fa-solid fa-file-lines text-[#801235] mr-1"></i> Summarize Survey Responses
-                                    </button>
+                                    <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-regular fa-comments text-brand-magenta mr-1"></i> Survey Response Summary</p>
+                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Summarize alumni feedback into sentiment, themes, and recommendations.</p>
+                                    <button onclick="runSurveySummary()" class="btn btn-secondary text-xs w-full py-2"><i class="fa-solid fa-file-lines text-[#801235] mr-1"></i> Summarize Survey Responses</button>
                                     <div id="aiSurveySummary" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
                                 </div>
-
                                 <div class="border border-slate-200 rounded-xl p-4 bg-white">
-                                    <p class="font-extrabold text-slate-800 text-sm mb-1">
-                                        <i class="fa-solid fa-chart-line text-emerald-600 mr-1"></i> Dashboard Insights
-                                    </p>
-                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
-                                        AI narrative analysis of live metrics: employment, tracer freshness, document requests and engagement.
-                                    </p>
-                                    <button onclick="runDashboardInsights()" class="btn btn-secondary text-xs w-full py-2">
-                                        <i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Generate Dashboard Insights
-                                    </button>
+                                    <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-solid fa-chart-line text-emerald-600 mr-1"></i> Dashboard Insights</p>
+                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Generate an AI narrative from graduate tracking, requests, and engagement metrics.</p>
+                                    <button onclick="runDashboardInsights()" class="btn btn-secondary text-xs w-full py-2"><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Generate Dashboard Insights</button>
                                     <div id="aiDashboardInsights" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
                                 </div>
                             </div>
                         </div>
-                    </div>
                     </div>
                 </div>
 
@@ -2522,15 +2546,14 @@
                     <div class="app-card p-6">
                         <h3 class="text-lg font-extrabold text-slate-800 mb-4">Settings</h3>
                         <div class="flex flex-wrap gap-2 mb-6">
-                            <button type="button" data-settings-tab="notifications" class="btn btn-secondary text-xs" onclick="showSettingsTab('notifications')">Notifications</button>
-                            <button type="button" data-settings-tab="privacy" class="btn btn-secondary text-xs" onclick="showSettingsTab('privacy')">Privacy</button>
-                            <button type="button" data-settings-tab="security" class="btn btn-secondary text-xs" onclick="showSettingsTab('security')">Security</button>
-                            <button type="button" data-settings-tab="general" class="btn btn-secondary text-xs" onclick="showSettingsTab('general')">General</button>
+                            <button type="button" data-settings-tab="general" class="btn btn-primary text-xs" onclick="showSettingsTab('general')">General</button>
                             <button type="button" data-settings-tab="documents" class="btn btn-secondary text-xs" onclick="showSettingsTab('documents')">Documents</button>
                             <button type="button" data-settings-tab="alumni" class="btn btn-secondary text-xs" onclick="showSettingsTab('alumni')">Alumni</button>
-                            <button type="button" data-settings-tab="communications" class="btn btn-secondary text-xs" onclick="showSettingsTab('communications')">Communication</button>
-                            <button type="button" data-settings-tab="ai" class="btn btn-secondary text-xs" onclick="showSettingsTab('ai')">AI</button>
-                            <button type="button" data-settings-tab="history" class="btn btn-secondary text-xs" onclick="showSettingsTab('history')">History</button>
+                            <button type="button" data-settings-tab="communications" class="btn btn-secondary text-xs" onclick="showSettingsTab('communications')">Communications</button>
+                            <button type="button" data-settings-tab="notifications" class="btn btn-secondary text-xs" onclick="showSettingsTab('notifications')">Notifications</button>
+                            <button type="button" data-settings-tab="ai" class="btn btn-secondary text-xs" onclick="showSettingsTab('ai')">AI Integration</button>
+                            <button type="button" data-settings-tab="security" class="btn btn-secondary text-xs" onclick="showSettingsTab('security')">Security</button>
+                            <button type="button" data-settings-tab="history" class="btn btn-secondary text-xs" onclick="showSettingsTab('history')">Audit Logs</button>
                         </div>
 
                         <div data-settings-panel="notifications" class="hidden space-y-3 max-w-xl">
@@ -2621,12 +2644,41 @@
                     <div class="app-card p-6 space-y-6">
                         <div>
                             <h3 class="text-lg font-extrabold text-slate-800">Announcements</h3>
-                            <p class="text-xs text-slate-400">Official notices published in the system.</p>
+                            <p class="text-xs text-slate-400">Official school notices for the alumni community.</p>
                         </div>
                         <form id="announcementCompose" class="hidden space-y-3 border border-slate-100 rounded-xl p-4" onsubmit="publishAnnouncement(event)">
-                            <input id="announceTitle" class="form-input text-sm" placeholder="Announcement title" required>
-                            <textarea id="announceBody" class="form-textarea text-sm" rows="4" placeholder="Announcement content"></textarea>
-                            <button type="submit" class="btn btn-primary text-xs">Publish Announcement</button>
+                            <h4 class="font-extrabold text-sm text-slate-800">Create Announcement</h4>
+                            <label class="form-label" for="announceTitle">Title *</label>
+                            <input id="announceTitle" class="form-input text-sm" placeholder="e.g. Alumni General Assembly 2026" maxlength="160" required>
+                            <label class="form-label" for="announceBody">Message *</label>
+                            <textarea id="announceBody" class="form-textarea text-sm" rows="4" placeholder="Write the official announcement..." maxlength="10000" required></textarea>
+                            <fieldset class="space-y-2">
+                                <legend class="form-label">Publish</legend>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <label class="flex items-center gap-2"><input type="radio" name="announcementTiming" value="now" checked onchange="toggleAnnouncementSchedule()"> Publish now</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="announcementTiming" value="schedule" onchange="toggleAnnouncementSchedule()"> Schedule</label>
+                                </div>
+                                <div id="announcementScheduleField" class="hidden">
+                                    <label class="form-label" for="announcePublishAt">Publish date and time *</label>
+                                    <input id="announcePublishAt" type="datetime-local" class="form-input text-sm">
+                                </div>
+                            </fieldset>
+                            <div>
+                                <label class="form-label" for="announceExpiresAt">Expiration date (optional)</label>
+                                <input id="announceExpiresAt" type="date" class="form-input text-sm">
+                            </div>
+                            <fieldset class="space-y-2">
+                                <legend class="form-label">Notify through</legend>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <label class="flex items-center gap-2"><input id="announceInApp" type="checkbox" checked> In-app notification</label>
+                                    <label class="flex items-center gap-2"><input id="announceEmail" type="checkbox"> Email</label>
+                                    <label class="flex items-center gap-2"><input id="announceSms" type="checkbox"> SMS</label>
+                                </div>
+                            </fieldset>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="submit" name="action" value="draft" class="btn btn-secondary text-xs">Save Draft</button>
+                                <button type="submit" name="action" value="publish" class="btn btn-primary text-xs">Publish Announcement</button>
+                            </div>
                         </form>
                         <div id="announcementsPageList" class="space-y-4"></div>
                     </div>
@@ -2657,28 +2709,80 @@
                 </div>
 
                 <div id="view-sms" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6 max-w-2xl">
-                        <h3 class="text-lg font-extrabold text-slate-800">SMS</h3>
-                        <p id="smsConfigStatus" class="text-xs text-slate-500 mb-4">Checking SMS provider configuration…</p>
-                        <form class="space-y-3" onsubmit="logInternalMessage(event, 'SMS')">
-                            <input id="smsRecipient" class="form-input text-sm" placeholder="Recipient mobile (09XXXXXXXXX or +639XXXXXXXXX)" required>
-                            <input id="smsSubject" class="form-input text-sm" placeholder="Subject / template name" required>
-                            <textarea id="smsMessage" class="form-textarea text-sm" rows="4" placeholder="Message" maxlength="160"></textarea>
+                    <div class="app-card p-6 space-y-5">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-800">SMS</h3>
+                            <p id="smsConfigStatus" class="text-xs text-slate-500">Checking SMS service…</p>
+                        </div>
+                        <form id="smsComposeForm" class="space-y-3 max-w-2xl" onsubmit="logInternalMessage(event, 'SMS')">
+                            <fieldset>
+                                <legend class="form-label">Recipients *</legend>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <label class="flex items-center gap-2"><input type="radio" name="smsRecipientMode" value="individual" checked onchange="updateCommunicationRecipientUI('SMS')"> Individual Alumni</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="smsRecipientMode" value="all" onchange="updateCommunicationRecipientUI('SMS')"> All Alumni</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="smsRecipientMode" value="selected" onchange="updateCommunicationRecipientUI('SMS')"> Selected Recipients</label>
+                                </div>
+                            </fieldset>
+                            <div id="smsRecipientPicker">
+                                <label class="form-label" for="smsRecipientSearch">Search alumni</label>
+                                <input id="smsRecipientSearch" class="form-input text-sm mb-2" placeholder="Search by name, batch, or email" oninput="filterCommunicationRecipients('SMS')">
+                                <select id="smsRecipients" class="form-input text-sm" size="5" aria-label="Select alumni recipients" required onchange="rememberCommunicationRecipients('SMS')"></select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="smsTemplate">Template</label>
+                                <select id="smsTemplate" class="form-input text-sm" onchange="applyCommunicationTemplate('SMS')">
+                                    <option value="">No template</option>
+                                    <option value="announcement">Announcement reminder</option>
+                                    <option value="event">Event reminder</option>
+                                    <option value="profile">Profile update reminder</option>
+                                </select>
+                            </div>
+                            <label class="form-label" for="smsMessage">Message *</label>
+                            <textarea id="smsMessage" class="form-textarea text-sm" rows="4" placeholder="Write an SMS message..." maxlength="160" required oninput="updateSmsCharacterCount()"></textarea>
+                            <p id="smsCharacterCount" class="text-xs text-slate-500">Characters: 0 / 160 • Estimated SMS: 0</p>
                             <button type="submit" class="btn btn-primary text-xs">Send SMS</button>
                         </form>
+                        <section>
+                            <h4 class="font-extrabold text-sm text-slate-800 mb-3">Message History / Delivery Logs</h4>
+                            <div class="data-table-container"><table class="modern-table"><thead><tr><th>Recipient</th><th>Message</th><th>Date</th><th>Status</th></tr></thead><tbody id="smsHistoryList"></tbody></table></div>
+                        </section>
                     </div>
                 </div>
 
                 <div id="view-gmail" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6 max-w-2xl">
-                        <h3 class="text-lg font-extrabold text-slate-800">Email</h3>
-                        <p id="emailConfigStatus" class="text-xs text-slate-500 mb-4">Checking SMTP configuration…</p>
-                        <form class="space-y-3" onsubmit="logInternalMessage(event, 'EMAIL')">
-                            <input id="emailRecipient" class="form-input text-sm" placeholder="Recipient email" required>
-                            <input id="emailSubject" class="form-input text-sm" placeholder="Subject" required>
-                            <textarea id="emailBody" class="form-textarea text-sm" rows="6" placeholder="Email body"></textarea>
+                    <div class="app-card p-6 space-y-5">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-800">Email</h3>
+                            <p id="emailConfigStatus" class="text-xs text-slate-500">Checking email service…</p>
+                        </div>
+                        <form id="emailComposeForm" class="space-y-3 max-w-2xl" onsubmit="logInternalMessage(event, 'EMAIL')">
+                            <fieldset>
+                                <legend class="form-label">Recipients *</legend>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <label class="flex items-center gap-2"><input type="radio" name="emailRecipientMode" value="individual" checked onchange="updateCommunicationRecipientUI('EMAIL')"> Individual Alumni</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="emailRecipientMode" value="all" onchange="updateCommunicationRecipientUI('EMAIL')"> All Alumni</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="emailRecipientMode" value="selected" onchange="updateCommunicationRecipientUI('EMAIL')"> Selected Recipients</label>
+                                </div>
+                            </fieldset>
+                            <div id="emailRecipientPicker">
+                                <label class="form-label" for="emailRecipientSearch">Search alumni</label>
+                                <input id="emailRecipientSearch" class="form-input text-sm mb-2" placeholder="Search by name, batch, or email" oninput="filterCommunicationRecipients('EMAIL')">
+                                <select id="emailRecipients" class="form-input text-sm" size="5" aria-label="Select alumni recipients" required onchange="rememberCommunicationRecipients('EMAIL')"></select>
+                            </div>
+                            <label class="form-label" for="emailSubject">Subject *</label>
+                            <input id="emailSubject" class="form-input text-sm" placeholder="Email subject" maxlength="200" required>
+                            <label class="form-label" for="emailBody">Message *</label>
+                            <textarea id="emailBody" class="form-textarea text-sm" rows="6" placeholder="Write the email message..." required></textarea>
+                            <div>
+                                <label class="form-label" for="emailAttachment">Attachment (optional, PDF up to 1 MB)</label>
+                                <input id="emailAttachment" type="file" class="form-input text-sm" accept="application/pdf,.pdf">
+                            </div>
                             <button type="submit" class="btn btn-primary text-xs">Send Email</button>
                         </form>
+                        <section>
+                            <h4 class="font-extrabold text-sm text-slate-800 mb-3">Message History / Delivery Logs</h4>
+                            <div class="data-table-container"><table class="modern-table"><thead><tr><th>Recipient</th><th>Subject</th><th>Date</th><th>Status</th></tr></thead><tbody id="emailHistoryList"></tbody></table></div>
+                        </section>
                     </div>
                 </div>
 
@@ -3128,6 +3232,9 @@
 
             <form onsubmit="saveAlumniRecord(event)" class="space-y-3.5">
                 <input type="hidden" id="editAlumniId">
+                <p id="alumniVerificationNotice" class="hidden rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    New records start as <strong>Pending Verification</strong>. Confirm the school record before marking it verified. Account activation is handled separately after verification.
+                </p>
                 <div>
                     <label class="form-label" for="newAlumniName">Full Name</label>
                     <input type="text" id="newAlumniName" required placeholder="e.g. Maria Clara D. Santos" class="form-input text-xs">
@@ -3139,8 +3246,15 @@
                         <input type="number" id="newAlumniBatch" required min="1950" max="2030" placeholder="e.g. 2024" class="form-input text-xs">
                     </div>
                     <div>
+                        <label class="form-label" for="newAlumniStudentId">Student / Alumni ID</label>
+                        <input type="text" id="newAlumniStudentId" placeholder="School record ID" class="form-input text-xs">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
                         <label class="form-label" for="newAlumniEmployment">Employment Status</label>
                         <select id="newAlumniEmployment" class="form-select text-xs">
+                            <option>No Data</option>
                             <option>Employed</option>
                             <option>Unemployed</option>
                             <option>Freelance</option>
@@ -3466,41 +3580,7 @@
         </div>
     </div>
 
-    <!-- Log Job Placement Modal (Admin) -->
-    <div id="addJobModal" class="modal-backdrop">
-        <div class="modal-box p-6">
-            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
-                <h3 class="font-extrabold text-slate-800 text-base">Log Alumni Job Placement</h3>
-                <button onclick="closeAddJobModal()" title="Close job modal" aria-label="Close job modal" class="text-slate-400 hover:text-slate-600 p-1">
-                    <i class="fa-solid fa-xmark text-base"></i>
-                </button>
-            </div>
-
-            <form onsubmit="saveJobPlacement(event)" class="space-y-3.5">
-                <div>
-                    <label class="form-label" for="jobAlumniName">Alumnus Name</label>
-                    <input type="text" id="jobAlumniName" required placeholder="Full Name" class="form-input text-xs">
-                </div>
-
-                <div>
-                    <label class="form-label" for="jobCompany">Company / Employer</label>
-                    <input type="text" id="jobCompany" required placeholder="e.g. San Miguel Corp." class="form-input text-xs">
-                </div>
-
-                <div>
-                    <label class="form-label" for="jobTitle">Job Title / Role</label>
-                    <input type="text" id="jobTitle" required placeholder="e.g. Financial Analyst" class="form-input text-xs">
-                </div>
-
-                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                    <button type="button" onclick="closeAddJobModal()" class="btn btn-secondary text-xs">Cancel</button>
-                    <button type="submit" class="btn btn-primary text-xs">Save Placement</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Post Job Opportunity Modal (Admin) -->
+    <!-- Post or edit job opportunity modal -->
     <div id="addJobOpportunityModal" class="modal-backdrop">
         <div class="modal-box p-6">
             <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
@@ -3510,6 +3590,7 @@
                 </button>
             </div>
             <form onsubmit="saveNewJobOpportunity(event)" class="space-y-3.5">
+                <input type="hidden" id="editingJobOpportunityId">
                 <div>
                     <label class="form-label" for="newJobTitle">Job Title</label>
                     <input type="text" id="newJobTitle" required placeholder="e.g. Software Engineer" class="form-input text-xs">
@@ -3520,15 +3601,57 @@
                 </div>
                 <div>
                     <label class="form-label" for="newJobLocation">Location</label>
-                    <input type="text" id="newJobLocation" placeholder="e.g. Caloocan / Remote" class="form-input text-xs">
+                    <input type="text" id="newJobLocation" required placeholder="e.g. Caloocan City / Remote" class="form-input text-xs">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label" for="newJobIndustry">Industry</label>
+                        <input type="text" id="newJobIndustry" required placeholder="e.g. BPO / Customer Service" class="form-input text-xs">
+                    </div>
+                    <div>
+                        <label class="form-label" for="newJobEmploymentType">Employment Type</label>
+                        <select id="newJobEmploymentType" required class="form-input text-xs">
+                            <option value="">Select type</option>
+                            <option>Full-time</option><option>Part-time</option><option>Contract</option><option>Temporary</option><option>Internship</option>
+                        </select>
+                    </div>
                 </div>
                 <div>
                     <label class="form-label" for="newJobDescription">Description</label>
-                    <textarea id="newJobDescription" rows="3" placeholder="Role summary, requirements, and how to apply..." class="form-textarea text-xs"></textarea>
+                    <textarea id="newJobDescription" rows="3" required placeholder="Job description and responsibilities..." class="form-textarea text-xs"></textarea>
                 </div>
+                <div>
+                    <label class="form-label" for="newJobQualifications">Qualifications</label>
+                    <textarea id="newJobQualifications" rows="2" placeholder="Optional qualifications and experience" class="form-textarea text-xs"></textarea>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label" for="newJobApplicationMethod">Application Method</label>
+                        <select id="newJobApplicationMethod" onchange="updateJobApplicationInput()" required class="form-input text-xs">
+                            <option value="">Select method</option><option value="Link">Application link</option><option value="Email">Email</option><option value="Contact Information">Contact information</option><option value="Portal">Apply through portal (legacy)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="newJobApplicationDetails">Application Link / Email / Contact</label>
+                        <input type="text" id="newJobApplicationDetails" placeholder="Required link, email, or contact details" class="form-input text-xs">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label" for="newJobDeadline">Application Deadline</label>
+                        <input type="date" id="newJobDeadline" class="form-input text-xs">
+                    </div>
+                </div>
+                <fieldset class="rounded-xl border border-slate-200 p-3 space-y-2">
+                    <legend class="form-label px-1">Publishing</legend>
+                    <label class="form-label" for="newJobStatus">Listing Status</label>
+                    <select id="newJobStatus" required class="form-input text-xs"><option>Draft</option><option selected>Published</option><option>Archived</option></select>
+                    <label class="flex items-center gap-2 text-xs text-slate-700"><input type="checkbox" id="newJobNotifyInApp" checked> Notify alumni through in-app notification</label>
+                    <label class="flex items-center gap-2 text-xs text-slate-700"><input type="checkbox" id="newJobNotifyEmail"> Send email notification</label>
+                </fieldset>
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeAddJobOpportunityModal()" class="btn btn-secondary text-xs">Cancel</button>
-                    <button type="submit" class="btn btn-primary text-xs">Publish Opportunity</button>
+                    <button type="submit" class="btn btn-primary text-xs">Save Opportunity</button>
                 </div>
             </form>
         </div>
@@ -3646,7 +3769,7 @@
         </div>
     </div>
 
-    <!-- Notification Activity Center Modal -->
+    <!-- Notification Center Modal -->
     <div id="notificationCenterModal" class="modal-backdrop">
         <div class="modal-box p-6 max-w-lg">
             <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
@@ -3655,8 +3778,8 @@
                         <i class="fa-regular fa-bell"></i>
                     </div>
                     <div>
-                        <h3 class="font-extrabold text-slate-800 text-sm">Automated Email & SMS Activity Log</h3>
-                        <p class="text-[10px] text-slate-400 font-medium">Real-time notification engine triggers</p>
+                        <h3 class="font-extrabold text-slate-800 text-sm">Notifications</h3>
+                        <p class="text-[10px] text-slate-400 font-medium">Your latest system alerts</p>
                     </div>
                 </div>
                 <button onclick="closeNotificationCenterModal()" title="Close notification center" aria-label="Close notification center" class="text-slate-400 hover:text-slate-600 p-1">
@@ -3666,6 +3789,11 @@
 
             <div id="notificationLogsList" class="space-y-3 max-h-[380px] overflow-y-auto pr-1 text-xs">
                 <!-- Populated dynamically -->
+            </div>
+            <div class="flex justify-end border-t border-slate-100 mt-4 pt-3">
+                <button type="button" onclick="openNotificationsInbox()" class="btn btn-primary text-xs py-2">
+                    View all notifications
+                </button>
             </div>
         </div>
     </div>

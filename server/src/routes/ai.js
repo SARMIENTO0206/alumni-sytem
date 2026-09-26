@@ -21,7 +21,7 @@ function stats() {
   const count = (sql) => db.prepare(sql).get()?.n || 0;
   const trackingSettings = getSetting('system_settings', {});
   const reminderMonths = Number(trackingSettings.tracking?.reminderMonths) || 6;
-  const stale = db.prepare('SELECT * FROM alumni').all().filter((a) => {
+  const stale = db.prepare("SELECT * FROM alumni WHERE COALESCE(archived_at, '') = ''").all().filter((a) => {
     if (!a.last_updated) return true;
     const d = new Date(a.last_updated);
     if (isNaN(d.getTime())) return true;
@@ -32,19 +32,19 @@ function stats() {
 
   return {
     reminderMonths,
-    alumni: count('SELECT COUNT(*) AS n FROM alumni'),
-    employed: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Employed'"),
-    unemployed: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Unemployed','Seeking Employment')"),
-    freelance: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Freelance','Self-employed')"),
-    furtherStudies: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Further Studies','Post-grad','Postgraduate','Technical/Vocational Training')"),
-    notSeeking: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Not Currently Seeking'"),
-    noTrackingData: count("SELECT COUNT(*) AS n FROM alumni WHERE status IS NULL OR status = '' OR status = 'No Data'"),
+    alumni: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = ''"),
+    employed: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status = 'Employed'"),
+    unemployed: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Unemployed','Seeking Employment')"),
+    freelance: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Freelance','Self-employed')"),
+    furtherStudies: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Further Studies','Post-grad','Postgraduate','Technical/Vocational Training')"),
+    notSeeking: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status = 'Not Currently Seeking'"),
+    noTrackingData: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND (status IS NULL OR status = '' OR status = 'No Data')"),
     pendingRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Pending'"),
     releasedRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Released'"),
     rejectedRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Rejected'"),
     totalRequests: count('SELECT COUNT(*) AS n FROM transcript_requests'),
     reprints: count('SELECT COUNT(*) AS n FROM reprints'),
-    placements: count('SELECT COUNT(*) AS n FROM placements'),
+    placements: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Employed','Self-employed')"),
     events: count('SELECT COUNT(*) AS n FROM events'),
     reunions: count('SELECT COUNT(*) AS n FROM reunions'),
     donations: count('SELECT COUNT(*) AS n FROM donations'),
@@ -364,7 +364,7 @@ router.post('/dashboard-insights', async (req, res) => {
       `Profile freshness: ${freshness}% (${s.staleProfiles} profiles outside the configured ${s.reminderMonths}-month reminder period)`,
       `Transcript requests - total: ${s.totalRequests}, pending: ${s.pendingRequests}, released: ${s.releasedRequests}, rejected: ${s.rejectedRequests}`,
       `Certificate reprints: ${s.reprints}`,
-      `Job placements logged: ${s.placements}`,
+      `Alumni-reported employment records: ${s.placements}`,
       `Events: ${s.events}, batch reunions: ${s.reunions}`,
       `Donations recorded: ${s.donations}, newsletters: ${s.newsletters}`,
       `Survey responses: ${s.feedback}`
@@ -386,7 +386,7 @@ router.post('/dashboard-insights', async (req, res) => {
   if (s.pendingRequests > 0) observations.push(`${s.pendingRequests} transcript request(s) are pending action by the Registrar.`);
   if (s.releasedRequests > 0) observations.push(`${s.releasedRequests} document(s) have been released to alumni.`);
   if (s.reprints > 0) observations.push(`${s.reprints} certificate reprint request(s) are on file.`);
-  if (s.placements > 0) observations.push(`${s.placements} job placement(s) have been recorded.`);
+  if (s.placements > 0) observations.push(`${s.placements} alumni-reported employment record(s) are on file; this does not indicate school placement.`);
   if (s.reunions > 0) observations.push(`${s.reunions} batch reunion(s) are organized.`);
   if (s.feedback > 0) observations.push(`${s.feedback} survey response(s) have been collected for review.`);
 

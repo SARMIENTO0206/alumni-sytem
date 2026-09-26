@@ -13,13 +13,13 @@ router.get('/summary', staffOrAdmin, (req, res) => {
   res.json({
     timestamp: new Date().toISOString(),
     alumni: {
-      total: count('SELECT COUNT(*) AS n FROM alumni'),
-      employed: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Employed'"),
-      selfEmployed: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Self-employed','Freelance')"),
-      seekingEmployment: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Unemployed','Seeking Employment')"),
-      furtherStudies: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Further Studies','Post-grad','Postgraduate','Technical/Vocational Training')"),
-      notCurrentlySeeking: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Not Currently Seeking'"),
-      noData: count("SELECT COUNT(*) AS n FROM alumni WHERE status IS NULL OR status = '' OR status = 'No Data'")
+      total: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = ''"),
+      employed: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status = 'Employed'"),
+      selfEmployed: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Self-employed','Freelance')"),
+      seekingEmployment: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Unemployed','Seeking Employment')"),
+      furtherStudies: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Further Studies','Post-grad','Postgraduate','Technical/Vocational Training')"),
+      notCurrentlySeeking: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status = 'Not Currently Seeking'"),
+      noData: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND (status IS NULL OR status = '' OR status = 'No Data')")
     },
     transcriptRequests: {
       total: count('SELECT COUNT(*) AS n FROM transcript_requests'),
@@ -27,7 +27,7 @@ router.get('/summary', staffOrAdmin, (req, res) => {
       released: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Released'")
     },
     reprints: count('SELECT COUNT(*) AS n FROM reprints'),
-    placements: count('SELECT COUNT(*) AS n FROM placements'),
+    placements: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Employed','Self-employed')"),
     events: count('SELECT COUNT(*) AS n FROM events'),
     reunions: count('SELECT COUNT(*) AS n FROM reunions'),
     donations: count('SELECT COUNT(*) AS n FROM donations'),
@@ -47,7 +47,7 @@ router.get('/operational', staffOrAdmin, (req, res) => {
       + count("SELECT COUNT(*) AS n FROM reprints WHERE status IN ('Approved','Ready for Release')"),
     upcomingEvents: count("SELECT COUNT(*) AS n FROM events WHERE status IN ('Upcoming','Published','Open for Registration')"),
     publishedJobs: count("SELECT COUNT(*) AS n FROM job_opportunities WHERE status = 'Published'"),
-    recentAlumni: count("SELECT COUNT(*) AS n FROM alumni"),
+    recentAlumni: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = ''"),
     surveyResponses: count('SELECT COUNT(*) AS n FROM feedback')
   });
 });
@@ -70,13 +70,13 @@ router.get('/dashboard', (req, res) => {
   }
   res.json({
     role: req.user.role,
-    alumni: count('SELECT COUNT(*) AS n FROM alumni'),
+    alumni: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = ''"),
     pendingRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status IN ('Pending','Processing')")
       + count("SELECT COUNT(*) AS n FROM reprints WHERE status IN ('Pending','Processing')"),
-    employed: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Employed','Self-employed','Freelance')"),
+    employed: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Employed','Self-employed','Freelance')"),
     events: count('SELECT COUNT(*) AS n FROM events'),
     jobs: count("SELECT COUNT(*) AS n FROM job_opportunities WHERE status = 'Published'"),
-    placements: count('SELECT COUNT(*) AS n FROM placements')
+    placements: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Employed','Self-employed')")
   });
 });
 
@@ -89,7 +89,7 @@ router.get('/registrar', staffOrAdmin, (req, res) => {
   const reprintPending = db.prepare("SELECT COUNT(*) AS n FROM reprints WHERE status = 'Pending'").get().n;
 
   res.json({
-    verificationStats: db.prepare('SELECT COUNT(*) AS n FROM alumni').get().n,
+    verificationStats: db.prepare("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = ''").get().n,
     pendingRequests: pending,
     approvedRequests: approved,
     releasedRequests: released,

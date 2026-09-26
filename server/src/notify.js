@@ -23,6 +23,9 @@ export function notificationTarget(relatedType, relatedId, extras = {}) {
   if (type === 'announcement') {
     return { view: 'announcements', url: id ? `/#/announcements/${id}` : '/#/announcements' };
   }
+  if (type === 'newsletter') {
+    return { view: 'newsletter', url: '/#/newsletter' };
+  }
   if (type === 'survey' || type === 'feedback') {
     return { view: 'feedback', url: id ? `/#/surveys/${id}` : '/#/surveys' };
   }
@@ -101,8 +104,8 @@ export async function deliverChannels(notification, opts = {}) {
   if (emailEnabled && emailTo) {
     const result = await sendMail({
       to: emailTo,
-      subject: notification.subject,
-      text: notification.message,
+      subject: opts.emailSubject || notification.subject,
+      text: opts.emailMessage || notification.message,
       notificationId: notification.id,
       userId: notification.user_id
     });
@@ -114,7 +117,7 @@ export async function deliverChannels(notification, opts = {}) {
   if (smsEnabled && phoneTo) {
     const result = await sendSms({
       to: phoneTo,
-      message: `${notification.subject}: ${notification.message}`.slice(0, 160),
+      message: (opts.smsMessage || `${notification.subject}: ${notification.message}`).slice(0, 160),
       notificationId: notification.id,
       userId: notification.user_id
     });
@@ -148,7 +151,48 @@ export async function dispatchAlumniAudience(subject, message, relatedType, rela
       'SELECT * FROM notifications WHERE user_id = ? AND related_type = ? AND related_id = ? ORDER BY id DESC'
     ).get(user.id, relatedType || '', String(relatedId || ''));
     if (note) {
-      results.push(await deliverChannels(note, { userId: user.id, email: user.email, phone: user.contact, sendSms: extras.sendSms }));
+      results.push(await deliverChannels(note, {
+        userId: user.id,
+        email: user.email,
+        phone: user.contact,
+        sendSms: extras.sendSms,
+        sendEmail: extras.sendEmail,
+        forceChannels: extras.forceChannels,
+        emailSubject: extras.emailSubject,
+        emailMessage: extras.emailMessage,
+        smsMessage: extras.smsMessage
+      }));
+    } else if (extras.sendEmail === true) {
+      results.push({
+        userId: user.id,
+        email_status: user.email
+          ? (await sendMail({
+              to: user.email,
+              subject: extras.emailSubject || subject,
+              text: extras.emailMessage || message,
+              userId: user.id
+            })).status
+          : 'skipped',
+        sms_status: extras.sendSms === true && user.contact
+          ? (await sendSms({
+              to: user.contact,
+              message: (extras.smsMessage || `${subject}: ${message}`).slice(0, 160),
+              userId: user.id
+            })).status
+          : ''
+      });
+    } else if (extras.sendSms === true) {
+      results.push({
+        userId: user.id,
+        email_status: '',
+        sms_status: user.contact
+          ? (await sendSms({
+              to: user.contact,
+              message: (extras.smsMessage || `${subject}: ${message}`).slice(0, 160),
+              userId: user.id
+            })).status
+          : 'skipped'
+      });
     }
   }
   return results;
@@ -164,8 +208,8 @@ export function mailAndSmsHealth() {
     mail: {
       configured: mailConfig().configured,
       message: mailConfig().configured
-        ? 'SMTP is configured. Emails are accepted only after the provider accepts the message.'
-        : 'SMTP is not configured. Add SMTP_HOST, SMTP_USER, and SMTP_PASS to server/.env.'
+        ? 'Email service is available. Messages are accepted only after the provider accepts them.'
+        : 'Email service is currently unavailable. Please contact the system administrator.'
     },
     sms: {
       configured: smsConfig().configured,

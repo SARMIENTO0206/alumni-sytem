@@ -99,7 +99,7 @@ export function buildUserContext(user) {
   if (isAdmin(user) || isStaff(user)) {
     context.operational.pendingTranscripts = db.prepare("SELECT COUNT(*) AS n FROM transcript_requests WHERE status IN ('Pending','Processing')").get().n;
     context.operational.pendingReprints = db.prepare("SELECT COUNT(*) AS n FROM reprints WHERE status IN ('Pending','Processing')").get().n;
-    context.operational.alumni = db.prepare('SELECT COUNT(*) AS n FROM alumni').get().n;
+    context.operational.alumni = db.prepare("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = ''").get().n;
     context.operational.publishedJobs = db.prepare("SELECT COUNT(*) AS n FROM job_opportunities WHERE status = 'Published'").get().n;
     context.operational.events = db.prepare('SELECT COUNT(*) AS n FROM events').get().n;
   }

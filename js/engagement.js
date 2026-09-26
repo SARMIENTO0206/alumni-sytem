@@ -4,6 +4,43 @@
 /* Source: index.html lines 4018-4710 */
 /* ------------------------------------------------------------------------- */
     let newEventImageData = "";
+    let editingJobOpportunityId = 0;
+    let newsletterStatusFilter = "All";
+    let editingNewsletterId = 0;
+
+    function canManageJobListings() {
+        return isAdminRole() || isStaffRole();
+    }
+
+    function isJobExpired(job) {
+        return job.status === "Published" && !!job.deadline && job.deadline < new Date().toISOString().slice(0, 10);
+    }
+
+    function jobApplicationAction(job) {
+        const details = String(job.application_details || "").trim();
+        if (job.application_method === "Link" && /^https:\/\//i.test(details)) {
+            return `<a href="${escapeHtml(details)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary text-xs">Apply</a>`;
+        }
+        if (job.application_method === "Email" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details)) {
+            return `<a href="mailto:${encodeURIComponent(details)}" class="btn btn-primary text-xs">Apply by Email</a>`;
+        }
+        if (job.application_method === "Portal" || !job.application_method) {
+            return `<button type="button" onclick='applyJobOpportunity(${JSON.stringify(String(job.title || ""))}, ${JSON.stringify(String(job.company || ""))})' class="btn btn-primary text-xs">Apply</button>`;
+        }
+        return `<span class="text-xs text-slate-500">${escapeHtml(details || "See application instructions for employer contact details.")}</span>`;
+    }
+
+    function refreshJobFilterOptions(selectId, field, label) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        const selected = select.value;
+        const values = [...new Set(jobsList.map((job) => String(job[field] || "").trim()).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b));
+        select.innerHTML = `<option value="">${label}</option>${values.map((value) =>
+            `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`
+        ).join("")}`;
+        if (values.includes(selected)) select.value = selected;
+    }
 
     async function showJobDetails(id, silent) {
         let job = (jobsList || []).find((j) => String(j.id) === String(id));
@@ -30,10 +67,22 @@
             const actions = document.getElementById("jobDetailActions");
             if (title) title.textContent = job.title || "Job";
             if (company) company.textContent = job.company || "";
-            if (meta) meta.textContent = job.location || "";
-            if (body) body.textContent = job.description || "";
+            if (meta) {
+                meta.textContent = [job.location, job.industry, job.employment_type, job.deadline ? `Apply by ${job.deadline}` : ""].filter(Boolean).join(" • ");
+            }
+            if (body) {
+                body.textContent = [
+                    job.description || "",
+                    job.qualifications ? `Qualifications: ${job.qualifications}` : "",
+                    job.application_method === "Contact Information" && job.application_details ? `Application contact: ${job.application_details}` : ""
+                ].filter(Boolean).join("\n\n");
+            }
             if (actions) {
-                actions.innerHTML = `<button type="button" onclick='applyJobOpportunity(${JSON.stringify(String(job.title || ""))}, ${JSON.stringify(String(job.company || ""))})' class="btn btn-primary text-xs">Apply</button>`;
+                actions.innerHTML = `${canManageJobListings()
+                    ? `<button type="button" onclick="editJobOpportunity(${Number(job.id)})" class="btn btn-secondary text-xs">Edit Listing</button>
+                       <button type="button" onclick="setJobOpportunityStatus(${Number(job.id)}, '${job.status === "Archived" ? "Published" : "Archived"}')" class="btn btn-secondary text-xs">${job.status === "Archived" ? "Republish" : "Archive"}</button>
+                       ${isAdminRole() ? `<button type="button" onclick="deleteJobOpportunity(${Number(job.id)})" class="btn btn-secondary text-xs text-rose-700">Delete</button>` : ""}`
+                    : jobApplicationAction(job)}`;
             }
         } else {
             renderJobsGrid();
@@ -52,25 +101,74 @@
     function renderJobsGrid() {
         const grid = document.getElementById("jobsGridContainer");
         if (!grid) return;
-        if (!jobsList.length) {
-            grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 font-semibold">No job opportunities yet.</div>`;
+        const canManage = canManageJobListings();
+        const isAdmin = isAdminRole();
+        const activeCount = jobsList.filter((job) => job.status === "Published" && !isJobExpired(job)).length;
+        const expiredCount = jobsList.filter(isJobExpired).length;
+        const summary = document.getElementById("jobManagementSummary");
+        if (summary) summary.classList.toggle("hidden", !isAdmin);
+        const totalCountEl = document.getElementById("totalJobsCount");
+        if (totalCountEl) totalCountEl.textContent = String(jobsList.length);
+        const activeCountEl = document.getElementById("activeJobsCount");
+        const inactiveCountEl = document.getElementById("inactiveJobsCount");
+        if (activeCountEl) activeCountEl.textContent = String(activeCount);
+        if (inactiveCountEl) inactiveCountEl.textContent = String(expiredCount);
+
+        refreshJobFilterOptions("jobsIndustryFilter", "industry", "All Industries");
+        refreshJobFilterOptions("jobsEmploymentTypeFilter", "employment_type", "All Employment Types");
+        refreshJobFilterOptions("jobsLocationFilter", "location", "All Locations");
+        const search = String(document.getElementById("jobsSearchInput")?.value || "").trim().toLowerCase();
+        const statusFilter = String(document.getElementById("jobsStatusFilter")?.value || "active");
+        const industryFilter = String(document.getElementById("jobsIndustryFilter")?.value || "");
+        const typeFilter = String(document.getElementById("jobsEmploymentTypeFilter")?.value || "");
+        const locationFilter = String(document.getElementById("jobsLocationFilter")?.value || "");
+        const statusSelect = document.getElementById("jobsStatusFilter");
+        if (statusSelect) statusSelect.classList.toggle("hidden", !canManage);
+        const filteredJobs = jobsList.filter((job) => {
+            const expired = isJobExpired(job);
+            const matchesSearch = !search || [job.title, job.company, job.location, job.industry].some((value) => String(value || "").toLowerCase().includes(search));
+            const matchesStatus = !canManage || statusFilter === "all"
+                || (statusFilter === "active" && job.status === "Published" && !expired)
+                || (statusFilter === "expired" && expired)
+                || (statusFilter === "draft" && job.status === "Draft")
+                || (statusFilter === "archived" && job.status === "Archived");
+            return matchesSearch && matchesStatus
+                && (!industryFilter || job.industry === industryFilter)
+                && (!typeFilter || job.employment_type === typeFilter)
+                && (!locationFilter || job.location === locationFilter);
+        });
+        if (!filteredJobs.length) {
+            const emptyMessage = jobsList.length ? "No job opportunities match these filters." : "No job opportunities yet.";
+            grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 font-semibold">${emptyMessage}</div>`;
             return;
         }
-        grid.innerHTML = jobsList.map(job => `
+        grid.innerHTML = filteredJobs.map(job => {
+            const expired = isJobExpired(job);
+            const status = expired ? "Expired" : (job.status || "Published");
+            return `
             <div class="app-card app-card-hover p-5 flex flex-col justify-between" data-job-id="${job.id}">
                 <div>
+                    <div class="flex justify-between items-start gap-2">
                     <button type="button" onclick="switchView('job-opportunities', { detailId: '${job.id}' })" class="text-left">
-                    <h4 class="font-extrabold text-slate-800 text-sm hover:text-brand-magenta">${job.title}</h4>
+                    <h4 class="font-extrabold text-slate-800 text-sm hover:text-brand-magenta">${escapeHtml(job.title || "Job Opportunity")}</h4>
                     </button>
-                    <p class="text-xs text-brand-magenta font-semibold mt-0.5">${job.company || ""}</p>
-                    <p class="text-xs text-slate-400 mt-2">${job.location || ""}</p>
-                    <p class="text-xs text-slate-500 mt-3">${job.description || ""}</p>
+                    <span class="status-badge">${escapeHtml(status)}</span>
+                    </div>
+                    <p class="text-xs text-brand-magenta font-semibold mt-0.5">${escapeHtml(job.company || "")}</p>
+                    <p class="text-xs text-slate-400 mt-2">${escapeHtml([job.location, job.industry, job.employment_type].filter(Boolean).join(" • "))}</p>
+                    <p class="text-xs text-slate-500 mt-3">${escapeHtml(job.description || "")}</p>
+                    ${job.deadline ? `<p class="text-[11px] text-slate-400 mt-2">Deadline: ${escapeHtml(job.deadline)}</p>` : ""}
+                    ${isAdmin ? `<p class="text-[11px] text-slate-400 mt-2">Posted by ${escapeHtml(job.posted_by || job.created_by_name || "Legacy posting")}</p>` : ""}
                 </div>
-                <button type="button" onclick='applyJobOpportunity(${JSON.stringify(String(job.title || ""))}, ${JSON.stringify(String(job.company || ""))})' class="btn btn-primary text-xs mt-4">
-                    Apply
-                </button>
-            </div>
-        `).join("");
+                <div class="flex flex-wrap gap-2 mt-4">
+                    ${canManage
+                        ? `<button type="button" onclick="editJobOpportunity(${Number(job.id)})" class="btn btn-secondary text-xs">Edit</button>
+                           <button type="button" onclick="setJobOpportunityStatus(${Number(job.id)}, '${job.status === "Archived" ? "Published" : "Archived"}')" class="btn btn-secondary text-xs">${job.status === "Archived" ? "Republish" : "Archive"}</button>
+                           ${isAdmin ? `<button type="button" onclick="deleteJobOpportunity(${Number(job.id)})" class="btn btn-secondary text-xs text-rose-700">Delete</button>` : ""}`
+                        : jobApplicationAction(job)}
+                </div>
+            </div>`;
+        }).join("");
     }
 
     /* Events */
@@ -1567,7 +1665,7 @@
             if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
             const status = data.deliveryStatus || "";
             if (status === "accepted") showToast(`${channel} accepted by the provider.`, "success");
-            else if (status === "not_configured") showToast(channel === "SMS" ? "SMS provider is not configured." : "SMTP is not configured. The message was recorded but not sent.", "error");
+            else if (status === "not_configured") showToast(channel === "SMS" ? "SMS service is currently unavailable. Please contact the system administrator." : "Email service is currently unavailable. Please contact the system administrator.", "error");
             else showToast(`${channel} status: ${status || "recorded"}.`, "info");
         } catch (err) {
             showToast(err.message || "Unable to send the notification.", "error");
@@ -1619,6 +1717,11 @@
         document.getElementById("notificationCenterModal").classList.add("active");
     }
 
+    function openNotificationsInbox() {
+        closeNotificationCenterModal();
+        switchView("notifications");
+    }
+
     function closeNotificationCenterModal() {
         document.getElementById("notificationCenterModal").classList.remove("active");
     }
@@ -1627,74 +1730,240 @@
 /* Source: index.html lines 5054-5137 */
 /* ------------------------------------------------------------------------- */
     /* Newsletter & Broadcast System */
-    function openNewsletterComposer() {
+    function canManageNewsletters() {
+        return isAdminRole() || isStaffRole();
+    }
+
+    function setNewsletterFilter(status) {
+        newsletterStatusFilter = status;
+        renderNewsletterArchive();
+    }
+
+    function openNewsletterComposer(newsletterId = 0) {
+        if (!canManageNewsletters()) return;
         const composer = document.getElementById("newsletterComposer");
-        if (composer) composer.classList.remove("hidden");
+        const form = document.getElementById("newsletterForm");
+        const title = document.getElementById("newsletterTitle");
+        const subject = document.getElementById("newsletterSubject");
+        const body = document.getElementById("newsletterBody");
+        const inApp = document.getElementById("sendNewsletterInApp");
+        const email = document.getElementById("sendNewsletterEmail");
+        const sms = document.getElementById("sendNewsletterSMS");
+        const selected = (newslettersList || []).find((item) => Number(item.id) === Number(newsletterId));
+        if (!composer || !form || !title || !subject || !body) return;
+        editingNewsletterId = selected ? Number(selected.id) : 0;
+        form.reset();
+        form.dataset.newsletterId = String(editingNewsletterId);
+        document.getElementById("newsletterComposerTitle").textContent = selected ? "Edit Newsletter Draft" : "Create Newsletter";
+        title.value = selected?.title || "";
+        subject.value = selected?.subject || "";
+        body.value = selected?.body || "";
+        if (inApp) inApp.checked = selected ? selected.sendInApp : true;
+        if (email) email.checked = selected ? selected.sendEmail : true;
+        if (sms) sms.checked = selected ? selected.sendSms : false;
+        composer.classList.remove("hidden");
     }
 
     function closeNewsletterComposer() {
         const composer = document.getElementById("newsletterComposer");
         if (composer) composer.classList.add("hidden");
+        editingNewsletterId = 0;
     }
 
     function renderNewsletterArchive() {
         const list = document.getElementById("newsletterArchiveList");
         if (!list) return;
-        const items = newslettersList || [];
+        const staffView = canManageNewsletters();
+        const pageTitle = document.getElementById("newsletterPageTitle");
+        const listTitle = document.getElementById("newsletterListTitle");
+        if (pageTitle) pageTitle.textContent = staffView ? "Newsletter Management" : "Alumni Newsletter";
+        if (listTitle) listTitle.innerHTML = `<i class="fa-solid fa-layer-group text-[#801235] mr-1"></i> ${staffView ? "Newsletters" : "Published Editions"}`;
+        const tabBar = document.getElementById("newsletterStatusTabs");
+        if (tabBar) tabBar.classList.toggle("hidden", !staffView);
+        document.querySelectorAll("[data-newsletter-filter]").forEach((button) => {
+            button.classList.toggle("btn-primary", button.dataset.newsletterFilter === newsletterStatusFilter);
+            button.classList.toggle("btn-secondary", button.dataset.newsletterFilter !== newsletterStatusFilter);
+        });
+        const items = (newslettersList || []).filter((item) => {
+            if (!staffView) return item.status === "Published";
+            if (newsletterStatusFilter === "All") return true;
+            if (newsletterStatusFilter === "Draft") return item.status === "Draft" || item.status === "Changes Requested";
+            return item.status === newsletterStatusFilter;
+        });
         if (!items.length) {
-            list.innerHTML = `<div class="p-6 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No newsletters published yet.</div>`;
+            const emptyText = staffView
+                ? (newsletterStatusFilter === "All" ? "No newsletters have been created yet." : `No ${escapeHtml(newsletterStatusFilter.toLowerCase())} newsletters.`)
+                : "No newsletters published yet.";
+            list.innerHTML = `<div class="p-6 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">${emptyText}</div>`;
             return;
         }
 
         list.innerHTML = items.map(n => {
-            const title = n.subject || n.title || "Newsletter";
-            const snippet = (n.body || n.snippet || "").substring(0, 160);
-            const date = n.sentAt || n.date || "";
-            const safeTitle = String(title).replace(/'/g, "\\'");
+            const title = escapeHtml(n.title || n.subject || "Newsletter");
+            const subject = escapeHtml(n.subject || "");
+            const snippet = escapeHtml((n.body || n.snippet || "").substring(0, 160));
+            const rawDate = n.sentAt || n.submittedAt || "";
+            const date = rawDate ? escapeHtml(new Date(rawDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })) : "";
+            const status = escapeHtml(n.status || "Published");
+            const statusClass = n.status === "Published" ? "status-approved" : n.status === "Changes Requested" ? "status-rejected" : "status-pending";
+            const author = staffView && n.createdByName
+                ? `<p class="text-[11px] text-slate-400 mt-1">Created by ${escapeHtml(n.createdByName)}</p>` : "";
+            const note = n.status === "Changes Requested" && n.reviewNote
+                ? `<p class="text-xs text-amber-700 mt-2"><strong>Admin note:</strong> ${escapeHtml(n.reviewNote)}</p>` : "";
+            let actions = `<button type="button" onclick="openNewsletterRead(${Number(n.id)})" class="btn btn-secondary text-xs py-1 px-3"><i class="fa-solid fa-book-open"></i> Read</button>`;
+            if (n.status === "Draft" || n.status === "Changes Requested") {
+                const ownDraft = isAdminRole() || Number(n.createdBy) === Number(currentUser?.id);
+                if (staffView && ownDraft) {
+                    actions = `
+                        <button type="button" onclick="openNewsletterComposer(${Number(n.id)})" class="btn btn-secondary text-xs py-1 px-3">Edit</button>
+                        <button type="button" onclick="submitNewsletterForApproval(${Number(n.id)})" class="btn btn-primary text-xs py-1 px-3">Submit for Approval</button>`;
+                } else if (staffView) actions = `<span class="text-xs text-slate-400">Awaiting author edits</span>`;
+            } else if (n.status === "For Approval") {
+                if (isAdminRole()) {
+                    actions = `
+                        <button type="button" onclick="openNewsletterRead(${Number(n.id)})" class="btn btn-secondary text-xs py-1 px-3">Preview</button>
+                        <button type="button" onclick="reviewNewsletter(${Number(n.id)}, 'approve')" class="btn btn-primary text-xs py-1 px-3">Approve & Publish</button>
+                        <button type="button" onclick="reviewNewsletter(${Number(n.id)}, 'return')" class="btn btn-secondary text-xs py-1 px-3">Return for Editing</button>`;
+                } else {
+                    actions = `<button type="button" onclick="openNewsletterRead(${Number(n.id)})" class="btn btn-secondary text-xs py-1 px-3">Preview</button>`;
+                }
+            } else if (n.status === "Published") {
+                actions = `
+                    <button type="button" onclick="openNewsletterRead(${Number(n.id)})" class="btn btn-secondary text-xs py-1 px-3">Read</button>
+                    ${staffView ? `<button type="button" onclick="showNewsletterDeliveryReport(${Number(n.id)})" class="btn btn-secondary text-xs py-1 px-3">Delivery Report</button>` : ""}
+                    ${isAdminRole() ? `<button type="button" onclick="archiveNewsletter(${Number(n.id)})" class="btn btn-secondary text-xs py-1 px-3">Archive</button>` : ""}`;
+            }
             return `
             <div class="p-4 rounded-xl border border-slate-200/80 bg-white hover:border-[#801235]/40 transition shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="flex-1">
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="status-badge status-approved text-[10px]">${date || "Published"}</span>
+                        <span class="status-badge ${statusClass} text-[10px]">${status}</span>
+                        <span class="text-[10px] text-slate-400">${date}</span>
                     </div>
-                    <h5 class="font-extrabold text-slate-800 text-sm hover:text-[#801235] transition cursor-pointer">${title}</h5>
+                    <h5 class="font-extrabold text-slate-800 text-sm">${title}</h5>
+                    <p class="text-xs font-semibold text-slate-600 mt-1">${subject}</p>
                     <p class="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">${snippet}</p>
+                    ${author}${note}
                 </div>
-                <div class="flex sm:flex-col gap-2 flex-shrink-0">
-                    <button onclick="showToast('Reading: ${safeTitle}', 'info')" class="btn btn-secondary text-xs py-1 px-3">
-                        <i class="fa-solid fa-book-open"></i> Read
-                    </button>
+                <div class="flex flex-wrap sm:flex-col gap-2 flex-shrink-0">
+                    ${actions}
                 </div>
             </div>`;
         }).join("");
     }
 
+    function openNewsletterRead(newsletterId) {
+        const newsletter = (newslettersList || []).find((item) => Number(item.id) === Number(newsletterId));
+        if (!newsletter) return;
+        document.getElementById("newsletterReadTitle").textContent = newsletter.title || newsletter.subject || "Newsletter";
+        document.getElementById("newsletterReadSubject").textContent = newsletter.subject || "";
+        document.getElementById("newsletterReadDate").textContent = newsletter.sentAt || newsletter.status || "Newsletter";
+        document.getElementById("newsletterReadBody").textContent = newsletter.body || "";
+        document.getElementById("newsletterReadModal").classList.remove("hidden");
+    }
+
+    function closeNewsletterRead() {
+        document.getElementById("newsletterReadModal")?.classList.add("hidden");
+    }
+
+    async function submitNewsletterForApproval(newsletterId = editingNewsletterId) {
+        if (newsletterId) {
+            try {
+                await SAA_API.request(`/api/newsletters/${newsletterId}/submit`, { method: "POST" });
+                await SAA_API.refreshAllData();
+                renderNewsletterArchive();
+                showToast("Newsletter submitted to Admin for approval.", "success");
+            } catch (err) {
+                showToast(err.message || "Unable to submit newsletter.", "error");
+            }
+            return;
+        }
+        document.querySelector("#newsletterForm button[value='submit']")?.click();
+    }
+
     async function sendNewsletter(event) {
         event.preventDefault();
+        const form = event.currentTarget;
+        const newsletterId = Number(form.dataset.newsletterId || 0);
+        const action = event.submitter?.value || "draft";
+        const title = document.getElementById("newsletterTitle").value.trim();
         const subject = document.getElementById("newsletterSubject").value.trim();
         const body = document.getElementById("newsletterBody").value.trim();
+        const sendInApp = document.getElementById("sendNewsletterInApp").checked;
         const sendSms = document.getElementById("sendNewsletterSMS") ? document.getElementById("sendNewsletterSMS").checked : true;
         const sendEmail = document.getElementById("sendNewsletterEmail") ? document.getElementById("sendNewsletterEmail").checked : true;
+        if (!sendInApp && !sendEmail && !sendSms) {
+            showToast("Select at least one notification channel.", "error");
+            return;
+        }
+        const payload = { title, subject, body, sendInApp, sendEmail, sendSms };
 
         try {
-            await SAA_API.request("/api/newsletters", {
-                method: "POST",
-                body: JSON.stringify({ subject, body })
+            const response = await SAA_API.request(newsletterId ? `/api/newsletters/${newsletterId}` : "/api/newsletters", {
+                method: newsletterId ? "PUT" : "POST",
+                body: JSON.stringify(payload)
             });
+            const savedId = Number(response.newsletter?.id || newsletterId);
+            if (action === "submit") {
+                await SAA_API.request(`/api/newsletters/${savedId}/submit`, { method: "POST" });
+            }
             await SAA_API.refreshAllData();
             renderNewsletterArchive();
             closeNewsletterComposer();
-            if (sendEmail) {
-                triggerNotification("EMAIL", currentUser && currentUser.email ? currentUser.email : "", subject, "New newsletter published: " + subject);
-            }
-            if (sendSms && currentUser && currentUser.contact) {
-                triggerNotification("SMS", currentUser.contact, subject, "New newsletter published: " + subject);
-            }
-            showToast("Newsletter \"" + subject + "\" published.", "success");
-            event.target.reset();
+            showToast(action === "submit" ? "Newsletter submitted for Admin approval." : "Newsletter draft saved.", "success");
+            form.reset();
         } catch (err) {
-            showToast(err.message || "Unable to publish newsletter.", "error");
+            showToast(err.message || "Unable to save newsletter.", "error");
         }
+    }
+
+    async function reviewNewsletter(newsletterId, action) {
+        try {
+            let result;
+            if (action === "approve") {
+                result = await SAA_API.request(`/api/newsletters/${newsletterId}/approve`, { method: "POST" });
+            } else {
+                const note = window.prompt("What should the author change before resubmitting?");
+                if (note === null) return;
+                if (!note.trim()) {
+                    showToast("Add a note explaining the requested edits.", "error");
+                    return;
+                }
+                result = await SAA_API.request(`/api/newsletters/${newsletterId}/return`, {
+                    method: "POST",
+                    body: JSON.stringify({ note })
+                });
+            }
+            await SAA_API.refreshAllData();
+            renderNewsletterArchive();
+            if (action === "approve") {
+                const delivery = result.delivery || {};
+                const warnings = delivery.error || delivery.failed ? " Some delivery channels need attention; check the delivery report." : "";
+                showToast(`Newsletter published to ${delivery.audience || 0} alumni.${warnings}`, warnings ? "warning" : "success");
+            } else {
+                showToast("Newsletter returned to its author with your note.", "success");
+            }
+        } catch (err) {
+            showToast(err.message || "Unable to review newsletter.", "error");
+        }
+    }
+
+    async function archiveNewsletter(newsletterId) {
+        if (!window.confirm("Archive this published newsletter? Alumni will no longer see it in the archive.")) return;
+        try {
+            await SAA_API.request(`/api/newsletters/${newsletterId}/archive`, { method: "POST" });
+            await SAA_API.refreshAllData();
+            renderNewsletterArchive();
+            showToast("Newsletter archived.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to archive newsletter.", "error");
+        }
+    }
+
+    function showNewsletterDeliveryReport(newsletterId) {
+        const item = (newslettersList || []).find((newsletter) => Number(newsletter.id) === Number(newsletterId));
+        if (!item) return;
+        showToast(`Audience: ${item.inAppDelivered} in-app · ${item.emailSent} emails accepted · ${item.smsSent} SMS accepted · ${item.deliveryFailed || 0} failures.`, "info");
     }
 
     /**
@@ -2182,30 +2451,120 @@
         return `I can help you look up <strong>Alumni Counts</strong>, <strong>Profile Photos</strong>, <strong>Digital ID Cards</strong>, <strong>Transcript Requests</strong>, <strong>Upcoming Events</strong>, and <strong>Job Postings</strong>.`;
     }
 
-    function openAddJobOpportunityModal() {
+    function openAddJobOpportunityModal(jobId) {
+        const form = document.querySelector("#addJobOpportunityModal form");
+        if (!form) return;
+        form.reset();
+        editingJobOpportunityId = Number(jobId) || 0;
+        document.getElementById("editingJobOpportunityId").value = String(editingJobOpportunityId || "");
+        const job = jobsList.find((item) => Number(item.id) === editingJobOpportunityId);
+        document.querySelector("#addJobOpportunityModal h3").textContent = job ? "Edit Job Opportunity" : "Post Job Opportunity";
+        if (job) {
+            document.getElementById("newJobTitle").value = job.title || "";
+            document.getElementById("newJobCompany").value = job.company || "";
+            document.getElementById("newJobLocation").value = job.location || "";
+            document.getElementById("newJobIndustry").value = job.industry || "";
+            document.getElementById("newJobEmploymentType").value = job.employment_type || "";
+            document.getElementById("newJobDescription").value = job.description || "";
+            document.getElementById("newJobQualifications").value = job.qualifications || "";
+            document.getElementById("newJobApplicationMethod").value = job.application_method || "Portal";
+            document.getElementById("newJobApplicationDetails").value = job.application_details || "";
+            document.getElementById("newJobDeadline").value = job.deadline || "";
+            document.getElementById("newJobStatus").value = job.status || "Published";
+            document.getElementById("newJobNotifyInApp").checked = Number(job.notify_in_app ?? 1) === 1;
+            document.getElementById("newJobNotifyEmail").checked = Number(job.notify_email || 0) === 1;
+        }
+        updateJobApplicationInput();
         document.getElementById("addJobOpportunityModal").classList.add("active");
+    }
+
+    function updateJobApplicationInput() {
+        const method = document.getElementById("newJobApplicationMethod")?.value || "";
+        const details = document.getElementById("newJobApplicationDetails");
+        if (!details) return;
+        details.required = method !== "" && method !== "Portal";
+        details.type = method === "Email" ? "email" : "text";
+        details.placeholder = method === "Link" ? "https://example.com/apply"
+            : method === "Email" ? "careers@example.com"
+                : method === "Contact Information" ? "Phone number or contact instructions"
+                    : "Application details";
+    }
+
+    function editJobOpportunity(jobId) {
+        openAddJobOpportunityModal(jobId);
     }
 
     function closeAddJobOpportunityModal() {
         document.getElementById("addJobOpportunityModal").classList.remove("active");
     }
 
+    async function setJobOpportunityStatus(jobId, status) {
+        const job = jobsList.find((item) => Number(item.id) === Number(jobId));
+        if (!job) return;
+        try {
+            await SAA_API.request(`/api/jobs/${jobId}`, {
+                method: "PUT",
+                body: JSON.stringify({ status })
+            });
+            await SAA_API.refreshAllData();
+            renderJobsGrid();
+            showToast(status === "Archived" ? "Job opportunity archived." : "Job opportunity republished.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to update job opportunity.", "error");
+        }
+    }
+
+    async function deleteJobOpportunity(jobId) {
+        const job = jobsList.find((item) => Number(item.id) === Number(jobId));
+        if (!job || !isAdminRole()) return;
+        if (!window.confirm(`Permanently delete "${job.title}"? This cannot be undone.`)) return;
+        try {
+            await SAA_API.request(`/api/jobs/${jobId}`, { method: "DELETE" });
+            await SAA_API.refreshAllData();
+            renderJobsGrid();
+            showToast("Job opportunity deleted.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to delete job opportunity.", "error");
+        }
+    }
+
     async function saveNewJobOpportunity(event) {
         event.preventDefault();
-        const title = document.getElementById("newJobTitle").value.trim();
-        const company = document.getElementById("newJobCompany").value.trim();
-        const location = document.getElementById("newJobLocation").value.trim();
-        const description = document.getElementById("newJobDescription").value.trim();
+        const id = Number(document.getElementById("editingJobOpportunityId").value) || 0;
+        const payload = {
+            title: document.getElementById("newJobTitle").value.trim(),
+            company: document.getElementById("newJobCompany").value.trim(),
+            location: document.getElementById("newJobLocation").value.trim(),
+            industry: document.getElementById("newJobIndustry").value.trim(),
+            employment_type: document.getElementById("newJobEmploymentType").value,
+            description: document.getElementById("newJobDescription").value.trim(),
+            qualifications: document.getElementById("newJobQualifications").value.trim(),
+            application_method: document.getElementById("newJobApplicationMethod").value,
+            application_details: document.getElementById("newJobApplicationDetails").value.trim(),
+            deadline: document.getElementById("newJobDeadline").value,
+            status: document.getElementById("newJobStatus").value,
+            notify_in_app: document.getElementById("newJobNotifyInApp").checked,
+            notify_email: document.getElementById("newJobNotifyEmail").checked
+        };
         try {
-            await SAA_API.request("/api/jobs", {
-                method: "POST",
-                body: JSON.stringify({ title, company, location, description, status: "Published" })
+            const saved = await SAA_API.request(id ? `/api/jobs/${id}` : "/api/jobs", {
+                method: id ? "PUT" : "POST",
+                body: JSON.stringify(payload)
             });
             await SAA_API.refreshAllData();
             renderJobsGrid();
             closeAddJobOpportunityModal();
             event.target.reset();
-            showToast("Job opportunity published.", "success");
+            editingJobOpportunityId = 0;
+            const deliveryFailed = (saved.notificationResult || []).some((item) =>
+                item.status === "not_configured" || item.status === "failed" || item.email_status === "not_configured" || item.email_status === "failed" || item.email_status === "skipped"
+            );
+            const notificationMessage = saved.notificationError
+                ? ` The job was saved, but notifications failed: ${saved.notificationError}`
+                : saved.notificationRequested && deliveryFailed
+                    ? " The job was saved, but one or more notifications could not be delivered."
+                : "";
+            showToast((id ? "Job opportunity updated." : "Job opportunity saved.") + notificationMessage, notificationMessage ? "warning" : "success");
         } catch (err) {
             showToast(err.message || "Unable to publish job opportunity.", "error");
         }

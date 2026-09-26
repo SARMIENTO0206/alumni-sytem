@@ -1,7 +1,9 @@
 import { Router } from 'express';
-import { db } from '../db.js';
-import { isAdmin, isAlumni, isStaff, ownsLinkedRow } from '../auth.js';
+import { db, writeAudit } from '../db.js';
+import { isAdmin, isAlumni, isStaff, ownsLinkedRow, requireRole } from '../auth.js';
 import { dispatchNotification, mapNotification, notificationTarget } from '../notify.js';
+import { sendMail } from '../mail.js';
+import { sendSms } from '../sms.js';
 
 const router = Router();
 
@@ -67,17 +69,123 @@ router.get('/unread-count', (req, res) => {
 
 router.get('/', (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 80, 200);
-  let rows;
-  if (isAlumni(req.user)) {
-    rows = db.prepare(
-      'SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT ?'
-    ).all(req.user.id, limit);
-  } else {
-    rows = db.prepare('SELECT * FROM notifications ORDER BY id DESC LIMIT ?').all(limit);
-  }
+  const rows = db.prepare(
+    'SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT ?'
+  ).all(req.user.id, limit);
   res.json({
     notifications: rows.map(mapNotification),
     unreadCount: unreadCountFor(req.user)
+  });
+});
+
+router.get('/communications/recipients', requireRole('admin', 'staff'), (req, res) => {
+  const recipients = db.prepare(`
+    SELECT id, name, email, contact, batch, education_level
+    FROM users
+    WHERE role = 'alumni' AND (status IS NULL OR status = 'Active')
+    ORDER BY name COLLATE NOCASE
+  `).all();
+  res.json({ recipients });
+});
+
+router.get('/communications/history', requireRole('admin', 'staff'), (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
+  const rows = db.prepare(`
+    SELECT id, user_id AS userId, recipient, subject AS title, status,
+      'EMAIL' AS channel, created_at AS createdAt, reason AS detail
+    FROM mail_logs
+    UNION ALL
+    SELECT id, user_id AS userId, recipient, message AS title, status,
+      'SMS' AS channel, created_at AS createdAt, reason AS detail
+    FROM sms_logs
+    ORDER BY createdAt DESC
+    LIMIT ?
+  `).all(limit);
+  res.json({ messages: rows });
+});
+
+router.post('/communications/send', requireRole('admin', 'staff'), async (req, res) => {
+  const channel = String(req.body?.channel || '').toUpperCase();
+  const recipientMode = String(req.body?.recipientMode || '');
+  const subject = String(req.body?.subject || '').trim();
+  const message = String(req.body?.message || '').trim();
+  let attachment;
+  if (!['SMS', 'EMAIL'].includes(channel)) return res.status(400).json({ error: 'Choose SMS or Email.' });
+  if (!['individual', 'all', 'selected'].includes(recipientMode)) {
+    return res.status(400).json({ error: 'Choose an individual or alumni audience.' });
+  }
+  if (channel === 'SMS' && req.body?.attachment) {
+    return res.status(400).json({ error: 'Attachments are only supported for Email.' });
+  }
+  if (!message) return res.status(400).json({ error: 'Message is required.' });
+  if (channel === 'SMS' && message.length > 160) return res.status(400).json({ error: 'SMS messages must be 160 characters or fewer.' });
+  if (channel === 'EMAIL' && (!subject || subject.length > 200)) {
+    return res.status(400).json({ error: 'A subject of 200 characters or fewer is required.' });
+  }
+  if (channel === 'EMAIL' && req.body?.attachment) {
+    const input = req.body.attachment;
+    if (input.contentType !== 'application/pdf' || typeof input.filename !== 'string' ||
+        !input.filename.toLowerCase().endsWith('.pdf') ||
+        typeof input.contentBase64 !== 'string' || input.contentBase64.length > 1_400_000 ||
+        !/^[A-Za-z0-9+/]*={0,2}$/.test(input.contentBase64)) {
+      return res.status(400).json({ error: 'Attach a valid PDF file no larger than 1 MB.' });
+    }
+    const content = Buffer.from(input.contentBase64, 'base64');
+    if (!content.length || content.length > 1_048_576 || content.subarray(0, 5).toString('ascii') !== '%PDF-') {
+      return res.status(400).json({ error: 'Attach a valid PDF file no larger than 1 MB.' });
+    }
+    attachment = {
+      filename: input.filename.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 150) || 'attachment.pdf',
+      content
+    };
+  }
+  const ids = Array.isArray(req.body?.userIds)
+    ? [...new Set(req.body.userIds.map(Number).filter((id) => Number.isInteger(id) && id > 0))]
+    : [];
+  if (recipientMode !== 'all' && !ids.length) {
+    return res.status(400).json({ error: 'Select at least one Alumni recipient.' });
+  }
+  if (recipientMode === 'individual' && ids.length !== 1) {
+    return res.status(400).json({ error: 'Select exactly one Alumni for an individual message.' });
+  }
+
+  const recipients = recipientMode === 'all'
+    ? db.prepare("SELECT id, name, email, contact FROM users WHERE role = 'alumni' AND (status IS NULL OR status = 'Active')").all()
+    : db.prepare(`SELECT id, name, email, contact FROM users
+        WHERE role = 'alumni' AND (status IS NULL OR status = 'Active')
+        AND id IN (${ids.map(() => '?').join(',')})`).all(...ids);
+  if (recipients.length !== ids.length && recipientMode !== 'all') {
+    return res.status(400).json({ error: 'One or more selected Alumni accounts are no longer active.' });
+  }
+  if (!recipients.length) return res.status(400).json({ error: 'No active Alumni recipients were found.' });
+  if (recipients.length > 500) return res.status(400).json({ error: 'Send to no more than 500 Alumni at a time.' });
+  if (channel === 'SMS' && recipients.some((user) => !String(user.contact || '').trim())) {
+    return res.status(400).json({ error: 'Every selected Alumni must have a mobile number for SMS delivery.' });
+  }
+  if (channel === 'EMAIL' && recipients.some((user) => !String(user.email || '').trim())) {
+    return res.status(400).json({ error: 'Every selected Alumni must have an email address for Email delivery.' });
+  }
+
+  const results = [];
+  for (const recipient of recipients) {
+    const result = channel === 'EMAIL'
+      ? await sendMail({ to: recipient.email, subject, text: message, userId: recipient.id, attachments: attachment ? [attachment] : undefined })
+      : await sendSms({ to: recipient.contact, message, userId: recipient.id });
+    results.push({
+      userId: recipient.id,
+      recipient: recipient.name,
+      destination: channel === 'EMAIL' ? recipient.email : recipient.contact,
+      status: result.status,
+      detail: result.reason || ''
+    });
+  }
+  writeAudit(req.user, 'send', channel.toLowerCase(), '', `${results.length} recipient(s): ${subject || 'Manual message'}`);
+  res.status(201).json({
+    channel,
+    attempted: results.length,
+    accepted: results.filter((result) => result.status === 'accepted' || result.status === 'sent').length,
+    failed: results.filter((result) => ['failed', 'not_configured'].includes(result.status)).length,
+    results
   });
 });
 

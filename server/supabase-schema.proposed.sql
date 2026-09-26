@@ -40,6 +40,11 @@ CREATE TABLE IF NOT EXISTS public.alumni (
   tracking_review_note TEXT DEFAULT '',
   tracking_reviewed_by TEXT DEFAULT '',
   tracking_reviewed_at TEXT DEFAULT '',
+  verification_status TEXT DEFAULT 'Verified',
+  verified_by TEXT DEFAULT '',
+  verified_at TEXT DEFAULT '',
+  archived_at TEXT DEFAULT '',
+  archived_user_status TEXT DEFAULT '',
   time_to_first TEXT DEFAULT '',
   location      TEXT DEFAULT 'Local',
   student_id    TEXT DEFAULT '',
@@ -65,6 +70,11 @@ ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_review_status TEXT D
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_review_note TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_reviewed_by TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_reviewed_at TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'Verified';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS verified_by TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS verified_at TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS archived_at TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS archived_user_status TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS education_school TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS education_program TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS education_status TEXT DEFAULT '';
@@ -197,13 +207,42 @@ ALTER TABLE public.donations ADD COLUMN IF NOT EXISTS user_id BIGINT DEFAULT 0;
 ALTER TABLE public.donations ADD COLUMN IF NOT EXISTS alumni_id BIGINT DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.newsletters (
-  id         BIGSERIAL PRIMARY KEY,
-  subject    TEXT DEFAULT '',
-  body       TEXT DEFAULT '',
-  status     TEXT DEFAULT 'Draft',
-  sent_at    TEXT DEFAULT '',
-  created_at TIMESTAMPTZ DEFAULT now()
+  id                BIGSERIAL PRIMARY KEY,
+  title             TEXT DEFAULT '',
+  subject           TEXT DEFAULT '',
+  body              TEXT DEFAULT '',
+  status            TEXT DEFAULT 'Published',
+  sent_at           TEXT DEFAULT '',
+  created_by        BIGINT DEFAULT 0,
+  created_by_name   TEXT DEFAULT '',
+  created_by_role   TEXT DEFAULT '',
+  submitted_at      TEXT DEFAULT '',
+  reviewed_by       TEXT DEFAULT '',
+  review_note       TEXT DEFAULT '',
+  send_in_app       INTEGER DEFAULT 1,
+  send_email        INTEGER DEFAULT 1,
+  send_sms          INTEGER DEFAULT 0,
+  in_app_delivered  INTEGER DEFAULT 0,
+  email_sent        INTEGER DEFAULT 0,
+  sms_sent          INTEGER DEFAULT 0,
+  delivery_failed   INTEGER DEFAULT 0,
+  created_at        TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS title TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS created_by BIGINT DEFAULT 0;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS created_by_name TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS created_by_role TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS submitted_at TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS reviewed_by TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS review_note TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS send_in_app INTEGER DEFAULT 1;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS send_email INTEGER DEFAULT 1;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS send_sms INTEGER DEFAULT 0;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS in_app_delivered INTEGER DEFAULT 0;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS email_sent INTEGER DEFAULT 0;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS sms_sent INTEGER DEFAULT 0;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS delivery_failed INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.feedback (
   id         BIGSERIAL PRIMARY KEY,
@@ -226,8 +265,31 @@ CREATE TABLE IF NOT EXISTS public.job_opportunities (
   location    TEXT DEFAULT '',
   description TEXT DEFAULT '',
   status      TEXT DEFAULT 'Published',
-  created_at  TIMESTAMPTZ DEFAULT now()
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  industry TEXT DEFAULT '',
+  employment_type TEXT DEFAULT '',
+  qualifications TEXT DEFAULT '',
+  application_method TEXT DEFAULT 'Portal',
+  application_details TEXT DEFAULT '',
+  deadline TEXT DEFAULT '',
+  created_by BIGINT DEFAULT 0,
+  created_by_name TEXT DEFAULT '',
+  created_by_role TEXT DEFAULT '',
+  notify_in_app INTEGER DEFAULT 1,
+  notify_email INTEGER DEFAULT 0
 );
+
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS industry TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS employment_type TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS qualifications TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS application_method TEXT DEFAULT 'Portal';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS application_details TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS deadline TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS created_by BIGINT DEFAULT 0;
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS created_by_name TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS created_by_role TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS notify_in_app INTEGER DEFAULT 1;
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS notify_email INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.job_applications (
   id            BIGSERIAL PRIMARY KEY,
