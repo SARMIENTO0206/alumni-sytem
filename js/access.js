@@ -108,26 +108,154 @@ function applyRoleChrome() {
 
     const alumniDash = document.getElementById("alumniDashboardPanel");
     if (alumniDash) alumniDash.classList.toggle("hidden", !isAlumniRole());
+    const adminDash = document.getElementById("adminDashboardPanel");
+    if (adminDash) adminDash.classList.toggle("hidden", !isAdminRole());
+    const registrarDash = document.getElementById("registrarDashboardPanel");
+    if (registrarDash) registrarDash.classList.toggle("hidden", !isStaffRole());
+    const quickAccess = document.getElementById("alumniQuickAccessPanel");
+    if (quickAccess) quickAccess.classList.toggle("hidden", !isAlumniRole());
+
+    const growthCard = document.getElementById("dashboardGrowthCard");
+    const activityCard = document.getElementById("dashboardActivityCard");
+    if (growthCard) growthCard.classList.toggle("hidden", !isAdminRole());
+    if (activityCard) activityCard.classList.toggle("lg:col-span-2", !isAdminRole());
+
+    const welcomeBadge = document.getElementById("dashboardWelcomeBadge");
+    const welcomeSubtitle = document.getElementById("dashboardWelcomeSubtitle");
+    if (welcomeBadge) {
+        welcomeBadge.textContent = isAlumniRole() ? "SAA Alumni Network" : isStaffRole() ? "Registrar Workspace" : "System Administration";
+    }
+    if (welcomeSubtitle) {
+        welcomeSubtitle.textContent = isAlumniRole()
+            ? "Stay connected. Be involved. Make a difference."
+            : isStaffRole()
+                ? "Manage alumni records and document services."
+                : "Monitor alumni records, requests, engagement, and graduate tracking.";
+    }
+
     if (typeof applyTrackingRoleView === "function") applyTrackingRoleView();
+}
+
+function documentRequestRows() {
+    return [].concat(transcriptRequests || [], reprintRequests || []);
+}
+
+function renderDashboardStats() {
+    const grid = document.getElementById("dashboardStatsGrid");
+    if (!grid) return;
+    const rows = documentRequestRows();
+    const pendingCount = rows.filter((r) => ["Pending", "For Correction"].includes(r.status)).length;
+    const processingCount = rows.filter((r) => ["Approved", "Processing", "Ready for Release"].includes(r.status)).length;
+    const completedCount = rows.filter((r) => ["Released", "Completed"].includes(r.status)).length;
+    const recentBatch = String(new Date().getFullYear());
+    const empCount = (alumniList || []).filter((a) => ["Employed", "Self-employed", "Freelance"].includes(a.status)).length;
+    const recordsToVerify = (alumniList || []).filter((a) => (a.trackingReviewStatus || "Pending") === "Pending").length;
+    const upcomingEvents = (eventsList || []).length;
+    const openJobs = (jobsList || []).filter((j) => j.status === "Published").length;
+    const myRequests = isAlumniRole() ? rows.length : 0;
+    const profileFields = [currentUser?.name, currentUser?.email, currentUser?.contact, currentUser?.batch, currentUser?.program];
+    const profileCompletion = Math.round((profileFields.filter(Boolean).length / profileFields.length) * 100);
+
+    let cards = [];
+    if (isAdminRole()) {
+        cards = [
+            { icon: "fa-solid fa-users", color: "bg-pink-50 text-brand-magenta", value: (alumniList || []).length, label: "Total Alumni", target: "alumni" },
+            { icon: "fa-solid fa-file-lines", color: "bg-amber-50 text-amber-600", value: pendingCount, label: "Pending Requests", target: "transcript" },
+            { icon: "fa-solid fa-briefcase", color: "bg-emerald-50 text-emerald-600", value: empCount, label: "Employed Alumni", target: "tracking" },
+            { icon: "fa-regular fa-calendar-check", color: "bg-purple-50 text-purple-600", value: upcomingEvents, label: "Upcoming Events", target: "events" }
+        ];
+    } else if (isStaffRole()) {
+        cards = [
+            { icon: "fa-solid fa-file-lines", color: "bg-amber-50 text-amber-600", value: pendingCount, label: "Pending Requests", target: "transcript" },
+            { icon: "fa-solid fa-gears", color: "bg-purple-50 text-purple-600", value: processingCount, label: "For Processing", target: "transcript" },
+            { icon: "fa-solid fa-circle-check", color: "bg-emerald-50 text-emerald-600", value: completedCount, label: "Completed Requests", target: "transcript" },
+            { icon: "fa-solid fa-user-graduate", color: "bg-pink-50 text-brand-magenta", value: recordsToVerify, label: "Records to Verify", target: "tracking" }
+        ];
+    } else {
+        cards = [
+            { icon: "fa-solid fa-file-lines", color: "bg-pink-50 text-brand-magenta", value: myRequests, label: "My Requests", target: "transcript" },
+            { icon: "fa-regular fa-calendar-check", color: "bg-purple-50 text-purple-600", value: upcomingEvents, label: "Upcoming Events", target: "events" },
+            { icon: "fa-solid fa-briefcase", color: "bg-emerald-50 text-emerald-600", value: openJobs, label: "Job Opportunities", target: "jobs" },
+            { icon: "fa-solid fa-user-check", color: "bg-amber-50 text-amber-600", value: `${profileCompletion}%`, label: "Profile Completion", target: "profile" }
+        ];
+    }
+
+    grid.innerHTML = cards.map((c) => `
+        <button type="button" class="stat-card text-left w-full" onclick="openDashboardModule('${c.target}')" title="Open ${escapeHtml(c.label)}">
+            <div class="stat-icon-wrapper ${c.color}">
+                <i class="${c.icon}"></i>
+            </div>
+            <div>
+                <p class="text-2xl font-extrabold text-slate-800">${escapeHtml(String(c.value))}</p>
+                <p class="text-xs font-semibold text-slate-400">${escapeHtml(c.label)}</p>
+            </div>
+        </button>
+    `).join("");
+}
+
+function renderDashboardAnnouncementsWidget(elementId) {
+    const box = document.getElementById(elementId);
+    if (!box) return;
+    const visible = (announcementsList || []).filter((a) => isAnnouncementVisibleFor(a, currentRole()));
+    box.innerHTML = visible.length
+        ? visible.slice(0, 4).map((a) => `<p class="text-xs py-1.5 border-b border-slate-100 last:border-0"><span class="font-bold text-slate-700">${escapeHtml(a.title)}</span><br><span class="text-slate-400">${escapeHtml(announcementAudienceLabel(a))}</span></p>`).join("")
+        : `<p class="text-xs text-slate-400">No announcements yet.</p>`;
+}
+
+function renderAdminAttentionWidget() {
+    const box = document.getElementById("adminDashAttention");
+    if (!box) return;
+    const rows = documentRequestRows();
+    const items = [];
+    const pending = rows.filter((r) => ["Pending", "For Correction"].includes(r.status)).length;
+    if (pending) items.push(`${pending} document request${pending === 1 ? "" : "s"} awaiting review`);
+    const draftCount = (announcementsList || []).filter((a) => a.status === "Draft").length;
+    if (draftCount) items.push(`${draftCount} announcement draft${draftCount === 1 ? "" : "s"} not yet published`);
+    const recordsToVerify = (alumniList || []).filter((a) => (a.trackingReviewStatus || "Pending") === "Pending").length;
+    if (recordsToVerify) items.push(`${recordsToVerify} graduate record${recordsToVerify === 1 ? "" : "s"} pending verification`);
+    box.innerHTML = items.length
+        ? items.map((text) => `<p class="text-xs py-1.5 border-b border-slate-100 last:border-0 flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i><span>${escapeHtml(text)}</span></p>`).join("")
+        : `<p class="text-xs text-slate-400">Nothing needs attention right now.</p>`;
+}
+
+function renderRegistrarQueueWidget() {
+    const body = document.getElementById("registrarDashQueue");
+    if (!body) return;
+    const rows = documentRequestRows().filter((r) => !["Released", "Completed", "Rejected"].includes(r.status));
+    if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">No pending requests.</td></tr>`;
+        return;
+    }
+    body.innerHTML = rows.slice(0, 6).map((r) => `
+        <tr class="border-t border-slate-100">
+            <td class="py-2 font-bold text-slate-700">${escapeHtml(r.name || "—")}</td>
+            <td class="py-2 text-slate-500">${escapeHtml(r.type || r.purpose || "—")}</td>
+            <td class="py-2 text-slate-500">${escapeHtml(r.date || "—")}</td>
+            <td class="py-2"><span class="status-badge status-pending">${escapeHtml(r.status || "Pending")}</span></td>
+        </tr>
+    `).join("");
 }
 
 function renderRoleDashboard() {
     if (typeof applyRoleChrome === "function") applyRoleChrome();
+    renderDashboardStats();
+    if (isAdminRole()) {
+        renderDashboardAnnouncementsWidget("adminDashAnnouncements");
+        renderAdminAttentionWidget();
+    }
+    if (isStaffRole()) {
+        renderDashboardAnnouncementsWidget("registrarDashAnnouncements");
+        renderRegistrarQueueWidget();
+    }
     if (!isAlumniRole()) return;
     const reqBox = document.getElementById("alumniDashRequests");
     if (reqBox) {
-        const rows = [].concat(transcriptRequests || [], reprintRequests || []);
+        const rows = documentRequestRows();
         reqBox.innerHTML = rows.length
             ? rows.slice(0, 5).map((r) => `<p class="text-xs py-1 border-b border-slate-100">${escapeHtml(r.type || r.purpose || "Request")} — <strong>${escapeHtml(r.status)}</strong></p>`).join("")
             : `<p class="text-xs text-slate-400">You have no document requests yet.</p>`;
     }
-    const ann = document.getElementById("alumniDashAnnouncements");
-    if (ann) {
-        const published = (announcementsList || []).filter((a) => !a.status || a.status === "Published");
-        ann.innerHTML = published.length
-            ? published.slice(0, 4).map((a) => `<p class="text-xs py-1 border-b border-slate-100">${escapeHtml(a.title)}</p>`).join("")
-            : `<p class="text-xs text-slate-400">No announcements yet.</p>`;
-    }
+    renderDashboardAnnouncementsWidget("alumniDashAnnouncements");
     const jobs = document.getElementById("alumniDashJobs");
     if (jobs) {
         const open = (jobsList || []).filter((j) => j.status === "Published");
@@ -409,21 +537,64 @@ async function deleteUserAccount(id, username) {
     }
 }
 
+function announcementAudienceLabel(a) {
+    const audience = a.audience || "alumni";
+    if (audience === "all") return "All Users";
+    if (audience === "staff") return "Admin & Registrar";
+    if (audience === "batch") return `Batch ${a.batch || "—"}`;
+    return "Alumni Only";
+}
+
+function isAnnouncementVisibleFor(a, role) {
+    if ((a.status || "Published") !== "Published") return false;
+    const today = new Date().toISOString().slice(0, 10);
+    if (a.expires_at && a.expires_at < today) return false;
+    const audience = a.audience || "alumni";
+    if (role === "admin") return true;
+    if (audience === "all") return true;
+    if (role === "staff") return audience === "staff";
+    if (audience === "alumni") return true;
+    if (audience === "batch") return String((currentUser && currentUser.batch) || "") === String(a.batch || "");
+    return false;
+}
+
+function populateAnnouncementBatchOptions() {
+    const select = document.getElementById("announceBatch");
+    if (!select) return;
+    const batches = Array.from(new Set((alumniList || []).map((a) => String(a.batch || "").trim()).filter(Boolean)))
+        .sort((a, b) => b.localeCompare(a));
+    select.innerHTML = batches.length
+        ? batches.map((b) => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join("")
+        : `<option value="">No batches available</option>`;
+}
+
+function toggleAnnouncementBatchField() {
+    const audience = document.getElementById("announceAudience")?.value;
+    const field = document.getElementById("announceBatchField");
+    if (field) field.classList.toggle("hidden", audience !== "batch");
+    if (audience === "batch") populateAnnouncementBatchOptions();
+}
+
 function renderAnnouncementsView() {
     const list = document.getElementById("announcementsPageList");
     const form = document.getElementById("announcementCompose");
-    if (form) form.classList.toggle("hidden", !(isAdminRole() || isStaffRole()));
+    const canManage = isAdminRole() || isStaffRole();
+    if (form) form.classList.toggle("hidden", !canManage);
+    if (canManage) populateAnnouncementBatchOptions();
     if (!list) return;
-    if (!announcementsList.length) {
+    const visible = canManage
+        ? announcementsList
+        : announcementsList.filter((a) => isAnnouncementVisibleFor(a, currentRole()));
+    if (!visible.length) {
         list.innerHTML = `<p class="text-sm text-slate-400 py-8 text-center">No announcements are available.</p>`;
         return;
     }
-    list.innerHTML = announcementsList.map((a) => `
+    list.innerHTML = visible.map((a) => `
         <article class="app-card p-5">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h4 class="font-extrabold text-slate-800">${escapeHtml(a.title)}</h4>
-                    <p class="text-xs text-slate-400 mt-1">${escapeHtml(a.status || "Published")}${a.status === "Scheduled" && a.publish_at ? ` • Publishes ${escapeHtml(a.publish_at)}` : ""}${a.expires_at ? ` • Expires ${escapeHtml(a.expires_at)}` : ""}</p>
+                    <p class="text-xs text-slate-400 mt-1">${escapeHtml(a.status || "Published")} • ${escapeHtml(announcementAudienceLabel(a))}${a.status === "Scheduled" && a.publish_at ? ` • Publishes ${escapeHtml(a.publish_at)}` : ""}${a.expires_at ? ` • Expires ${escapeHtml(a.expires_at)}` : ""}</p>
                 </div>
             </div>
             <p class="text-sm text-slate-600 mt-3 whitespace-pre-wrap">${escapeHtml(a.body || "")}</p>
@@ -447,6 +618,8 @@ async function publishAnnouncement(event) {
     const timing = document.querySelector('input[name="announcementTiming"]:checked')?.value || "now";
     const localPublishAt = document.getElementById("announcePublishAt").value;
     const expiresAt = document.getElementById("announceExpiresAt").value;
+    const audience = document.getElementById("announceAudience")?.value || "alumni";
+    const batch = document.getElementById("announceBatch")?.value || "";
     const status = action === "draft" ? "Draft" : (timing === "schedule" ? "Scheduled" : "Published");
     if (!title || !body) {
         showToast("Title and message are required.", "error");
@@ -456,6 +629,10 @@ async function publishAnnouncement(event) {
         showToast("Choose a publish date and time.", "error");
         return;
     }
+    if (audience === "batch" && !batch) {
+        showToast("Choose a batch year to target.", "error");
+        return;
+    }
     try {
         const result = await SAA_API.request("/api/announcements", {
             method: "POST",
@@ -463,6 +640,8 @@ async function publishAnnouncement(event) {
                 title,
                 body,
                 status,
+                audience,
+                batch: audience === "batch" ? batch : "",
                 publishAt: status === "Scheduled" ? new Date(localPublishAt).toISOString() : "",
                 expiresAt,
                 sendInApp: document.getElementById("announceInApp").checked,
@@ -472,6 +651,7 @@ async function publishAnnouncement(event) {
         });
         event.target.reset();
         toggleAnnouncementSchedule();
+        toggleAnnouncementBatchField();
         const outcome = result.notification;
         if (status === "Draft") showToast("Announcement saved as a draft.", "success");
         else if (status === "Scheduled") showToast("Announcement scheduled.", "success");

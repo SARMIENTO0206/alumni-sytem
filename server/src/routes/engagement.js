@@ -1299,6 +1299,15 @@ function announcementDateError(value, field) {
 
 async function notifyAnnouncement(announcement) {
   const shortMessage = `${announcement.title} has been published by St. Agnes Academy. View Announcements in the Alumni Portal.`;
+  if (announcement.audience === 'staff') {
+    const count = await dispatchStaffAudience(
+      `New announcement: ${announcement.title}`,
+      shortMessage,
+      'announcement',
+      announcement.id
+    );
+    return { attempted: count };
+  }
   const results = await dispatchAlumniAudience(
     `New announcement: ${announcement.title}`,
     shortMessage,
@@ -1309,6 +1318,7 @@ async function notifyAnnouncement(announcement) {
       sendEmail: Boolean(announcement.send_email),
       sendSms: Boolean(announcement.send_sms),
       forceChannels: true,
+      batch: announcement.audience === 'batch' ? announcement.batch : '',
       emailSubject: announcement.title,
       emailMessage: `${announcement.body || ''}\n\nView Announcements in the Alumni Portal.`,
       smsMessage: `St. Agnes Alumni: ${announcement.title} is now available. Log in to the Alumni Portal for details.`
@@ -1361,6 +1371,8 @@ router.post('/announcements', requireRole('admin', 'staff'), async (req, res) =>
   const title = String(req.body?.title || '').trim();
   const body = String(req.body?.body || '').trim();
   const status = String(req.body?.status || 'Draft');
+  const audience = String(req.body?.audience || 'all');
+  const batch = String(req.body?.batch || '').trim();
   const publishDateError = announcementDateError(req.body?.publishAt, 'Publish date');
   const expirationDateError = announcementDateError(req.body?.expiresAt, 'Expiration date');
   if (!title) return res.status(400).json({ error: 'Announcement title is required.' });
@@ -1369,6 +1381,8 @@ router.post('/announcements', requireRole('admin', 'staff'), async (req, res) =>
   if (publishDateError) return res.status(400).json({ error: publishDateError });
   if (expirationDateError) return res.status(400).json({ error: expirationDateError });
   if (!['Draft', 'Scheduled', 'Published'].includes(status)) return res.status(400).json({ error: 'Choose Draft, Scheduled, or Published.' });
+  if (!['all', 'alumni', 'staff', 'batch'].includes(audience)) return res.status(400).json({ error: 'Choose a valid target audience.' });
+  if (audience === 'batch' && !batch) return res.status(400).json({ error: 'Choose a batch year to target.' });
   const publishDate = req.body?.publishAt ? new Date(req.body.publishAt).toISOString() : '';
   const expirationDate = req.body?.expiresAt ? new Date(req.body.expiresAt).toISOString().slice(0, 10) : '';
   if (status === 'Scheduled' && (!publishDate || new Date(publishDate) <= new Date())) {
@@ -1388,10 +1402,10 @@ router.post('/announcements', requireRole('admin', 'staff'), async (req, res) =>
   }
   const info = db.prepare(`
     INSERT INTO announcements
-      (title, body, status, audience, publish_at, expires_at, send_in_app, send_email, send_sms, created_by)
-    VALUES (?, ?, ?, 'alumni', ?, ?, ?, ?, ?, ?)
+      (title, body, status, audience, batch, publish_at, expires_at, send_in_app, send_email, send_sms, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    title, body, status, publishDate, expirationDate,
+    title, body, status, audience, audience === 'batch' ? batch : '', publishDate, expirationDate,
     sendInApp ? 1 : 0, sendEmail ? 1 : 0, sendSms ? 1 : 0, req.user.id
   );
   let announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(info.lastInsertRowid);

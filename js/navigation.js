@@ -345,7 +345,8 @@
             tracking: { admin: "tracking", alumni: "tracking", staff: "tracking" },
             events: { admin: "events", alumni: "events", staff: "events" },
             transcript: { admin: "transcript", alumni: "transcript", staff: "transcript" },
-            jobs: { admin: "placement", alumni: "job-opportunities", staff: "placement" }
+            jobs: { admin: "placement", alumni: "job-opportunities", staff: "placement" },
+            profile: { admin: "profile", alumni: "profile", staff: "profile" }
         };
         const viewId = (map[kind] && map[kind][role]) || "dashboard";
         switchView(viewId);
@@ -450,20 +451,8 @@
 
     /* Counters */
     function updateStatCounters() {
-        const totalEl = document.getElementById("stat-total");
-        if (totalEl) totalEl.textContent = String(alumniList.length);
-
-        const recentBatch = String(new Date().getFullYear());
-        const recentEl = document.getElementById("stat-graduates");
-        if (recentEl) recentEl.textContent = String(alumniList.filter(a => String(a.batch) === recentBatch).length);
-
-        const empCount = alumniList.filter(a => ["Employed", "Self-employed", "Freelance"].includes(a.status)).length;
-        const empEl = document.getElementById("stat-employed");
-        if (empEl) empEl.textContent = String(empCount);
-
-        const eventsEl = document.getElementById("stat-events");
-        if (eventsEl) eventsEl.textContent = String(eventsList.length);
-
+        if (typeof renderRoleDashboard === "function") renderRoleDashboard();
+        else if (typeof renderDashboardStats === "function") renderDashboardStats();
         if (typeof renderDashboardActivity === "function") renderDashboardActivity();
     }
 

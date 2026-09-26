@@ -706,13 +706,13 @@
                     <!-- Welcome Card -->
                     <div class="gradient-card rounded-2xl p-6 sm:p-8 shadow-md flex flex-col md:flex-row items-center justify-between">
                         <div class="relative z-10 md:w-2/3">
-                            <span class="inline-block px-3 py-1 rounded-full bg-white/15 text-pink-200 text-xs font-bold tracking-wider uppercase mb-3 backdrop-blur-sm border border-white/10">
+                            <span id="dashboardWelcomeBadge" class="inline-block px-3 py-1 rounded-full bg-white/15 text-pink-200 text-xs font-bold tracking-wider uppercase mb-3 backdrop-blur-sm border border-white/10">
                                 SAA Alumni Network
                             </span>
                             <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                                 Welcome back, <span id="welcomeName" class="text-pink-200">Admin</span>!
                             </h2>
-                            <p class="text-pink-100/90 text-sm mt-2 max-w-xl">
+                            <p id="dashboardWelcomeSubtitle" class="text-pink-100/90 text-sm mt-2 max-w-xl">
                                 St. Agnes Academy of Caloocan continues to celebrate the accomplishments and milestones of our graduates worldwide.
                             </p>
                             <div class="mt-4 flex flex-wrap gap-2.5">
@@ -734,49 +734,57 @@
                         </div>
                     </div>
 
-                    <!-- METRICS & STATISTICS GRID -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <button type="button" class="stat-card text-left w-full" onclick="openDashboardModule('alumni')" title="Open Alumni Database">
-                            <div class="stat-icon-wrapper bg-pink-50 text-brand-magenta">
-                                <i class="fa-solid fa-users"></i>
-                            </div>
-                            <div>
-                                <p class="text-2xl font-extrabold text-slate-800" id="stat-total">0</p>
-                                <p class="text-xs font-semibold text-slate-400">Total Registered Alumni</p>
-                            </div>
-                        </button>
+                    <!-- METRICS & STATISTICS GRID (role-specific cards rendered by renderDashboardStats) -->
+                    <div id="dashboardStatsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
 
-                        <button type="button" class="stat-card text-left w-full" onclick="openDashboardModule('tracking')" title="Open Graduate Tracking">
-                            <div class="stat-icon-wrapper bg-purple-50 text-purple-600">
-                                <i class="fa-solid fa-user-graduate"></i>
+                    <!-- ADMIN: Announcements + Requires Attention -->
+                    <div id="adminDashboardPanel" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="app-card p-6 lg:col-span-2">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-extrabold text-slate-800 text-base">Announcements</h3>
+                                <button type="button" onclick="switchView('announcements')" class="text-xs text-brand-magenta font-bold hover:underline">View All</button>
                             </div>
-                            <div>
-                                <p class="text-2xl font-extrabold text-slate-800" id="stat-graduates">0</p>
-                                <p class="text-xs font-semibold text-slate-400">Recent Batch (2024)</p>
-                            </div>
-                        </button>
-
-                        <button type="button" class="stat-card text-left w-full" onclick="openDashboardModule('tracking')" title="Open Graduate Tracking">
-                            <div class="stat-icon-wrapper bg-emerald-50 text-emerald-600">
-                                <i class="fa-solid fa-briefcase"></i>
-                            </div>
-                            <div>
-                                <p class="text-2xl font-extrabold text-slate-800" id="stat-employed">0</p>
-                                <p class="text-xs font-semibold text-slate-400">Employed / Self-employed</p>
-                            </div>
-                        </button>
-
-                        <button type="button" class="stat-card text-left w-full" onclick="openDashboardModule('events')" title="Open Alumni Events">
-                            <div class="stat-icon-wrapper bg-amber-50 text-amber-600">
-                                <i class="fa-regular fa-calendar-check"></i>
-                            </div>
-                            <div>
-                                <p class="text-2xl font-extrabold text-slate-800" id="stat-events">0</p>
-                                <p class="text-xs font-semibold text-slate-400">Upcoming Events</p>
-                            </div>
-                        </button>
+                            <div id="adminDashAnnouncements" class="space-y-2 text-sm text-slate-500">No announcements yet.</div>
+                        </div>
+                        <div class="app-card p-6">
+                            <h3 class="font-extrabold text-slate-800 text-base mb-3">Requires Attention</h3>
+                            <div id="adminDashAttention" class="space-y-2 text-sm text-slate-500">Nothing needs attention right now.</div>
+                        </div>
                     </div>
 
+                    <!-- REGISTRAR: Announcements + Request Queue -->
+                    <div id="registrarDashboardPanel" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="app-card p-6">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-extrabold text-slate-800 text-base">Announcements</h3>
+                                <button type="button" onclick="switchView('announcements')" class="text-xs text-brand-magenta font-bold hover:underline">View All</button>
+                            </div>
+                            <div id="registrarDashAnnouncements" class="space-y-2 text-sm text-slate-500">No announcements yet.</div>
+                        </div>
+                        <div class="app-card p-6 lg:col-span-2">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-extrabold text-slate-800 text-base">Request Queue</h3>
+                                <button type="button" onclick="openDashboardModule('transcript')" class="text-xs text-brand-magenta font-bold hover:underline">View All Requests</button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs">
+                                    <thead>
+                                        <tr class="text-left text-slate-400 uppercase tracking-wider text-[10px]">
+                                            <th class="pb-2 font-bold">Alumnus</th>
+                                            <th class="pb-2 font-bold">Type</th>
+                                            <th class="pb-2 font-bold">Date</th>
+                                            <th class="pb-2 font-bold">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="registrarDashQueue">
+                                        <tr><td colspan="4" class="py-6 text-center text-slate-400">No pending requests.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ALUMNI: My Requests + Announcements + Open Jobs, plus Quick Access -->
                     <div id="alumniDashboardPanel" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="app-card p-6">
                             <h3 class="font-extrabold text-slate-800 text-base mb-3">My Document Requests</h3>
@@ -791,11 +799,32 @@
                             <div id="alumniDashJobs" class="text-sm text-slate-500">No published jobs yet.</div>
                         </div>
                     </div>
+                    <div id="alumniQuickAccessPanel" class="hidden">
+                        <h3 class="font-extrabold text-slate-800 text-base mb-3">My Quick Access</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <button type="button" onclick="openDashboardModule('transcript')" class="app-card p-4 text-center hover:shadow-md transition">
+                                <i class="fa-solid fa-file-lines text-brand-magenta text-lg"></i>
+                                <p class="text-xs font-bold text-slate-700 mt-2">Request Transcript</p>
+                            </button>
+                            <button type="button" onclick="switchView('reprint')" class="app-card p-4 text-center hover:shadow-md transition">
+                                <i class="fa-solid fa-certificate text-purple-600 text-lg"></i>
+                                <p class="text-xs font-bold text-slate-700 mt-2">Request Certificate</p>
+                            </button>
+                            <button type="button" onclick="openDashboardModule('tracking')" class="app-card p-4 text-center hover:shadow-md transition">
+                                <i class="fa-solid fa-user-graduate text-emerald-600 text-lg"></i>
+                                <p class="text-xs font-bold text-slate-700 mt-2">Update Graduate Status</p>
+                            </button>
+                            <button type="button" onclick="openDashboardModule('jobs')" class="app-card p-4 text-center hover:shadow-md transition">
+                                <i class="fa-solid fa-briefcase text-amber-600 text-lg"></i>
+                                <p class="text-xs font-bold text-slate-700 mt-2">Browse Jobs</p>
+                            </button>
+                        </div>
+                    </div>
 
-                    <!-- ANALYTICS & ACTIVITIES -->
+                    <!-- ANALYTICS & ACTIVITIES (chart is admin-only; hidden for Registrar/Alumni) -->
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <!-- Chart Card -->
-                        <div class="app-card p-6 lg:col-span-2">
+                        <div class="app-card p-6 lg:col-span-2" id="dashboardGrowthCard">
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                                 <div>
                                     <h3 class="font-extrabold text-slate-800 text-base">Alumni Community Growth</h3>
@@ -811,7 +840,7 @@
                         </div>
 
                         <!-- Recent Activities Feed -->
-                        <div class="app-card p-6 flex flex-col justify-between">
+                        <div class="app-card p-6 flex flex-col justify-between" id="dashboardActivityCard">
                             <div>
                                 <h3 class="font-extrabold text-slate-800 text-base mb-4">Recent Activities</h3>
                                 <div id="recentActivityList" class="space-y-3.5">
@@ -2628,6 +2657,21 @@
                             <input id="announceTitle" class="form-input text-sm" placeholder="e.g. Alumni General Assembly 2026" maxlength="160" required>
                             <label class="form-label" for="announceBody">Message *</label>
                             <textarea id="announceBody" class="form-textarea text-sm" rows="4" placeholder="Write the official announcement..." maxlength="10000" required></textarea>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="form-label" for="announceAudience">Target Audience</label>
+                                    <select id="announceAudience" class="form-select text-sm" onchange="toggleAnnouncementBatchField()">
+                                        <option value="all">All Users</option>
+                                        <option value="alumni" selected>Alumni Only</option>
+                                        <option value="batch">Specific Batch</option>
+                                        <option value="staff">Admin &amp; Registrar</option>
+                                    </select>
+                                </div>
+                                <div id="announceBatchField" class="hidden">
+                                    <label class="form-label" for="announceBatch">Batch</label>
+                                    <select id="announceBatch" class="form-select text-sm"></select>
+                                </div>
+                            </div>
                             <fieldset class="space-y-2">
                                 <legend class="form-label">Publish</legend>
                                 <div class="flex flex-wrap gap-4 text-sm">

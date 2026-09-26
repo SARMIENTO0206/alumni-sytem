@@ -358,6 +358,7 @@ export function initDb() {
   ensureColumn('alumni', 'email', "email TEXT DEFAULT ''");
   ensureColumn('alumni', 'address', "address TEXT DEFAULT ''");
   ensureColumn('announcements', 'audience', "audience TEXT DEFAULT 'alumni'");
+  ensureColumn('announcements', 'batch', "batch TEXT DEFAULT ''");
   ensureColumn('announcements', 'publish_at', "publish_at TEXT DEFAULT ''");
   ensureColumn('announcements', 'expires_at', "expires_at TEXT DEFAULT ''");
   ensureColumn('announcements', 'send_in_app', 'send_in_app INTEGER DEFAULT 1');
@@ -780,7 +781,13 @@ export function notifyUser({
 }
 
 export function notifyAlumniAudience(subject, message, relatedType, relatedId, extras = {}) {
-  const alumniUsers = db.prepare("SELECT * FROM users WHERE role = 'alumni' AND (status IS NULL OR status = 'Active')").all();
+  const alumniUsers = extras.batch
+    ? db.prepare(
+        `SELECT u.* FROM users u
+         JOIN alumni a ON a.id = u.alumni_id
+         WHERE u.role = 'alumni' AND (u.status IS NULL OR u.status = 'Active') AND a.batch = ?`
+      ).all(String(extras.batch))
+    : db.prepare("SELECT * FROM users WHERE role = 'alumni' AND (status IS NULL OR status = 'Active')").all();
   for (const row of alumniUsers) {
     if (extras.inApp !== false) {
       notifyUser({
