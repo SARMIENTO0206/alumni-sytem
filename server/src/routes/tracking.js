@@ -34,6 +34,7 @@ function trackingRows() {
       u.track AS user_track, u.education_level AS education_level
     FROM alumni a
     LEFT JOIN users u ON u.id = a.user_id
+    WHERE COALESCE(a.archived_at, '') = ''
     ORDER BY a.id DESC
   `).all();
 }
@@ -96,6 +97,7 @@ router.put('/:id/employment', (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'Alumni record not found.' });
+  if (existing.archived_at) return res.status(404).json({ error: 'Alumni record not found.' });
   if (!ownsAlumniRecord(req.user, existing)) {
     return res.status(403).json({ error: 'You can only update your own graduate tracking information.' });
   }
@@ -166,6 +168,7 @@ router.put('/:id/review', requireRole('staff'), (req, res) => {
   }
   const existing = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'Alumni record not found.' });
+  if (existing.archived_at) return res.status(404).json({ error: 'Alumni record not found.' });
   const reviewNote = String(note || '').trim();
   if (reviewNote.length > 1000) return res.status(400).json({ error: 'Review note must be 1,000 characters or fewer.' });
   const reviewedAt = new Date().toISOString();

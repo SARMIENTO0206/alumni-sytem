@@ -21,7 +21,7 @@ function stats() {
   const count = (sql) => db.prepare(sql).get()?.n || 0;
   const trackingSettings = getSetting('system_settings', {});
   const reminderMonths = Number(trackingSettings.tracking?.reminderMonths) || 6;
-  const stale = db.prepare('SELECT * FROM alumni').all().filter((a) => {
+  const stale = db.prepare("SELECT * FROM alumni WHERE COALESCE(archived_at, '') = ''").all().filter((a) => {
     if (!a.last_updated) return true;
     const d = new Date(a.last_updated);
     if (isNaN(d.getTime())) return true;
@@ -32,19 +32,19 @@ function stats() {
 
   return {
     reminderMonths,
-    alumni: count('SELECT COUNT(*) AS n FROM alumni'),
-    employed: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Employed'"),
-    unemployed: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Unemployed','Seeking Employment')"),
-    freelance: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Freelance','Self-employed')"),
-    furtherStudies: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Further Studies','Post-grad','Postgraduate','Technical/Vocational Training')"),
-    notSeeking: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Not Currently Seeking'"),
-    noTrackingData: count("SELECT COUNT(*) AS n FROM alumni WHERE status IS NULL OR status = '' OR status = 'No Data'"),
+    alumni: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = ''"),
+    employed: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status = 'Employed'"),
+    unemployed: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Unemployed','Seeking Employment')"),
+    freelance: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Freelance','Self-employed')"),
+    furtherStudies: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Further Studies','Post-grad','Postgraduate','Technical/Vocational Training')"),
+    notSeeking: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status = 'Not Currently Seeking'"),
+    noTrackingData: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND (status IS NULL OR status = '' OR status = 'No Data')"),
     pendingRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Pending'"),
     releasedRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Released'"),
     rejectedRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Rejected'"),
     totalRequests: count('SELECT COUNT(*) AS n FROM transcript_requests'),
     reprints: count('SELECT COUNT(*) AS n FROM reprints'),
-    placements: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Employed','Self-employed')"),
+    placements: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Employed','Self-employed')"),
     events: count('SELECT COUNT(*) AS n FROM events'),
     reunions: count('SELECT COUNT(*) AS n FROM reunions'),
     donations: count('SELECT COUNT(*) AS n FROM donations'),

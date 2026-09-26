@@ -51,7 +51,7 @@ automated communication flows and AI features:
 
 | # | Module | How to reach it |
 | - | ------ | --------------- |
-| 1 | Alumni Database | Admin → *Alumni Database* |
+| 1 | Alumni Database | Admin/Registrar → *Alumni Database*; new manual records remain Pending Verification until Registrar review |
 | 2 | Transcript Request Portal | Alumni submit; Registrar reviews and processes; Admin monitors |
 | 3 | Graduate Tracking | Admin analytics/exports; Registrar record review; Alumni update their own status |
 | 4 | Career Management | Alumni report employment through Graduate Tracking; Admin/Registrar review shared records and manage job opportunities |
@@ -76,6 +76,8 @@ automated communication flows and AI features:
 | **Alumni** | Own profile and graduate status, digital ID, transcript/certificate requests, job board, announcements, notifications, events, reunions, newsletter, surveys |
 
 Profile and password updates are managed from **My Profile** using the header name or avatar; Profile is not a sidebar item. Settings contains system and notification preferences rather than a duplicate account editor. Staff accounts display a Staff/System ID; Alumni ID and graduate details are shown only for Alumni accounts. The Admin sidebar separates **AI Services** from **Reports** and places user/access management, system settings, and the request audit trail under **Administration**. Registrar navigation focuses on operational work; Alumni use the header bell for Notifications and the header profile controls for My Profile.
+
+Alumni records are never permanently deleted from the Alumni Database. Admin can archive or restore a record; archiving keeps its related history and deactivates a linked account. Admin can view records, documents, and edit details; Registrar can view academic records, edit details, and verify records after checking school information. Newly added manual records are marked **Pending Verification** and do not create or activate an account; account invitations are a separate later workflow.
 
 Document requests are free and no longer use online checkout. The Payments history page is removed for all roles. Alumni donation checkout remains available in Donation Campaigns.
 

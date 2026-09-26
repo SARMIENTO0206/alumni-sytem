@@ -7,14 +7,53 @@
     /* Alumni Table Renderer */
     let alumniTableRows = null;
 
+    function alumniRecordStatus(item) {
+        return item.archivedAt ? "Archived" : (item.verificationStatus || "Verified");
+    }
+
+    function alumniRecordActions(item) {
+        const staff = isStaffRole();
+        const admin = isAdminRole();
+        const recordStatus = alumniRecordStatus(item);
+        const documentsLabel = admin ? "Documents" : "Academic Record";
+        const editAction = recordStatus !== "Archived"
+            ? `<button type="button" onclick="editAlumniModal(${Number(item.id)})" class="text-xs text-brand-magenta hover:underline font-bold">Edit</button>`
+            : "";
+        const verifyAction = staff && recordStatus === "Pending Verification"
+            ? `<button type="button" onclick="verifyAlumniRecord(${Number(item.id)})" class="text-xs text-emerald-700 hover:underline font-bold">Verify</button>`
+            : "";
+        const archiveAction = admin
+            ? recordStatus === "Archived"
+                ? `<button type="button" onclick="restoreAlumniRecord(${Number(item.id)})" class="text-xs text-emerald-700 hover:underline font-bold">Restore</button>`
+                : `<button type="button" onclick="archiveAlumniRecord(${Number(item.id)})" class="text-xs text-rose-700 hover:underline font-bold">Archive</button>`
+            : "";
+        const documentAction = recordStatus === "Archived" ? "" :
+            `<button type="button" onclick="viewAlumniAcademicRecord(${Number(item.id)})" class="text-xs text-slate-600 hover:underline font-bold">${documentsLabel}</button>`;
+
+        return `
+            <div class="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                <button type="button" onclick="openAlumniDetails(${Number(item.id)})" class="text-xs text-slate-600 hover:underline font-bold">View</button>
+                ${documentAction}
+                ${editAction}
+                ${verifyAction}
+                ${archiveAction}
+            </div>`;
+    }
+
     function renderAlumniTable(records = alumniList) {
         const body = document.getElementById("alumniTableBody");
         if (!body) return;
         alumniTableRows = records;
         body.innerHTML = "";
+        const recordStatusFilter = document.getElementById("filterRecordStatus");
+        if (recordStatusFilter) {
+            const admin = isAdminRole();
+            recordStatusFilter.querySelector('option[value="All"]')?.classList.toggle("hidden", !admin);
+            recordStatusFilter.querySelector('option[value="Archived"]')?.classList.toggle("hidden", !admin);
+        }
 
         if (!records.length) {
-            body.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-semibold">No alumni records yet. Add your first alumni record to get started.</td></tr>`;
+            body.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400 font-semibold">No alumni records match these filters.</td></tr>`;
             updateStatCounters();
             return;
         }
@@ -24,33 +63,22 @@
             const statusClass = ["Employed", "Self-employed"].includes(item.status) ? "status-employed" :
                                 ["Unemployed", "Seeking Employment"].includes(item.status) ? "status-unemployed" :
                                 item.status === "No Data" ? "status-pending" : "status-postgrad";
+            const recordStatus = alumniRecordStatus(item);
+            const recordStatusClass = recordStatus === "Verified" ? "status-approved" :
+                recordStatus === "Archived" ? "status-rejected" : "status-pending";
 
             tr.innerHTML = `
                 <td class="font-extrabold text-slate-800">
-                    <button type="button" onclick="openAlumniDetails(${item.id})" class="text-left hover:text-brand-magenta hover:underline">
-                        <div>${item.name}</div>
-                        <div class="text-[10px] text-slate-400 font-mono">${item.studentId || "—"}</div>
+                    <button type="button" onclick="openAlumniDetails(${Number(item.id)})" class="text-left hover:text-brand-magenta hover:underline">
+                        <div>${escapeHtml(item.name || "Alumnus")}</div>
+                        <div class="text-[10px] text-slate-400 font-mono">${escapeHtml(item.studentId || "—")}</div>
                     </button>
                 </td>
-                <td class="font-semibold text-slate-600">${item.batch}</td>
-                <td class="text-slate-500">${item.program}</td>
-                <td><span class="status-badge ${statusClass}">${item.status || "No Data"}</span></td>
-                <td class="text-right">
-                    <button type="button" onclick="openAlumniDetails(${item.id})" class="text-xs text-slate-600 hover:underline font-bold mr-3">
-                        <i class="fa-solid fa-eye"></i> View
-                    </button>
-                    ${currentUser?.role === "admin" ? `
-                        <button onclick="openOfficialCertificate(${item.id})" class="text-xs text-amber-600 hover:underline font-bold mr-3" title="Generate Official Certificate">
-                            <i class="fa-solid fa-award"></i> Certificate
-                        </button>
-                        <button onclick="editAlumniModal(${item.id})" class="text-xs text-brand-magenta hover:underline font-bold mr-3">
-                            <i class="fa-solid fa-pen-to-square"></i> Edit
-                        </button>
-                        <button onclick="deleteAlumni(${item.id})" class="text-xs text-rose-600 hover:underline font-bold">
-                            <i class="fa-solid fa-trash"></i> Delete
-                        </button>
-                    ` : `<button onclick="openOfficialCertificate(${item.id})" class="text-xs text-brand-magenta font-bold hover:underline">View Certificate</button>`}
-                </td>
+                <td class="font-semibold text-slate-600">${escapeHtml(item.batch || "—")}</td>
+                <td class="text-slate-500">${escapeHtml(item.program || "—")}</td>
+                <td><span class="status-badge ${statusClass}">${escapeHtml(item.status || "No Data")}</span></td>
+                <td><span class="status-badge ${recordStatusClass}">${escapeHtml(recordStatus)}</span></td>
+                <td class="text-right">${alumniRecordActions(item)}</td>
             `;
             body.appendChild(tr);
         });
@@ -62,8 +90,18 @@
         switchView("database", { detailId: id });
     }
 
-    function showAlumniDetails(id, silent) {
-        const item = alumniList.find((a) => String(a.id) === String(id));
+    async function showAlumniDetails(id, silent) {
+        let item = alumniList.find((a) => String(a.id) === String(id)) ||
+            (alumniTableRows || []).find((a) => String(a.id) === String(id));
+        if (!item && typeof SAA_API !== "undefined") {
+            try {
+                const data = await SAA_API.request(`/api/alumni/${id}`);
+                item = data.alumni;
+            } catch (err) {
+                showToast(err.message || "Unable to load this alumni record.", "error");
+                return;
+            }
+        }
         const list = document.getElementById("alumniListPanel");
         const panel = document.getElementById("alumniDetailPanel");
         if (!item || !panel) return;
@@ -77,13 +115,15 @@
         document.getElementById("alumniDetailTitle").textContent = item.title || item.jobTitle || "—";
         const statusEl = document.getElementById("alumniDetailStatus");
         if (statusEl) statusEl.textContent = item.status || "—";
+        const recordStatus = alumniRecordStatus(item);
+        const recordStatusEl = document.getElementById("alumniDetailRecordStatus");
+        if (recordStatusEl) {
+            recordStatusEl.textContent = recordStatus;
+            recordStatusEl.className = `status-badge ${recordStatus === "Verified" ? "status-approved" : recordStatus === "Archived" ? "status-rejected" : "status-pending"} mt-2`;
+        }
         const actions = document.getElementById("alumniDetailActions");
         if (actions) {
-            const adminBtns = currentUser?.role === "admin"
-                ? `<button type="button" onclick="editAlumniModal(${item.id})" class="btn btn-primary text-xs">Edit Record</button>
-                   <button type="button" onclick="openOfficialCertificate(${item.id})" class="btn btn-secondary text-xs">Certificate</button>`
-                : `<button type="button" onclick="openOfficialCertificate(${item.id})" class="btn btn-secondary text-xs">View Certificate</button>`;
-            actions.innerHTML = adminBtns;
+            actions.innerHTML = alumniRecordActions(item);
         }
         if (!silent) switchView("database", { detailId: item.id });
     }
@@ -192,11 +232,13 @@
     async function searchAlumniTable() {
         const query = document.getElementById("dbSearch")?.value || "";
         const filter = document.getElementById("filterStatus")?.value || "";
+        const recordStatus = document.getElementById("filterRecordStatus")?.value || "";
         try {
             if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
                 const params = new URLSearchParams();
                 if (query) params.set("q", query);
                 if (filter) params.set("status", filter);
+                if (recordStatus) params.set("recordStatus", recordStatus);
                 const data = await SAA_API.request(`/api/alumni?${params.toString()}`);
                 renderAlumniTable(data.alumni || []);
                 return;
@@ -204,12 +246,14 @@
         } catch (err) {
             showToast("Unable to search alumni records.", "error");
         }
-        document.querySelectorAll("#alumniTableBody tr").forEach(row => {
-            const text = row.innerText.toLowerCase();
-            const matchesQuery = text.includes(query.toLowerCase());
-            const matchesFilter = filter === "" || text.includes(filter.toLowerCase());
-            row.style.display = (matchesQuery && matchesFilter) ? "" : "none";
-        });
+        const filtered = (alumniTableRows || alumniList).filter((item) =>
+            (!query || [item.name, item.studentId, item.program, item.batch].join(" ").toLowerCase().includes(query.toLowerCase())) &&
+            (!filter || item.status === filter) &&
+            (!recordStatus || (recordStatus === "All" ||
+                (recordStatus === "Archived" ? alumniRecordStatus(item) === "Archived" :
+                    (alumniRecordStatus(item) === recordStatus && recordStatus !== "Archived"))))
+        );
+        renderAlumniTable(filtered);
     }
 
     function sortTable(columnIndex) {
@@ -227,10 +271,20 @@
     }
 
     function exportToCSV() {
-        let csv = "ID,Student ID,Name,Batch Year,Program/Course,Employment Status\n";
-        alumniList.forEach(item => {
-            csv += `"${item.id}","${item.studentId || ''}","${item.name}","${item.batch}","${item.program}","${item.status}"\n`;
-        });
+        const csvCell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+        const rows = [
+            ["ID", "Student ID", "Name", "Batch Year", "Program/Course", "Employment Status", "Record Status"],
+            ...alumniList.map((item) => [
+                item.id,
+                item.studentId,
+                item.name,
+                item.batch,
+                item.program,
+                item.status,
+                alumniRecordStatus(item)
+            ])
+        ];
+        const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -245,27 +299,32 @@
 
     /* Add/Edit Alumni */
     function openAddAlumniModal() {
-        if (currentUser?.role !== "admin") return;
+        if (!isAdminRole() && !isStaffRole()) return;
         document.getElementById("alumniModalTitle").textContent = "Add New Alumnus";
         document.getElementById("editAlumniId").value = "";
         document.getElementById("newAlumniName").value = "";
         document.getElementById("newAlumniBatch").value = new Date().getFullYear();
+        document.getElementById("newAlumniStudentId").value = "";
         document.getElementById("newAlumniProgram").value = "";
-        document.getElementById("newAlumniEmployment").value = "Employed";
+        document.getElementById("newAlumniEmployment").value = "No Data";
+        document.getElementById("alumniVerificationNotice").classList.remove("hidden");
         document.getElementById("addAlumniModal").classList.add("active");
     }
 
     function editAlumniModal(id) {
-        if (currentUser?.role !== "admin") return;
-        const item = alumniList.find(a => a.id === id);
+        if (!isAdminRole() && !isStaffRole()) return;
+        const item = (alumniTableRows || []).find(a => Number(a.id) === Number(id)) ||
+            alumniList.find(a => Number(a.id) === Number(id));
         if (!item) return;
 
         document.getElementById("alumniModalTitle").textContent = "Edit Alumnus Record";
         document.getElementById("editAlumniId").value = item.id;
         document.getElementById("newAlumniName").value = item.name;
         document.getElementById("newAlumniBatch").value = item.batch;
+        document.getElementById("newAlumniStudentId").value = item.studentId || "";
         document.getElementById("newAlumniProgram").value = item.program;
         document.getElementById("newAlumniEmployment").value = item.status;
+        document.getElementById("alumniVerificationNotice").classList.add("hidden");
         document.getElementById("addAlumniModal").classList.add("active");
     }
 
@@ -278,6 +337,7 @@
         const editId = document.getElementById("editAlumniId").value;
         const name = document.getElementById("newAlumniName").value.trim();
         const batch = document.getElementById("newAlumniBatch").value;
+        const studentId = document.getElementById("newAlumniStudentId").value.trim();
         const program = document.getElementById("newAlumniProgram").value.trim();
         const status = document.getElementById("newAlumniEmployment").value;
         if (!name) {
@@ -293,38 +353,86 @@
             if (editId) {
                 await SAA_API.request(`/api/alumni/${editId}`, {
                     method: "PUT",
-                    body: JSON.stringify({ name, batch, program, status })
+                    body: JSON.stringify({ name, batch, program, status, studentId })
                 });
                 showToast(`Updated record for ${name}.`, "success");
             } else {
                 await SAA_API.request("/api/alumni", {
                     method: "POST",
-                    body: JSON.stringify({ name, batch, program, status })
+                    body: JSON.stringify({ name, batch, program, status, studentId })
                 });
-                showToast(`Added new alumnus: ${name}`, "success");
+                showToast(`Added ${name}. Verify the school record before account activation.`, "success");
             }
             await SAA_API.refreshAllData();
-            renderAlumniTable();
+            await searchAlumniTable();
             closeAddAlumniModal();
         } catch (err) {
             showToast(err.message || "Unable to save alumni record. Please try again.", "error");
         }
     }
 
-    async function deleteAlumni(id) {
-        if (currentUser?.role !== "admin") return;
-        if (!confirm("Are you sure you want to permanently delete this alumni record?")) return;
+    function viewAlumniAcademicRecord(id) {
+        const item = (alumniTableRows || []).find((a) => Number(a.id) === Number(id)) ||
+            alumniList.find((a) => Number(a.id) === Number(id));
+        if (!item) return;
+        switchView("academic-records");
+        const search = document.getElementById("academicRecordsSearch");
+        if (search) {
+            search.value = item.studentId || item.name || "";
+            filterAcademicRecords();
+        }
+    }
+
+    async function verifyAlumniRecord(id) {
+        if (!isStaffRole()) return;
         try {
             if (typeof SAA_API === "undefined" || !(await SAA_API.health())) {
-                showToast("Unable to delete alumni record. The server is offline.", "error");
+                showToast("Unable to verify alumni record. The server is offline.", "error");
                 return;
             }
-            await SAA_API.request(`/api/alumni/${id}`, { method: "DELETE" });
+            await SAA_API.request(`/api/alumni/${id}/verify`, { method: "POST" });
             await SAA_API.refreshAllData();
-            renderAlumniTable();
-            showToast("Alumni record deleted.", "info");
+            await searchAlumniTable();
+            await showAlumniDetails(id, true);
+            showToast("School record verified.", "success");
         } catch (err) {
-            showToast(err.message || "Unable to delete alumni record.", "error");
+            showToast(err.message || "Unable to verify alumni record.", "error");
+        }
+    }
+
+    async function archiveAlumniRecord(id) {
+        if (!isAdminRole()) return;
+        if (!confirm("Archive this alumni record? The record and history will be kept, and the linked account will be deactivated.")) return;
+        try {
+            if (typeof SAA_API === "undefined" || !(await SAA_API.health())) {
+                showToast("Unable to archive alumni record. The server is offline.", "error");
+                return;
+            }
+            await SAA_API.request(`/api/alumni/${id}/archive`, { method: "POST" });
+            await SAA_API.refreshAllData();
+            switchView("database");
+            await searchAlumniTable();
+            showToast("Alumni record archived and linked account deactivated.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to archive alumni record.", "error");
+        }
+    }
+
+    async function restoreAlumniRecord(id) {
+        if (!isAdminRole()) return;
+        if (!confirm("Restore this alumni record and restore the linked account's previous status?")) return;
+        try {
+            if (typeof SAA_API === "undefined" || !(await SAA_API.health())) {
+                showToast("Unable to restore alumni record. The server is offline.", "error");
+                return;
+            }
+            await SAA_API.request(`/api/alumni/${id}/restore`, { method: "POST" });
+            await SAA_API.refreshAllData();
+            switchView("database");
+            await searchAlumniTable();
+            showToast("Alumni record restored.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to restore alumni record.", "error");
         }
     }
 
@@ -818,6 +926,7 @@
 /* ------------------------------------------------------------------------- */
     function academicRecordsSource() {
         return alumniList.map(a => ({
+            id: a.id,
             studentId: a.studentId || "",
             name: a.name,
             program: a.program || "",
@@ -852,9 +961,9 @@
                     <span class="status-badge status-approved text-xs">${r.status}</span>
                 </td>
                 <td class="text-right">
-                    <button onclick="openRequestDocModal('Official Transcript of Records')" class="btn btn-secondary text-xs py-1 px-2.5">
-                        <i class="fa-solid fa-file-signature"></i> Process Document
-                    </button>
+                    ${isAlumniRole()
+                        ? `<button type="button" onclick="openRequestDocModal('Official Transcript of Records')" class="btn btn-secondary text-xs py-1 px-2.5"><i class="fa-solid fa-file-signature"></i> Request Document</button>`
+                        : `<button type="button" onclick="openAlumniDetails(${Number(r.id)})" class="btn btn-secondary text-xs py-1 px-2.5">View Alumni Record</button>`}
                 </td>
             </tr>
         `).join("");

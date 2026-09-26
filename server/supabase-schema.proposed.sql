@@ -40,6 +40,11 @@ CREATE TABLE IF NOT EXISTS public.alumni (
   tracking_review_note TEXT DEFAULT '',
   tracking_reviewed_by TEXT DEFAULT '',
   tracking_reviewed_at TEXT DEFAULT '',
+  verification_status TEXT DEFAULT 'Verified',
+  verified_by TEXT DEFAULT '',
+  verified_at TEXT DEFAULT '',
+  archived_at TEXT DEFAULT '',
+  archived_user_status TEXT DEFAULT '',
   time_to_first TEXT DEFAULT '',
   location      TEXT DEFAULT 'Local',
   student_id    TEXT DEFAULT '',
@@ -65,6 +70,11 @@ ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_review_status TEXT D
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_review_note TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_reviewed_by TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_reviewed_at TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'Verified';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS verified_by TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS verified_at TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS archived_at TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS archived_user_status TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS education_school TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS education_program TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS education_status TEXT DEFAULT '';

@@ -986,11 +986,11 @@
                             </div>
 
                             <div class="flex flex-wrap items-center gap-2.5">
-                                <button onclick="exportToCSV()" class="btn btn-secondary text-xs">
+                                <button type="button" onclick="exportToCSV()" class="btn btn-secondary text-xs">
                                     <i class="fa-solid fa-file-csv text-emerald-600"></i>
                                     <span>Export CSV</span>
                                 </button>
-                                <button onclick="openAddAlumniModal()" class="btn btn-primary text-xs">
+                                <button type="button" onclick="openAddAlumniModal()" class="btn btn-primary text-xs">
                                     <i class="fa-solid fa-plus"></i>
                                     <span>Add New Alumnus</span>
                                 </button>
@@ -998,7 +998,7 @@
                         </div>
 
                         <!-- Filter Bar -->
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-5">
                             <div class="relative sm:col-span-2">
                                 <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                                     <i class="fa-solid fa-magnifying-glass"></i>
@@ -1016,6 +1016,15 @@
                                     <option value="Post-grad">Post-grad Study</option>
                                 </select>
                             </div>
+                            <div>
+                                <select id="filterRecordStatus" aria-label="Filter alumni record status" onchange="searchAlumniTable()" class="form-select text-xs sm:text-sm">
+                                    <option value="">Active Records</option>
+                                    <option value="Pending Verification">Pending Verification</option>
+                                    <option value="Verified">Verified</option>
+                                    <option value="All">All Records</option>
+                                    <option value="Archived">Archived</option>
+                                </select>
+                            </div>
                         </div>
 
                         <!-- Table -->
@@ -1031,6 +1040,7 @@
                                         </th>
                                         <th>Program / Track</th>
                                         <th>Employment Status</th>
+                                        <th>Record Status</th>
                                         <th class="text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -1051,6 +1061,7 @@
                                 <p class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Alumni Profile</p>
                                 <h3 id="alumniDetailName" class="text-xl font-extrabold text-slate-800">Alumni</h3>
                                 <p id="alumniDetailStudentId" class="text-xs font-mono text-slate-400 mt-1"></p>
+                                <span id="alumniDetailRecordStatus" class="status-badge status-pending mt-2">Pending Verification</span>
                             </div>
                             <span id="alumniDetailStatus" class="status-badge status-employed">Employed</span>
                         </div>
@@ -3210,6 +3221,9 @@
 
             <form onsubmit="saveAlumniRecord(event)" class="space-y-3.5">
                 <input type="hidden" id="editAlumniId">
+                <p id="alumniVerificationNotice" class="hidden rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    New records start as <strong>Pending Verification</strong>. Confirm the school record before marking it verified. Account activation is handled separately after verification.
+                </p>
                 <div>
                     <label class="form-label" for="newAlumniName">Full Name</label>
                     <input type="text" id="newAlumniName" required placeholder="e.g. Maria Clara D. Santos" class="form-input text-xs">
@@ -3221,8 +3235,15 @@
                         <input type="number" id="newAlumniBatch" required min="1950" max="2030" placeholder="e.g. 2024" class="form-input text-xs">
                     </div>
                     <div>
+                        <label class="form-label" for="newAlumniStudentId">Student / Alumni ID</label>
+                        <input type="text" id="newAlumniStudentId" placeholder="School record ID" class="form-input text-xs">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
                         <label class="form-label" for="newAlumniEmployment">Employment Status</label>
                         <select id="newAlumniEmployment" class="form-select text-xs">
+                            <option>No Data</option>
                             <option>Employed</option>
                             <option>Unemployed</option>
                             <option>Freelance</option>

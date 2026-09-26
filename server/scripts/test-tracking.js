@@ -120,15 +120,42 @@ assert(ownRecord, 'alumni should only receive their linked tracking record');
 const adminRecords = await req(admin.token, 'GET', '/api/tracking');
 assert(adminRecords.status === 200 && adminRecords.data.alumni.length >= 1, 'Admin can monitor all tracking records');
 assert(!('fieldAlignment' in adminRecords.data.summary), 'tracking summary must not report degree field alignment');
+const testTimestamp = Date.now();
 const created = await req(registrar.token, 'POST', '/api/alumni', {
-  name: `Tracking Test Other Alumni ${Date.now()}`,
+  name: `Tracking Test Other Alumni ${testTimestamp}`,
   batch: '2022',
   program: 'SHS',
-  studentId: 'TRACKING-TEST-2022'
+  studentId: `TRACKING-TEST-${testTimestamp}`
 });
 assert(created.status === 201 && created.data.alumni.status === 'No Data', 'new alumni records must preserve unknown status');
+assert(created.data.alumni.verificationStatus === 'Pending Verification', 'manually added alumni records must require school record verification');
 assert(!created.data.alumni.lastUpdated, 'new alumni without status data must be considered stale');
 const otherRecordId = created.data.alumni.id;
+const adminVerifyRecord = await req(admin.token, 'POST', `/api/alumni/${otherRecordId}/verify`);
+assert(adminVerifyRecord.status === 403, 'only Registrar staff can verify manually added alumni records');
+const registrarVerifyRecord = await req(registrar.token, 'POST', `/api/alumni/${otherRecordId}/verify`);
+assert(registrarVerifyRecord.status === 200 && registrarVerifyRecord.data.alumni.verificationStatus === 'Verified', 'Registrar can verify a school-matched alumni record');
+const staffArchiveRecord = await req(registrar.token, 'POST', `/api/alumni/${otherRecordId}/archive`);
+assert(staffArchiveRecord.status === 403, 'only Admin can archive alumni records');
+const reportsBeforeArchive = await req(admin.token, 'GET', '/api/reports/summary');
+const adminArchiveRecord = await req(admin.token, 'POST', `/api/alumni/${otherRecordId}/archive`);
+assert(adminArchiveRecord.status === 200 && adminArchiveRecord.data.alumni.verificationStatus === 'Archived', 'Admin can archive without deleting alumni history');
+const archivedMissingFromActiveList = await req(admin.token, 'GET', `/api/alumni?q=TRACKING-TEST-${testTimestamp}`);
+assert(!archivedMissingFromActiveList.data.alumni.some((record) => Number(record.id) === Number(otherRecordId)), 'archived records are excluded from the active alumni list');
+const trackingAfterArchive = await req(admin.token, 'GET', '/api/tracking');
+assert(!trackingAfterArchive.data.alumni.some((record) => Number(record.id) === Number(otherRecordId)), 'archived records are excluded from graduate tracking');
+const reportsAfterArchive = await req(admin.token, 'GET', '/api/reports/summary');
+assert(reportsAfterArchive.data.alumni.total === reportsBeforeArchive.data.alumni.total - 1, 'archived alumni are excluded from active reporting totals');
+const archivedRecords = await req(admin.token, 'GET', '/api/alumni?recordStatus=Archived');
+assert(archivedRecords.status === 200 && archivedRecords.data.alumni.some((record) => Number(record.id) === Number(otherRecordId)), 'Admin can view archived alumni records');
+const registrarArchivedRecords = await req(registrar.token, 'GET', '/api/alumni?recordStatus=Archived');
+assert(registrarArchivedRecords.status === 403, 'Registrar cannot access the Admin-only archive view');
+const registrarArchivedDetail = await req(registrar.token, 'GET', `/api/alumni/${otherRecordId}`);
+assert(registrarArchivedDetail.status === 404, 'Registrar cannot open an archived alumni record by ID');
+const permanentDelete = await req(admin.token, 'DELETE', `/api/alumni/${otherRecordId}`);
+assert(permanentDelete.status === 404, 'the alumni API no longer exposes permanent deletion');
+const restoredRecord = await req(admin.token, 'POST', `/api/alumni/${otherRecordId}/restore`);
+assert(restoredRecord.status === 200 && restoredRecord.data.alumni.verificationStatus === 'Verified', 'Admin can restore an archived alumni record');
 
 const alumniUpdateOther = await req(alumni.token, 'PUT', `/api/tracking/${otherRecordId}/employment`, {
   status: 'Employed',
@@ -282,4 +309,17 @@ assert(registrarDelete.status === 403, 'Registrar can archive but cannot delete 
 const adminDelete = await req(admin.token, 'DELETE', `/api/jobs/${job.data.job.id}`);
 assert(adminDelete.status === 204, `Admin can delete job listings (received ${adminDelete.status}: ${JSON.stringify(adminDelete.data)})`);
 
-console.log('Graduate tracking, Communications, Career Management, and Newsletter role checks passed.');
+const archiveLinkedAccount = await req(admin.token, 'POST', `/api/alumni/${ownRecord.id}/archive`);
+assert(archiveLinkedAccount.status === 200, 'Admin can archive an alumni record linked to an account');
+const loginWhileArchived = await fetch(`${base}/api/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ username: 'alumni', password: 'alumni123' })
+});
+assert(loginWhileArchived.status === 403, 'archiving a linked alumni record deactivates its account');
+const restoreLinkedAccount = await req(admin.token, 'POST', `/api/alumni/${ownRecord.id}/restore`);
+assert(restoreLinkedAccount.status === 200, 'Admin can restore a linked alumni record');
+const loginAfterRestore = await login('alumni', 'alumni123');
+assert(loginAfterRestore.user.status === 'Active', 'restoring an alumni record restores its previous account status');
+
+console.log('Alumni Database, Graduate Tracking, Communications, Career Management, and Newsletter role checks passed.');

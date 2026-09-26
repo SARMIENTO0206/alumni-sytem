@@ -287,6 +287,11 @@ export function initDb() {
   ensureColumn('alumni', 'tracking_review_note', "tracking_review_note TEXT DEFAULT ''");
   ensureColumn('alumni', 'tracking_reviewed_by', "tracking_reviewed_by TEXT DEFAULT ''");
   ensureColumn('alumni', 'tracking_reviewed_at', "tracking_reviewed_at TEXT DEFAULT ''");
+  ensureColumn('alumni', 'verification_status', "verification_status TEXT DEFAULT 'Verified'");
+  ensureColumn('alumni', 'verified_by', "verified_by TEXT DEFAULT ''");
+  ensureColumn('alumni', 'verified_at', "verified_at TEXT DEFAULT ''");
+  ensureColumn('alumni', 'archived_at', "archived_at TEXT DEFAULT ''");
+  ensureColumn('alumni', 'archived_user_status', "archived_user_status TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'remarks', "remarks TEXT DEFAULT ''");
@@ -571,6 +576,10 @@ export function mapAlumni(row) {
     trackingReviewNote: row.tracking_review_note || '',
     trackingReviewedBy: row.tracking_reviewed_by || '',
     trackingReviewedAt: row.tracking_reviewed_at || '',
+    verificationStatus: row.archived_at ? 'Archived' : (row.verification_status || 'Verified'),
+    verifiedBy: row.verified_by || '',
+    verifiedAt: row.verified_at || '',
+    archivedAt: row.archived_at || '',
     timeToFirst: row.time_to_first,
     location: row.location,
     studentId: row.student_id,
