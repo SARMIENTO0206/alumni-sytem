@@ -285,6 +285,10 @@ export function initDb() {
   ensureColumn('placements', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('donations', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('donations', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
+  ensureColumn('donations', 'payment_status', "payment_status TEXT DEFAULT 'recorded'");
+  ensureColumn('donations', 'payment_ref', "payment_ref TEXT DEFAULT ''");
+  ensureColumn('donations', 'dedication', "dedication TEXT DEFAULT ''");
+  ensureColumn('donations', 'is_anonymous', 'is_anonymous INTEGER DEFAULT 0');
   ensureColumn('feedback', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('feedback', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('job_applications', 'user_id', 'user_id INTEGER DEFAULT 0');

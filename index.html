@@ -499,7 +499,7 @@
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('events')" id="nav-events" class="sidebar-link"><i class="fa-regular fa-calendar-check"></i><span>Alumni Events</span></button>
                         <button type="button" onclick="switchView('reunions')" id="nav-reunions" class="sidebar-link"><i class="fa-solid fa-people-group"></i><span>Batch Reunions</span></button>
-                        <button type="button" onclick="switchView('donor')" id="nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Donor Campaigns</span></button>
+                        <button type="button" onclick="switchView('donor')" id="nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Campaign Management</span></button>
                         <button type="button" onclick="switchView('newsletter')" id="nav-newsletter" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span></button>
                         <button type="button" onclick="switchView('feedback')" id="nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Surveys & Feedback</span></button>
                     </div>
@@ -557,7 +557,7 @@
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('events')" id="alumni-nav-events" class="sidebar-link"><i class="fa-regular fa-calendar-check"></i><span>Alumni Events</span></button>
                         <button type="button" onclick="switchView('reunions')" id="alumni-nav-reunions" class="sidebar-link"><i class="fa-solid fa-people-group"></i><span>Batch Reunions</span></button>
-                        <button type="button" onclick="switchView('donor')" id="alumni-nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Donor Campaigns</span></button>
+                        <button type="button" onclick="switchView('donor')" id="alumni-nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Donation Campaigns</span></button>
                         <button type="button" onclick="switchView('newsletter')" id="alumni-nav-newsletter" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span></button>
                         <button type="button" onclick="switchView('feedback')" id="alumni-nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Surveys & Feedback</span></button>
                     </div>
@@ -611,7 +611,7 @@
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('events')" id="staff-nav-events" class="sidebar-link"><i class="fa-regular fa-calendar-check"></i><span>Alumni Events</span></button>
                         <button type="button" onclick="switchView('reunions')" id="staff-nav-reunions" class="sidebar-link"><i class="fa-solid fa-people-group"></i><span>Batch Reunions</span></button>
-                        <button type="button" onclick="switchView('donor')" id="staff-nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Donor Campaigns</span></button>
+                        <button type="button" onclick="switchView('donor')" id="staff-nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Donation Records</span></button>
                         <button type="button" onclick="switchView('newsletter')" id="staff-nav-newsletter" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span></button>
                         <button type="button" onclick="switchView('feedback')" id="staff-nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Surveys & Feedback</span></button>
                     </div>
@@ -1648,64 +1648,147 @@
                      ================================================= -->
                 <div id="view-donor" class="hidden space-y-6 fade-in">
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="lg:col-span-2 app-card p-6 sm:p-8 flex flex-col justify-between">
-                            <div>
-                                <span class="status-badge status-employed mb-2">Active Capital Campaign</span>
-                                <h3 class="text-xl font-extrabold text-slate-800">Campus Chapel & Library Modernization</h3>
-                                <p class="text-xs text-slate-500 mt-2 leading-relaxed">
-                                    Support the enhancement of our school chapel and research library facilities. Every donation contributes directly to student learning resources and campus upgrades.
-                                </p>
+                        <section class="lg:col-span-2 app-card p-6 sm:p-8" aria-labelledby="donorCampaignTitle">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <span id="donorCampaignStatusBadge" class="status-badge status-employed">ACTIVE CAMPAIGN</span>
+                                <span id="donorCampaignDates" class="text-xs font-semibold text-slate-400"></span>
+                            </div>
+                            <h3 id="donorCampaignTitle" class="text-xl font-extrabold text-slate-800 mt-3">Campus Chapel &amp; Library Modernization</h3>
+                            <p id="donorCampaignDescription" class="text-xs text-slate-500 mt-2 leading-relaxed"></p>
 
-                                <div class="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                                    <div class="flex justify-between text-xs font-bold text-slate-700">
-                                        <span id="donorProgressLabel">Raised: ₱0</span>
-                                        <span class="text-brand-magenta font-extrabold" id="donorProgressAmounts">₱0 / ₱200,000</span>
-                                    </div>
-                                    <div class="w-full bg-slate-200 rounded-full h-3.5 mt-2.5 overflow-hidden">
-                                        <div id="donorProgressBar" class="bg-gradient-to-r from-pink-500 to-rose-600 h-3.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                                    </div>
+                            <div class="mt-6 grid sm:grid-cols-3 gap-4">
+                                <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                                    <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Goal</p>
+                                    <p id="donorGoalValue" class="mt-1 text-lg font-extrabold text-slate-800">₱200,000</p>
+                                </div>
+                                <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                                    <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Raised</p>
+                                    <p id="donorRaisedValue" class="mt-1 text-lg font-extrabold text-slate-800">₱0</p>
+                                </div>
+                                <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                                    <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Progress</p>
+                                    <p id="donorProgressValue" class="mt-1 text-lg font-extrabold text-brand-magenta">0%</p>
                                 </div>
                             </div>
-
-                            <div class="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                                <span><i class="fa-solid fa-heart text-rose-500 mr-1"></i> <span id="donorCountLabel">0 alumni donors</span></span>
-                                <span class="font-bold text-slate-600">Tax Exempt • SAA Foundation</span>
+                            <div class="w-full bg-slate-200 rounded-full h-3.5 mt-4 overflow-hidden" role="progressbar" aria-label="Campaign fundraising progress" aria-valuemin="0" aria-valuemax="100">
+                                <div id="donorProgressBar" class="bg-gradient-to-r from-pink-500 to-rose-600 h-3.5 rounded-full transition-all duration-500" style="width: 0%"></div>
                             </div>
-                        </div>
+                            <div class="mt-4 grid sm:grid-cols-3 gap-4 border-t border-slate-100 pt-4 text-xs">
+                                <div><p class="text-slate-400">Donors</p><p id="donorCountLabel" class="font-extrabold text-slate-700">0</p></div>
+                                <div><p class="text-slate-400">Average donation</p><p id="donorAverageValue" class="font-extrabold text-slate-700">₱0</p></div>
+                                <div><p class="text-slate-400">Remaining</p><p id="donorRemainingValue" class="font-extrabold text-slate-700">₱200,000</p></div>
+                            </div>
+                        </section>
 
-                        <!-- Quick Donation Card -->
-                        <div class="app-card p-6">
-                            <h3 class="font-extrabold text-slate-800 text-base mb-1">Make a Contribution</h3>
-                            <p class="text-xs text-slate-400 font-medium mb-4">Choose an amount or enter custom pledge</p>
-
-                            <form onsubmit="submitDonation(event)" class="space-y-3.5">
-                                <div class="grid grid-cols-3 gap-2 mb-2">
-                                    <button type="button" onclick="setDonationAmount(500)" class="role-pill-btn text-center text-xs py-2 font-bold">₱500</button>
-                                    <button type="button" onclick="setDonationAmount(1000)" class="role-pill-btn text-center text-xs py-2 font-bold">₱1,000</button>
-                                    <button type="button" onclick="setDonationAmount(2500)" class="role-pill-btn text-center text-xs py-2 font-bold">₱2,500</button>
-                                </div>
-
+                        <section id="donorCampaignManagement" class="hidden app-card p-6" aria-labelledby="donorManagementTitle">
+                            <h3 id="donorManagementTitle" class="font-extrabold text-slate-800 text-base mb-4">Campaign Management</h3>
+                            <form id="donorCampaignForm" onsubmit="saveDonationCampaign(event)" class="space-y-3">
                                 <div>
-                                    <label class="form-label" for="donorName">Donor Name / Batch</label>
-                                    <input type="text" id="donorName" required placeholder="e.g. Maria Santos (Batch 2018)" class="form-input text-xs">
+                                    <label class="form-label" for="donorCampaignStatus">Campaign Status</label>
+                                    <select id="donorCampaignStatus" class="form-select text-xs">
+                                        <option value="Draft">Draft</option>
+                                        <option value="Active">Active</option>
+                                        <option value="Closed">Closed</option>
+                                    </select>
                                 </div>
-
                                 <div>
-                                    <label class="form-label" for="donorAmount">Donation Amount (₱)</label>
-                                    <input type="number" id="donorAmount" required placeholder="Enter amount" min="100" class="form-input text-xs">
+                                    <label class="form-label" for="donorCampaignTitleInput">Campaign Title</label>
+                                    <input id="donorCampaignTitleInput" type="text" maxlength="160" required class="form-input text-xs">
                                 </div>
-
                                 <div>
-                                    <label class="form-label" for="donorNote">Pledge Dedication (Optional)</label>
-                                    <input type="text" id="donorNote" placeholder="In honor of..." class="form-input text-xs">
+                                    <label class="form-label" for="donorCampaignDescriptionInput">Description</label>
+                                    <textarea id="donorCampaignDescriptionInput" rows="3" maxlength="2000" class="form-textarea text-xs"></textarea>
                                 </div>
+                                <div>
+                                    <label class="form-label" for="donorCampaignGoal">Goal (₱)</label>
+                                    <input id="donorCampaignGoal" type="number" min="1" max="100000000" step="1" required class="form-input text-xs">
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div><label class="form-label" for="donorCampaignStart">Start Date</label><input id="donorCampaignStart" type="date" required class="form-input text-xs"></div>
+                                    <div><label class="form-label" for="donorCampaignEnd">End Date</label><input id="donorCampaignEnd" type="date" required class="form-input text-xs"></div>
+                                </div>
+                                <button id="saveDonationCampaignButton" type="submit" class="btn btn-primary w-full text-xs">Save Campaign</button>
+                                <button type="button" onclick="closeDonationCampaign()" class="btn btn-secondary w-full text-xs">Close Campaign</button>
+                            </form>
+                        </section>
 
-                                <button type="submit" class="btn btn-primary w-full text-xs py-2.5 mt-2">
-                                    <i class="fa-solid fa-hand-holding-heart mr-1"></i> Submit Donation
+                        <section id="alumniDonationPanel" class="hidden app-card p-6" aria-labelledby="alumniDonationTitle">
+                            <h3 id="alumniDonationTitle" class="font-extrabold text-slate-800 text-base mb-1">Make a Contribution</h3>
+                            <p id="donorContributionNote" class="text-xs text-slate-400 font-medium mb-4">Your contribution supports this campaign.</p>
+                            <div class="rounded-lg bg-slate-50 p-3 mb-4 text-xs">
+                                <p class="font-bold text-slate-400 uppercase tracking-wider">Your contribution</p>
+                                <p class="mt-2 text-slate-500">Donating as</p>
+                                <p id="donorAccountName" class="font-extrabold text-slate-800"></p>
+                                <p id="donorAccountBatch" class="text-slate-500 mt-0.5"></p>
+                            </div>
+                            <form id="donorContributionForm" onsubmit="submitDonation(event)" class="space-y-3.5">
+                                <div>
+                                    <p class="form-label">Select Amount</p>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <button type="button" onclick="setDonationAmount(500)" class="role-pill-btn text-center text-xs py-2 font-bold">₱500</button>
+                                        <button type="button" onclick="setDonationAmount(1000)" class="role-pill-btn text-center text-xs py-2 font-bold">₱1,000</button>
+                                        <button type="button" onclick="setDonationAmount(2500)" class="role-pill-btn text-center text-xs py-2 font-bold">₱2,500</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="donorAmount">Custom Amount (₱)</label>
+                                    <input type="number" id="donorAmount" required placeholder="Enter amount" min="1" max="500000" step="1" class="form-input text-xs">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="donorNote">Dedication (Optional)</label>
+                                    <input type="text" id="donorNote" maxlength="200" placeholder="In honor of..." class="form-input text-xs">
+                                </div>
+                                <label class="flex items-start gap-2 text-xs text-slate-600">
+                                    <input type="checkbox" id="donorAnonymous" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#801235]">
+                                    <span>Make my donation anonymous publicly</span>
+                                </label>
+                                <button id="donorCheckoutButton" type="submit" class="btn btn-primary w-full text-xs py-2.5 mt-2">
+                                    <i class="fa-solid fa-lock mr-1"></i> Continue to Payment
                                 </button>
                             </form>
-                        </div>
+                        </section>
+
+                        <section id="registrarDonationNotice" class="hidden app-card p-6" aria-labelledby="registrarDonationNoticeTitle">
+                            <h3 id="registrarDonationNoticeTitle" class="font-extrabold text-slate-800 text-base">Donation Records</h3>
+                            <p class="text-xs text-slate-500 mt-2">Read-only campaign and alumni record matching. Payment confirmation is handled automatically by the payment provider.</p>
+                        </section>
                     </div>
+
+                    <section class="app-card p-6 sm:p-8" aria-labelledby="donationRecordsTitle">
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                            <div>
+                                <h3 id="donationRecordsTitle" class="text-lg font-extrabold text-slate-800">Donations / Contributions</h3>
+                                <p id="donationRecordsDescription" class="text-xs text-slate-400 mt-1">Campaign donation activity and payment status.</p>
+                            </div>
+                            <button id="exportDonationReportButton" type="button" onclick="exportDonationReport()" class="hidden btn btn-secondary text-xs">
+                                <i class="fa-solid fa-file-csv mr-1"></i> Export Report
+                            </button>
+                        </div>
+                        <div class="grid sm:grid-cols-3 gap-3 mb-4">
+                            <label class="sr-only" for="donationSearch">Search donations</label>
+                            <input id="donationSearch" type="search" placeholder="Search donor or student ID" class="form-input text-xs">
+                            <label class="sr-only" for="donationLevelFilter">Filter by educational level</label>
+                            <select id="donationLevelFilter" class="form-select text-xs"><option value="">All Levels</option><option value="JHS">JHS</option><option value="SHS">SHS</option></select>
+                            <label id="donationStatusFilterLabel" class="sr-only" for="donationStatusFilter">Filter by payment status</label>
+                            <select id="donationStatusFilter" class="form-select text-xs"><option value="">All Payment Statuses</option><option value="verified">Verified</option><option value="pending">Pending</option><option value="recorded">Recorded</option></select>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-400">
+                                        <th class="py-3 pr-4">Donor</th>
+                                        <th class="py-3 pr-4">Level / Batch</th>
+                                        <th class="py-3 pr-4">Amount</th>
+                                        <th class="py-3 pr-4">Date</th>
+                                        <th id="donationStatusHeader" class="py-3 pr-4">Payment Status</th>
+                                        <th class="py-3">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="donationRecordsBody"><tr><td colspan="6" class="py-8 text-center text-slate-400">Loading donation records…</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div id="donationRecordDetails" class="hidden mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4" aria-live="polite"></div>
+                    </section>
                 </div>
 
 
@@ -3203,7 +3286,6 @@
                         </div>
                     </div>
                 </section>
-
 
                 <section class="space-y-3 border-t border-slate-100 pt-3">
                     <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Invitation Channels</h4>

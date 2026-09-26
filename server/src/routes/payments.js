@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, writeAudit, writeRequestHistory, getSetting } from '../db.js';
+import { db, findAlumniForUser, writeAudit, writeRequestHistory, getSetting } from '../db.js';
 import { dispatchNotification, dispatchStaffAudience } from '../notify.js';
 import { isAdmin, isAlumni, isStaff, ownsLinkedRow } from '../auth.js';
 import {
@@ -16,6 +16,7 @@ import {
 } from '../paymongo.js';
 import { sendPaymentReceiptEmail } from '../mail.js';
 import { identifierQrDataUri, paymentQrPayload } from '../localQr.js';
+import { mirror } from '../sync-supabase.js';
 
 const router = Router();
 
@@ -139,16 +140,24 @@ function applyPaidToRelated(payment) {
       let meta = {};
       try { meta = JSON.parse(payment.metadata || '{}'); } catch { meta = {}; }
       const info = db.prepare(
-        'INSERT INTO donations (campaign, donor, amount, date, user_id, alumni_id) VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO donations (campaign, donor, amount, date, user_id, alumni_id, payment_status, payment_ref, dedication, is_anonymous) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       ).run(
         meta.campaign || 'Alumni Foundation',
         meta.donor || '',
         Number(payment.amount_centavos || 0) / 100,
         now.slice(0, 10),
         payment.user_id,
-        payment.alumni_id
-      );
-      db.prepare('UPDATE payments SET related_id = ? WHERE id = ?').run(info.lastInsertRowid, payment.id);
+          payment.alumni_id,
+          'paid',
+          ref || '',
+          String(meta.dedication || ''),
+          meta.anonymous ? 1 : 0
+        );
+        db.prepare('UPDATE payments SET related_id = ? WHERE id = ?').run(info.lastInsertRowid, payment.id);
+        const donation = db.prepare('SELECT * FROM donations WHERE id = ?').get(info.lastInsertRowid);
+        mirror('donations', Object.fromEntries(Object.entries(donation).filter(([key]) =>
+          !['payment_status', 'payment_ref', 'dedication', 'is_anonymous'].includes(key)
+        )));
     }
   }
 }
@@ -270,7 +279,8 @@ async function attachQrToPayment(paymentRow) {
 }
 
 function resolveChargeable(req) {
-  const { relatedType, relatedId, campaign, donor } = req.body || {};
+  const { relatedType, relatedId, campaign, donor, dedication, anonymous } = req.body || {};
+  let resolvedDonor = donor;
   let amount = 0;
   let description = '';
   let related = Number(relatedId) || 0;
@@ -300,15 +310,46 @@ function resolveChargeable(req) {
     alumniId = record.alumni_id || alumniId;
     code = requestCode(relatedType, record.id);
   } else if (relatedType === 'donation') {
+    if (!isAlumni(req.user)) {
+      const err = new Error('Only alumni accounts can contribute through the donation portal.');
+      err.status = 403;
+      throw err;
+    }
+    const savedCampaign = getSetting('donation_campaign', {});
+    const activeCampaign = {
+      title: 'Campus Chapel & Library Modernization',
+      status: 'Active',
+      startDate: '2026-09-01',
+      endDate: '2026-12-31',
+      ...(savedCampaign && typeof savedCampaign === 'object' ? savedCampaign : {})
+    };
+    const today = new Date().toISOString().slice(0, 10);
+    if (
+      activeCampaign.status !== 'Active' ||
+      today < activeCampaign.startDate ||
+      today > activeCampaign.endDate ||
+      String(campaign || '') !== String(activeCampaign.title || '')
+    ) {
+      const err = new Error('This donation campaign is not currently accepting contributions.');
+      err.status = 400;
+      throw err;
+    }
     const pesos = Number(req.body?.amount);
     if (!Number.isFinite(pesos) || pesos < 1 || pesos > 500000) {
       const err = new Error('Donation amount must be between PHP 1.00 and PHP 500,000.00.');
       err.status = 400;
       throw err;
     }
+    if (dedication != null && (typeof dedication !== 'string' || dedication.length > 200)) {
+      const err = new Error('Dedication must be 200 characters or fewer.');
+      err.status = 400;
+      throw err;
+    }
     amount = Math.round(pesos * 100);
     description = `Donation — ${campaign || 'Alumni Foundation'}`;
     code = '';
+    resolvedDonor = req.user.name || '';
+    alumniId = Number(req.user.alumniId || findAlumniForUser(req.user)?.id || 0);
   } else {
     const err = new Error('Unsupported payment type.');
     err.status = 400;
@@ -321,7 +362,13 @@ function resolveChargeable(req) {
     throw err;
   }
 
-  return { relatedType, related, alumniId, amount, description, code, campaign, donor };
+  return {
+    relatedType, related, alumniId, amount, description, code,
+    campaign,
+    donor: relatedType === 'donation' ? req.user.name || '' : resolvedDonor,
+    dedication: relatedType === 'donation' ? String(dedication || '').trim() : '',
+    anonymous: relatedType === 'donation' && anonymous === true
+  };
 }
 
 function receiptRows(payment) {
@@ -575,7 +622,12 @@ router.post('/checkout', async (req, res) => {
     charge.amount,
     charge.description,
     cfg.livemode ? 1 : 0,
-    JSON.stringify({ campaign: charge.campaign || '', donor: charge.donor || req.user.name || '' })
+    JSON.stringify({
+      campaign: charge.campaign || '',
+      donor: charge.donor || req.user.name || '',
+      dedication: charge.dedication || '',
+      anonymous: charge.anonymous === true
+    })
   );
   let payment = db.prepare('SELECT * FROM payments WHERE id = ?').get(info.lastInsertRowid);
   writeAudit(req.user, 'create', 'payment', payment.id, charge.description);

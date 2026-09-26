@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, findAlumniForUser } from '../db.js';
+import { db, findAlumniForUser, getSetting, setSetting } from '../db.js';
 import { isAdmin, isAlumni, isStaff, ownsLinkedRow, requireRole } from '../auth.js';
 import { mirror, mirrorUpdate, mirrorDelete } from '../sync-supabase.js';
 import { dispatchAlumniAudience, dispatchNotification, dispatchStaffAudience } from '../notify.js';
@@ -511,21 +511,161 @@ router.put('/reunions/:id/attendance', requireRole('admin', 'staff'), (req, res)
 
 /* -------------------------------- Donations ------------------------------- */
 
+const DEFAULT_DONATION_CAMPAIGN = {
+  title: 'Campus Chapel & Library Modernization',
+  description: 'Support the enhancement of our school chapel and research library facilities. Every donation contributes directly to student learning resources and campus upgrades.',
+  goal: 200000,
+  status: 'Active',
+  startDate: '2026-09-01',
+  endDate: '2026-12-31'
+};
+
+function getDonationCampaign() {
+  const saved = getSetting('donation_campaign', {});
+  return { ...DEFAULT_DONATION_CAMPAIGN, ...(saved && typeof saved === 'object' ? saved : {}) };
+}
+
+function publicDonation(row, status = row.payment_status || 'recorded') {
+  const anonymous = Boolean(row.is_anonymous);
+  return {
+    id: row.id,
+    campaign: row.campaign || '',
+    donor: anonymous ? 'Anonymous' : (row.account_name || row.alumni_name || row.donor || 'Donor'),
+    amount: Number(row.amount || 0),
+    date: row.date || '',
+    paymentStatus: status,
+    paymentRef: row.payment_ref || '',
+    dedication: row.dedication || '',
+    anonymous,
+    userId: row.user_id || 0,
+    studentId: row.student_id || row.alumni_student_id || '',
+    educationLevel: row.education_level || '',
+    batch: row.user_batch || row.alumni_batch || row.education_year || '',
+    strand: row.strand || '',
+    identityMatched: Boolean(row.alumni_record_id),
+    internalDonor: row.account_name || row.alumni_name || row.donor || 'Donor'
+  };
+}
+
+router.get('/donation-campaign', (req, res) => {
+  const campaign = getDonationCampaign();
+  const paidRows = db.prepare(
+    "SELECT id, user_id, donor, amount FROM donations WHERE payment_status = 'paid' AND campaign IN (?, 'Alumni Foundation')"
+  ).all(campaign.title);
+  const donors = new Set(paidRows.map((row) => row.user_id
+    ? `user:${row.user_id}`
+    : `record:${row.id}:${String(row.donor || '').toLowerCase()}`));
+  const raised = paidRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  res.json({ campaign, metrics: { raised, donors: donors.size } });
+});
+
+router.put('/donation-campaign', requireRole('admin'), (req, res) => {
+  const body = req.body || {};
+  const title = String(body.title || '').trim();
+  const description = String(body.description || '').trim();
+  const goal = Number(body.goal);
+  const status = String(body.status || '');
+  const startDate = String(body.startDate || '');
+  const endDate = String(body.endDate || '');
+
+  if (!title || title.length > 160) {
+    return res.status(400).json({ error: 'Campaign title is required and must be 160 characters or fewer.' });
+  }
+  if (description.length > 2000) {
+    return res.status(400).json({ error: 'Campaign description must be 2,000 characters or fewer.' });
+  }
+  if (!Number.isSafeInteger(goal) || goal < 1 || goal > 100000000) {
+    return res.status(400).json({ error: 'Campaign goal must be between PHP 1 and PHP 100,000,000.' });
+  }
+  if (!['Draft', 'Active', 'Closed'].includes(status)) {
+    return res.status(400).json({ error: 'Campaign status must be Draft, Active, or Closed.' });
+  }
+  if (!isValidIsoDate(startDate) || !isValidIsoDate(endDate) || endDate < startDate) {
+    return res.status(400).json({ error: 'Enter valid campaign dates; the end date must be on or after the start date.' });
+  }
+
+  const campaign = { title, description, goal, status, startDate, endDate };
+  setSetting('donation_campaign', campaign);
+  res.json({ campaign });
+});
+
 /** GET /api/donations - list donation records. */
 router.get('/donations', (req, res) => {
-  let rows = db.prepare('SELECT * FROM donations ORDER BY id DESC').all();
-  if (isAlumni(req.user)) rows = rows.filter((d) => ownsLinkedRow(req.user, d) || String(d.donor || '').toLowerCase() === String(req.user.name || '').toLowerCase());
-  res.json({ donations: rows.map(d => ({ id: d.id, campaign: d.campaign, donor: d.donor, amount: d.amount, date: d.date })) });
+  if (!isAdmin(req.user) && !isStaff(req.user) && !isAlumni(req.user)) {
+    return res.status(403).json({ error: 'You do not have permission to view donation records.' });
+  }
+  const donationRows = db.prepare(`
+    SELECT d.*, u.name AS account_name, u.student_id, u.batch AS user_batch,
+      u.education_level, u.strand, a.id AS alumni_record_id, a.name AS alumni_name,
+      a.batch AS alumni_batch, a.student_id AS alumni_student_id, a.education_year
+    FROM donations d
+    LEFT JOIN users u ON u.id = d.user_id
+    LEFT JOIN alumni a ON a.id = d.alumni_id
+    ORDER BY d.id DESC
+  `).all();
+  let donations = donationRows.map((row) => publicDonation(row));
+
+  const pendingRows = db.prepare(`
+    SELECT p.id, p.user_id, p.alumni_id, p.amount_centavos, p.status, p.created_at,
+      p.reference_id, p.metadata, u.name AS account_name, u.student_id,
+      u.batch AS user_batch, u.education_level, u.strand, a.id AS alumni_record_id,
+      a.name AS alumni_name, a.batch AS alumni_batch, a.student_id AS alumni_student_id,
+      a.education_year
+    FROM payments p
+    LEFT JOIN users u ON u.id = p.user_id
+    LEFT JOIN alumni a ON a.id = p.alumni_id
+    WHERE p.related_type = 'donation' AND p.status IN ('pending', 'awaiting_payment', 'processing')
+    ORDER BY p.id DESC
+  `).all();
+  if (isAdmin(req.user)) {
+    donations = donations.concat(pendingRows.map((row) => {
+      const metadata = parseJson(row.metadata, {});
+      return {
+        ...publicDonation({
+          ...row,
+          id: `payment-${row.id}`,
+          campaign: metadata.campaign || '',
+          amount: Number(row.amount_centavos || 0) / 100,
+          date: String(row.created_at || '').slice(0, 10),
+          payment_ref: row.reference_id || '',
+          dedication: metadata.dedication || '',
+          is_anonymous: metadata.anonymous ? 1 : 0
+        }, 'pending'),
+        id: `payment-${row.id}`,
+        paymentId: row.id
+      };
+    }));
+  } else if (isAlumni(req.user)) {
+    donations = donations.filter((donation) => donation.userId === req.user.id);
+    donations = donations.concat(pendingRows
+      .filter((row) => Number(row.user_id) === Number(req.user.id))
+      .map((row) => {
+        const metadata = parseJson(row.metadata, {});
+        return {
+          ...publicDonation({
+            ...row,
+            id: `payment-${row.id}`,
+            campaign: metadata.campaign || '',
+            amount: Number(row.amount_centavos || 0) / 100,
+            date: String(row.created_at || '').slice(0, 10),
+            payment_ref: row.reference_id || '',
+            dedication: metadata.dedication || '',
+            is_anonymous: metadata.anonymous ? 1 : 0
+          }, 'pending'),
+          id: `payment-${row.id}`,
+          paymentId: row.id
+        };
+      }));
+  } else if (isStaff(req.user)) {
+    donations = donations.map(({ paymentStatus, paymentRef, dedication, anonymous, ...donation }) => donation);
+  }
+  res.json({ donations });
 });
 
 /** POST /api/donations - staff/admin operational record only. Alumni gifts go through PayMongo checkout. */
-router.post('/donations', (req, res) => {
-  if (isAlumni(req.user)) {
-    return res.status(400).json({ error: 'Donations must be completed through GCash checkout. The amount will be recorded after PayMongo confirms payment.' });
-  }
+router.post('/donations', requireRole('admin'), (req, res) => {
   const { campaign, donor, amount } = req.body || {};
   if (!campaign || amount == null) return res.status(400).json({ error: 'Campaign and amount are required.' });
-  const linked = isAlumni(req.user) ? findAlumniForUser(req.user) : null;
 
   const info = db.prepare(
     'INSERT INTO donations (campaign, donor, amount, date, user_id, alumni_id) VALUES (?, ?, ?, ?, ?, ?)'
@@ -534,12 +674,14 @@ router.post('/donations', (req, res) => {
     donor || req.user.name || 'Anonymous',
     Number(amount),
     new Date().toISOString().split('T')[0],
-    isAlumni(req.user) ? req.user.id : 0,
-    linked?.id || 0
+    0,
+    0
   );
 
   const row = db.prepare('SELECT * FROM donations WHERE id = ?').get(info.lastInsertRowid);
-  mirror('donations', row);
+  mirror('donations', Object.fromEntries(Object.entries(row).filter(([key]) =>
+    !['payment_status', 'payment_ref', 'dedication', 'is_anonymous'].includes(key)
+  )));
   res.status(201).json({ donation: { id: row.id, campaign: row.campaign, donor: row.donor, amount: row.amount, date: row.date } });
 });
 
