@@ -226,8 +226,27 @@ CREATE TABLE IF NOT EXISTS public.job_opportunities (
   location    TEXT DEFAULT '',
   description TEXT DEFAULT '',
   status      TEXT DEFAULT 'Published',
-  created_at  TIMESTAMPTZ DEFAULT now()
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  industry TEXT DEFAULT '',
+  employment_type TEXT DEFAULT '',
+  qualifications TEXT DEFAULT '',
+  application_method TEXT DEFAULT 'Portal',
+  application_details TEXT DEFAULT '',
+  deadline TEXT DEFAULT '',
+  target_education_level TEXT DEFAULT 'All Alumni',
+  target_batch TEXT DEFAULT '',
+  target_strand TEXT DEFAULT ''
 );
+
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS industry TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS employment_type TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS qualifications TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS application_method TEXT DEFAULT 'Portal';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS application_details TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS deadline TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS target_education_level TEXT DEFAULT 'All Alumni';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS target_batch TEXT DEFAULT '';
+ALTER TABLE public.job_opportunities ADD COLUMN IF NOT EXISTS target_strand TEXT DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS public.job_applications (
   id            BIGSERIAL PRIMARY KEY,

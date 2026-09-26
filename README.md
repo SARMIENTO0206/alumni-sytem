@@ -40,7 +40,7 @@ repo, delete any old `server/data/saa.db`, then run `npm start` in `server/`.
 | `utils.js`      | Toast notifications, localStorage sync |
 | `auth.js`       | Login/registration (bcrypt via API), roles, session handling |
 | `navigation.js` | View router, counters, digital ID, profile, page navigation |
-| `records.js`    | Alumni database, transcripts, reprints, placements, academic records |
+| `records.js`    | Alumni database, transcripts, reprints, employment records, academic records |
 | `engagement.js` | Events, reunions, donations, resume, notifications engine, newsletter, feedback, AI assistant chat |
 | `reports.js`    | Graduate tracking, outcome charts, Registrar review, AI tools, initialization |
 
@@ -54,7 +54,7 @@ automated communication flows and AI features:
 | 1 | Alumni Database | Admin → *Alumni Database* |
 | 2 | Transcript Request Portal | Alumni submit; Registrar reviews and processes; Admin monitors |
 | 3 | Graduate Tracking | Admin analytics/exports; Registrar record review; Alumni update their own status |
-| 4 | Job Placement Logs | *Job Placement Logs* / *Job Opportunities* |
+| 4 | Career Management | Alumni report employment through Graduate Tracking; Admin/Registrar review shared records and manage job opportunities |
 | 5 | Alumni Event Registration | *Alumni Events* |
 | 6 | Batch Reunions Manager | *Batch Reunions* |
 | 7 | Donor Campaign Tool | *Donor Campaigns* |

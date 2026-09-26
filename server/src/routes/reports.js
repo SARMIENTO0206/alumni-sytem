@@ -27,7 +27,7 @@ router.get('/summary', staffOrAdmin, (req, res) => {
       released: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Released'")
     },
     reprints: count('SELECT COUNT(*) AS n FROM reprints'),
-    placements: count('SELECT COUNT(*) AS n FROM placements'),
+    placements: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Employed','Self-employed')"),
     events: count('SELECT COUNT(*) AS n FROM events'),
     reunions: count('SELECT COUNT(*) AS n FROM reunions'),
     donations: count('SELECT COUNT(*) AS n FROM donations'),
@@ -76,7 +76,7 @@ router.get('/dashboard', (req, res) => {
     employed: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Employed','Self-employed','Freelance')"),
     events: count('SELECT COUNT(*) AS n FROM events'),
     jobs: count("SELECT COUNT(*) AS n FROM job_opportunities WHERE status = 'Published'"),
-    placements: count('SELECT COUNT(*) AS n FROM placements')
+    placements: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Employed','Self-employed')")
   });
 });
 

@@ -607,7 +607,9 @@
         if (tCount) tCount.textContent = transcriptRequests.length;
 
         const pCount = document.getElementById("reportPlacementCount");
-        if (pCount) pCount.textContent = placementLogs.length;
+        if (pCount) pCount.textContent = alumniList.filter((alumnus) =>
+            ["Employed", "Self-employed"].includes(alumnus.status)
+        ).length;
 
         const eCount = document.getElementById("reportEventCount");
         if (eCount) eCount.textContent = eventsList.length;

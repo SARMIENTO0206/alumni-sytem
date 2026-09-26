@@ -784,57 +784,34 @@
         await updateRequestStatus(id, "Approved", "reprint");
     }
 
-    /* Placements */
+    /* Alumni employment records are sourced from the graduate tracking profile. */
     function renderPlacementLogs() {
         const body = document.getElementById("placementTableBody");
         if (!body) return;
         body.innerHTML = "";
 
-        if (!placementLogs.length) {
-            body.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-semibold">No job placement records yet.</td></tr>`;
+        const employmentRecords = alumniList.filter((alumnus) =>
+            ["Employed", "Self-employed"].includes(alumnus.status)
+        );
+        if (!employmentRecords.length) {
+            body.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 font-semibold">No alumni employment information has been reported yet.</td></tr>`;
             return;
         }
 
-        placementLogs.forEach(p => {
+        employmentRecords.forEach((alumnus) => {
             const tr = document.createElement("tr");
             tr.innerHTML = `
-                <td class="font-extrabold text-slate-800">${p.alumni}</td>
-                <td class="text-slate-600 font-semibold">${p.company}</td>
-                <td class="text-slate-500">${p.title}</td>
-                <td class="text-slate-400">${p.date}</td>
+                <td class="font-extrabold text-slate-800">${escapeHtml(alumnus.name || "Alumnus")}</td>
+                <td class="text-slate-600">${escapeHtml([alumnus.program || alumnus.educationLevel, alumnus.batch].filter(Boolean).join(" • ") || "—")}</td>
+                <td class="text-slate-600 font-semibold">${escapeHtml(alumnus.company || "—")}</td>
+                <td class="text-slate-500">${escapeHtml(alumnus.title || "—")}</td>
+                <td><span class="status-badge">${escapeHtml(alumnus.status)}</span></td>
+                <td class="text-slate-400">${escapeHtml(alumnus.lastUpdated || "Not updated")}</td>
+                <td><button type="button" onclick="openAlumniDetails(${Number(alumnus.id)})" class="text-xs text-brand-magenta font-bold hover:underline">View</button></td>
             `;
             body.appendChild(tr);
         });
     }
-
-    function openAddJobModal() {
-        document.getElementById("addJobModal").classList.add("active");
-    }
-
-    function closeAddJobModal() {
-        document.getElementById("addJobModal").classList.remove("active");
-    }
-
-    async function saveJobPlacement(event) {
-        event.preventDefault();
-        const alumni = document.getElementById("jobAlumniName").value.trim();
-        const company = document.getElementById("jobCompany").value.trim();
-        const title = document.getElementById("jobTitle").value.trim();
-        try {
-            await SAA_API.request("/api/placements", {
-                method: "POST",
-                body: JSON.stringify({ alumni, company, title })
-            });
-            await SAA_API.refreshAllData();
-            renderPlacementLogs();
-            closeAddJobModal();
-            event.target.reset();
-            showToast(`Job placement recorded for ${alumni}.`, "success");
-        } catch (err) {
-            showToast(err.message || "Unable to save placement record.", "error");
-        }
-    }
-
 
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 5139-5210 */

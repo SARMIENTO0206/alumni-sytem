@@ -489,7 +489,7 @@
                 <div class="sidebar-group">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('placement')" id="nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Job Placement Logs</span></button>
+                        <button type="button" onclick="switchView('placement')" id="nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Alumni Employment</span></button>
                         <button type="button" onclick="switchView('job-opportunities')" id="nav-job-opportunities" class="sidebar-link"><i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Opportunities</span></button>
                     </div>
                 </div>
@@ -599,7 +599,7 @@
                 <div class="sidebar-group">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('placement')" id="staff-nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Job Placement Logs</span></button>
+                        <button type="button" onclick="switchView('placement')" id="staff-nav-placement" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>Alumni Employment</span></button>
                         <button type="button" onclick="switchView('job-opportunities')" id="staff-nav-job-opportunities" class="sidebar-link"><i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Opportunities</span></button>
                     </div>
                 </div>
@@ -1222,9 +1222,9 @@
                     <div id="jobsListPanel" class="app-card p-6 sm:p-8">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div>
-                                <span class="status-badge status-freelance mb-1">Career Services</span>
-                                <h3 class="text-xl font-extrabold text-slate-800">Alumni Career & Job Opportunities</h3>
-                                <p class="text-xs text-slate-400 font-medium">Job openings saved in the database. Add a listing to publish it for alumni.</p>
+                                <span class="status-badge status-freelance mb-1">Career Management</span>
+                                <h3 class="text-xl font-extrabold text-slate-800">Job Opportunities</h3>
+                                <p class="text-xs text-slate-400 font-medium">Browse current openings or manage verified opportunities for alumni.</p>
                             </div>
                             <button type="button" id="adminAddJobOpportunityBtn" onclick="openAddJobOpportunityModal()" class="btn btn-primary text-xs hidden">
                                 <i class="fa-solid fa-plus"></i>
@@ -1232,6 +1232,20 @@
                             </button>
                         </div>
 
+                        <div id="jobManagementSummary" class="hidden grid grid-cols-2 gap-3 mb-4">
+                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3"><p class="text-[10px] uppercase font-bold text-emerald-700">Active Jobs</p><p id="activeJobsCount" class="text-xl font-extrabold text-emerald-800">0</p></div>
+                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] uppercase font-bold text-slate-500">Expired / Archived</p><p id="inactiveJobsCount" class="text-xl font-extrabold text-slate-700">0</p></div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-3 mb-5">
+                            <input id="jobsSearchInput" type="search" oninput="renderJobsGrid()" placeholder="Search job title, company, or location..." class="form-input text-xs flex-1">
+                            <select id="jobsStatusFilter" onchange="renderJobsGrid()" class="form-input text-xs sm:w-48">
+                                <option value="active">Active jobs</option>
+                                <option value="all">All available</option>
+                                <option value="expired">Expired</option>
+                                <option value="draft">Draft</option>
+                                <option value="archived">Archived</option>
+                            </select>
+                        </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="jobsGridContainer">
                             <div class="col-span-full text-center py-10 text-slate-400 font-semibold">No job opportunities yet.</div>
                         </div>
@@ -1610,29 +1624,28 @@
 
 
                 <!-- =================================================
-                     VIEW: JOB PLACEMENT LOGS
+                     VIEW: ALUMNI EMPLOYMENT RECORDS
                      ================================================= -->
                 <div id="view-placement" class="hidden space-y-6 fade-in">
                     <div class="app-card p-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div>
-                                <h3 class="text-lg font-extrabold text-slate-800">Job Placement Records</h3>
-                                <p class="text-xs text-slate-400 font-medium">Historical records of alumni career positions and company hires.</p>
+                                <h3 class="text-lg font-extrabold text-slate-800">Alumni Employment Records</h3>
+                                <p class="text-xs text-slate-400 font-medium">Current employment details reported by alumni and synced from Graduate Tracking. These records do not imply school placement.</p>
                             </div>
-                            <button onclick="openAddJobModal()" class="btn btn-primary text-xs">
-                                <i class="fa-solid fa-plus"></i>
-                                <span>Log New Placement</span>
-                            </button>
                         </div>
 
                         <div class="data-table-container">
                             <table class="modern-table">
                                 <thead>
                                     <tr>
-                                        <th>Alumnus</th>
-                                        <th>Company / Employer</th>
+                                        <th>Alumni</th>
+                                        <th>Level / Batch</th>
+                                        <th>Employer</th>
                                         <th>Job Title</th>
-                                        <th>Date Logged</th>
+                                        <th>Employment Status</th>
+                                        <th>Last Updated</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="placementTableBody">
@@ -2214,7 +2227,7 @@
                                 </div>
                                 <div>
                                     <p class="text-2xl font-extrabold text-slate-800" id="reportPlacementCount">0</p>
-                                    <p class="text-xs font-semibold text-slate-400">Job Placements</p>
+                                    <p class="text-xs font-semibold text-slate-400">Alumni Employed</p>
                                 </div>
                             </div>
 
@@ -3465,41 +3478,7 @@
         </div>
     </div>
 
-    <!-- Log Job Placement Modal (Admin) -->
-    <div id="addJobModal" class="modal-backdrop">
-        <div class="modal-box p-6">
-            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
-                <h3 class="font-extrabold text-slate-800 text-base">Log Alumni Job Placement</h3>
-                <button onclick="closeAddJobModal()" title="Close job modal" aria-label="Close job modal" class="text-slate-400 hover:text-slate-600 p-1">
-                    <i class="fa-solid fa-xmark text-base"></i>
-                </button>
-            </div>
-
-            <form onsubmit="saveJobPlacement(event)" class="space-y-3.5">
-                <div>
-                    <label class="form-label" for="jobAlumniName">Alumnus Name</label>
-                    <input type="text" id="jobAlumniName" required placeholder="Full Name" class="form-input text-xs">
-                </div>
-
-                <div>
-                    <label class="form-label" for="jobCompany">Company / Employer</label>
-                    <input type="text" id="jobCompany" required placeholder="e.g. San Miguel Corp." class="form-input text-xs">
-                </div>
-
-                <div>
-                    <label class="form-label" for="jobTitle">Job Title / Role</label>
-                    <input type="text" id="jobTitle" required placeholder="e.g. Financial Analyst" class="form-input text-xs">
-                </div>
-
-                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                    <button type="button" onclick="closeAddJobModal()" class="btn btn-secondary text-xs">Cancel</button>
-                    <button type="submit" class="btn btn-primary text-xs">Save Placement</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Post Job Opportunity Modal (Admin) -->
+    <!-- Post or edit job opportunity modal -->
     <div id="addJobOpportunityModal" class="modal-backdrop">
         <div class="modal-box p-6">
             <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
@@ -3509,6 +3488,7 @@
                 </button>
             </div>
             <form onsubmit="saveNewJobOpportunity(event)" class="space-y-3.5">
+                <input type="hidden" id="editingJobOpportunityId">
                 <div>
                     <label class="form-label" for="newJobTitle">Job Title</label>
                     <input type="text" id="newJobTitle" required placeholder="e.g. Software Engineer" class="form-input text-xs">
@@ -3521,13 +3501,68 @@
                     <label class="form-label" for="newJobLocation">Location</label>
                     <input type="text" id="newJobLocation" placeholder="e.g. Caloocan / Remote" class="form-input text-xs">
                 </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label" for="newJobIndustry">Industry</label>
+                        <input type="text" id="newJobIndustry" placeholder="e.g. BPO / Customer Service" class="form-input text-xs">
+                    </div>
+                    <div>
+                        <label class="form-label" for="newJobEmploymentType">Employment Type</label>
+                        <select id="newJobEmploymentType" class="form-input text-xs">
+                            <option value="">Select type</option>
+                            <option>Full-time</option><option>Part-time</option><option>Contract</option><option>Temporary</option><option>Internship</option>
+                        </select>
+                    </div>
+                </div>
                 <div>
                     <label class="form-label" for="newJobDescription">Description</label>
                     <textarea id="newJobDescription" rows="3" placeholder="Role summary, requirements, and how to apply..." class="form-textarea text-xs"></textarea>
                 </div>
+                <div>
+                    <label class="form-label" for="newJobQualifications">Qualifications</label>
+                    <textarea id="newJobQualifications" rows="2" placeholder="Optional qualifications and experience" class="form-textarea text-xs"></textarea>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label" for="newJobApplicationMethod">Application Method</label>
+                        <select id="newJobApplicationMethod" class="form-input text-xs">
+                            <option value="Portal">Apply through portal</option><option value="Link">Application link</option><option value="Email">Email</option><option value="Contact Information">Contact information</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="newJobApplicationDetails">Application Link / Email / Contact</label>
+                        <input type="text" id="newJobApplicationDetails" placeholder="Optional details" class="form-input text-xs">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label" for="newJobDeadline">Application Deadline</label>
+                        <input type="date" id="newJobDeadline" class="form-input text-xs">
+                    </div>
+                    <div>
+                        <label class="form-label" for="newJobTargetLevel">Target Alumni</label>
+                        <select id="newJobTargetLevel" onchange="toggleJobTargetStrand()" class="form-input text-xs">
+                            <option>All Alumni</option><option>JHS</option><option>SHS</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label" for="newJobTargetBatch">Target Batch (optional)</label>
+                        <input type="text" id="newJobTargetBatch" placeholder="e.g. 2022" class="form-input text-xs">
+                    </div>
+                    <div>
+                        <label class="form-label" for="newJobTargetStrand">SHS Strand (optional)</label>
+                        <input type="text" id="newJobTargetStrand" placeholder="Optional filter only" class="form-input text-xs">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label" for="newJobStatus">Listing Status</label>
+                    <select id="newJobStatus" class="form-input text-xs"><option>Draft</option><option>Published</option></select>
+                </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeAddJobOpportunityModal()" class="btn btn-secondary text-xs">Cancel</button>
-                    <button type="submit" class="btn btn-primary text-xs">Publish Opportunity</button>
+                    <button type="submit" class="btn btn-primary text-xs">Save Opportunity</button>
                 </div>
             </form>
         </div>

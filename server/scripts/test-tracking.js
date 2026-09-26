@@ -102,4 +102,32 @@ const adminSendsAlumniStatus = await req(alumni.token, 'POST', '/api/tracking/re
 const registrarSendsReminders = await req(registrar.token, 'POST', '/api/tracking/reminders/sweep');
 assert(adminSendsAlumniStatus.status === 403 && registrarSendsReminders.status === 403, 'only Admin may dispatch profile reminders');
 
-console.log('Graduate tracking role, status, review, and reminder-setting checks passed.');
+const job = await req(registrar.token, 'POST', '/api/jobs', {
+  title: `Career Test ${Date.now()}`,
+  company: 'Test Employer',
+  industry: 'BPO / Customer Service',
+  employment_type: 'Full-time',
+  qualifications: 'Clear communication skills',
+  application_method: 'Link',
+  application_details: 'https://example.test/apply',
+  target_education_level: 'All Alumni',
+  status: 'Published'
+});
+assert(job.status === 201 && job.data.job.industry === 'BPO / Customer Service', 'Registrar can publish a job with career details');
+const alumniJobs = await req(alumni.token, 'GET', '/api/jobs');
+assert(alumniJobs.status === 200 && alumniJobs.data.jobs.some((item) => item.id === job.data.job.id), 'alumni can see published opportunities');
+const alumniPostJob = await req(alumni.token, 'POST', '/api/jobs', { title: 'Unauthorized job' });
+assert(alumniPostJob.status === 403, 'alumni cannot publish job opportunities');
+const invalidJobLink = await req(registrar.token, 'POST', '/api/jobs', {
+  title: 'Invalid Link Test',
+  application_method: 'Link',
+  application_details: 'javascript:alert(1)'
+});
+assert(invalidJobLink.status === 400, 'job application links must use HTTPS');
+const archivedJob = await req(registrar.token, 'PUT', `/api/jobs/${job.data.job.id}`, { status: 'Archived' });
+assert(archivedJob.status === 200 && archivedJob.data.job.status === 'Archived', 'Registrar can archive a job');
+const alumniJobsAfterArchive = await req(alumni.token, 'GET', '/api/jobs');
+assert(!alumniJobsAfterArchive.data.jobs.some((item) => item.id === job.data.job.id), 'alumni cannot see archived opportunities');
+await req(registrar.token, 'DELETE', `/api/jobs/${job.data.job.id}`);
+
+console.log('Graduate tracking and Career Management role, status, review, and listing checks passed.');

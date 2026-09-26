@@ -411,7 +411,7 @@
             transcript: "Transcript Request Portal",
             reprint: "Certificate Reprint Requests",
             tracking: "Graduate Tracking Analytics",
-            placement: "Job Placement Logs",
+            placement: "Alumni Employment Records",
             events: "Alumni Events Registration",
             reunions: "Batch Reunions Manager",
             donor: "Donor Campaign Portal",
@@ -470,7 +470,8 @@
         const items = [];
         if (alumniList[0]) items.push({ title: "Latest alumni record", detail: alumniList[0].name + (alumniList[0].batch ? ` (Batch ${alumniList[0].batch})` : "") });
         if (transcriptRequests[0]) items.push({ title: "Latest transcript request", detail: transcriptRequests[0].name + " • " + (transcriptRequests[0].status || "") });
-        if (placementLogs[0]) items.push({ title: "Latest placement", detail: placementLogs[0].alumni + " • " + (placementLogs[0].company || "") });
+        const latestEmployment = alumniList.find((alumnus) => ["Employed", "Self-employed"].includes(alumnus.status));
+        if (latestEmployment) items.push({ title: "Latest alumni employment update", detail: latestEmployment.name + " • " + (latestEmployment.company || latestEmployment.status) });
         if (eventsList[0]) items.push({ title: "Latest event", detail: eventsList[0].title });
 
         if (!items.length) {

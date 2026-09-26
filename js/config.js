@@ -5,7 +5,6 @@
 
     let alumniList = [];
     let transcriptRequests = [];
-    let placementLogs = [];
     let eventsList = [];
     let reprintRequests = [];
     let reunionsList = [];

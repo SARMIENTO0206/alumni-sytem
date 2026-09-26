@@ -44,7 +44,7 @@ function stats() {
     rejectedRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Rejected'"),
     totalRequests: count('SELECT COUNT(*) AS n FROM transcript_requests'),
     reprints: count('SELECT COUNT(*) AS n FROM reprints'),
-    placements: count('SELECT COUNT(*) AS n FROM placements'),
+    placements: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Employed','Self-employed')"),
     events: count('SELECT COUNT(*) AS n FROM events'),
     reunions: count('SELECT COUNT(*) AS n FROM reunions'),
     donations: count('SELECT COUNT(*) AS n FROM donations'),
@@ -364,7 +364,7 @@ router.post('/dashboard-insights', async (req, res) => {
       `Profile freshness: ${freshness}% (${s.staleProfiles} profiles outside the configured ${s.reminderMonths}-month reminder period)`,
       `Transcript requests - total: ${s.totalRequests}, pending: ${s.pendingRequests}, released: ${s.releasedRequests}, rejected: ${s.rejectedRequests}`,
       `Certificate reprints: ${s.reprints}`,
-      `Job placements logged: ${s.placements}`,
+      `Alumni-reported employment records: ${s.placements}`,
       `Events: ${s.events}, batch reunions: ${s.reunions}`,
       `Donations recorded: ${s.donations}, newsletters: ${s.newsletters}`,
       `Survey responses: ${s.feedback}`
@@ -386,7 +386,7 @@ router.post('/dashboard-insights', async (req, res) => {
   if (s.pendingRequests > 0) observations.push(`${s.pendingRequests} transcript request(s) are pending action by the Registrar.`);
   if (s.releasedRequests > 0) observations.push(`${s.releasedRequests} document(s) have been released to alumni.`);
   if (s.reprints > 0) observations.push(`${s.reprints} certificate reprint request(s) are on file.`);
-  if (s.placements > 0) observations.push(`${s.placements} job placement(s) have been recorded.`);
+  if (s.placements > 0) observations.push(`${s.placements} alumni-reported employment record(s) are on file; this does not indicate school placement.`);
   if (s.reunions > 0) observations.push(`${s.reunions} batch reunion(s) are organized.`);
   if (s.feedback > 0) observations.push(`${s.feedback} survey response(s) have been collected for review.`);
 

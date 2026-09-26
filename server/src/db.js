@@ -313,6 +313,15 @@ export function initDb() {
   ensureColumn('feedback', 'internal_note', "internal_note TEXT DEFAULT ''");
   ensureColumn('job_applications', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('job_applications', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
+  ensureColumn('job_opportunities', 'industry', "industry TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'employment_type', "employment_type TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'qualifications', "qualifications TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'application_method', "application_method TEXT DEFAULT 'Portal'");
+  ensureColumn('job_opportunities', 'application_details', "application_details TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'deadline', "deadline TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'target_education_level', "target_education_level TEXT DEFAULT 'All Alumni'");
+  ensureColumn('job_opportunities', 'target_batch', "target_batch TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'target_strand', "target_strand TEXT DEFAULT ''");
   ensureColumn('notifications', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('notifications', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('notifications', 'related_type', "related_type TEXT DEFAULT ''");

@@ -152,18 +152,6 @@ router.put('/:id/employment', (req, res) => {
     id
   );
 
-  if (status === 'Employed' && nextCompany && nextTitle) {
-    const row = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
-    const duplicate = db.prepare(
-      'SELECT id FROM placements WHERE alumni_id = ? AND company = ? AND title = ?'
-    ).get(row.id, nextCompany, nextTitle);
-    if (!duplicate) {
-      db.prepare('INSERT INTO placements (alumni, company, title, date, alumni_id, user_id) VALUES (?, ?, ?, ?, ?, ?)').run(
-        row.name, nextCompany, nextTitle, new Date().toISOString().split('T')[0], row.id, row.user_id || 0
-      );
-    }
-  }
-
   const row = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
   mirrorUpdate('alumni', row);
   res.json({ alumni: mapAlumni(row) });
