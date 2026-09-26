@@ -297,7 +297,7 @@
                         Sign in to access your designated portal
                     </p>
                     <p class="text-[11px] text-slate-400 mt-2">
-                        Live system · 20 Sep 2026 build · no demo records
+                        Live system · 26 Sep 2026 build · no demo records
                     </p>
                 </div>
 
@@ -540,7 +540,7 @@
                 <div class="sidebar-group">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Graduate Tracking</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('tracking')" id="alumni-nav-tracking" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>My Employment Information</span></button>
+                        <button type="button" onclick="switchView('tracking')" id="alumni-nav-tracking" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>My Graduate Status</span></button>
                     </div>
                 </div>
                 <div class="sidebar-group">
@@ -766,7 +766,7 @@
                             </div>
                             <div>
                                 <p class="text-2xl font-extrabold text-slate-800" id="stat-employed">0</p>
-                                <p class="text-xs font-semibold text-slate-400">Employed Alumni</p>
+                                <p class="text-xs font-semibold text-slate-400">Employed / Self-employed</p>
                             </div>
                         </button>
 
@@ -1364,62 +1364,90 @@
                     <div class="app-card p-6 sm:p-8">
                         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                             <div>
-                                <span class="status-badge status-approved mb-2">CHED & Accreditation Compliant</span>
-                                <h3 class="text-xl font-extrabold text-slate-800">Graduate Career & Employment Tracking</h3>
-                                <p class="text-xs text-slate-500 font-medium mt-1">Track graduate outcomes, degree relevance, time-to-hire, and manage automated SMS profile freshness reminders.</p>
+                                <span class="status-badge status-approved mb-2">JHS & SHS Alumni Outcomes</span>
+                                <h3 class="text-xl font-extrabold text-slate-800" id="trackingPageHeading">Graduate Tracking</h3>
+                                <p class="text-xs text-slate-500 font-medium mt-1" id="trackingPageDescription">Monitor education pathways and employment outcomes reported by alumni.</p>
                             </div>
 
                             <div class="flex flex-wrap items-center gap-2.5">
-                                <button onclick="openUpdateEmploymentModal()" class="btn btn-primary text-xs shadow-xs">
+                                <button data-tracking-role="alumni" onclick="openUpdateEmploymentModal()" class="btn btn-primary text-xs shadow-xs">
                                     <i class="fa-solid fa-user-pen"></i>
                                     <span>Update My Status</span>
                                 </button>
-                                <button id="adminSmsSweepBtn" onclick="runSmsReminderSweep()" class="btn btn-secondary text-xs border-amber-500/40 text-amber-900 bg-amber-50/50 hover:bg-amber-100">
-                                    <i class="fa-solid fa-paper-plane text-amber-600"></i>
-                                    <span>Dispatch SMS Reminders</span>
-                                </button>
-                                <button onclick="exportGraduateTrackingReport()" class="btn btn-secondary text-xs">
+                                <button data-tracking-role="admin" onclick="exportGraduateTrackingReport()" class="btn btn-secondary text-xs">
                                     <i class="fa-solid fa-file-csv text-emerald-600"></i>
-                                    <span>Export Report (CSV)</span>
+                                    <span>Export Report</span>
                                 </button>
-                                <button id="chedTracerBtn" onclick="exportChedTracerStudy()" class="btn btn-secondary text-xs" title="CHED Graduate Tracer Study compliance report (server-generated when the API is online)">
-                                    <i class="fa-solid fa-graduation-cap text-amber-600"></i>
-                                    <span>CHED Tracer Study (CSV)</span>
+                                <button id="adminSmsSweepBtn" data-tracking-role="admin" onclick="runSmsReminderSweep()" class="btn btn-secondary text-xs border-amber-500/40 text-amber-900 bg-amber-50/50 hover:bg-amber-100">
+                                    <i class="fa-solid fa-paper-plane text-amber-600"></i>
+                                    <span>Send Reminders</span>
                                 </button>
                             </div>
                         </div>
 
                         <!-- KPI Summary Grid -->
-                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                        <div data-tracking-role="staff" class="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
                             <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Employment Rate</p>
-                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiEmployedRate">0%</p>
-                                <p class="text-[10px] text-slate-500 font-semibold mt-0.5">From saved alumni records</p>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tracked Alumni</p>
+                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiEmployedRate">0</p>
+                                <p class="text-[10px] text-slate-500 font-semibold mt-0.5">JHS & SHS records</p>
                             </div>
                             <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Field Alignment</p>
-                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiFieldRelevance">0%</p>
-                                <p class="text-[10px] text-indigo-600 font-semibold mt-0.5"><i class="fa-solid fa-circle-check"></i> Directly related to degree</p>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Currently Employed</p>
+                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiCurrentlyEmployed">0</p>
+                                <p class="text-[10px] text-slate-500 font-semibold mt-0.5">Employed or self-employed</p>
+                            </div>
+                            <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Further Studies</p>
+                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiFurtherStudies">0</p>
+                                <p class="text-[10px] text-slate-500 font-semibold mt-0.5">College or training</p>
+                            </div>
+                            <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Seeking Employment</p>
+                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiSeekingEmployment">0</p>
+                                <p class="text-[10px] text-slate-500 font-semibold mt-0.5">Reported by alumni</p>
                             </div>
                             <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Profile Freshness</p>
-                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiProfileFreshness">0% Up-to-Date</p>
+                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiProfileFreshness">0%</p>
                                 <p class="text-[10px] text-slate-500 font-semibold mt-0.5" id="kpiOutdatedCount">No alumni records yet</p>
-                            </div>
-                            <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Avg Time-to-Hire</p>
-                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiTimeToHire">—</p>
-                                <p class="text-[10px] text-slate-500 font-semibold mt-0.5">From graduation date</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Charts Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div data-tracking-role="staff" class="app-card p-5">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                            <div>
+                                <label class="form-label" for="trackingEducationLevelFilter">Educational Level</label>
+                                <select id="trackingEducationLevelFilter" class="form-select text-xs">
+                                    <option value="">All Levels</option>
+                                    <option value="JHS">JHS</option>
+                                    <option value="SHS">SHS</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="trackingBatchFilter">Graduation Batch</label>
+                                <select id="trackingBatchFilter" class="form-select text-xs"><option value="">All Years</option></select>
+                            </div>
+                            <div id="trackingStrandFilterWrap">
+                                <label class="form-label" for="trackingStrandFilter">SHS Strand</label>
+                                <select id="trackingStrandFilter" class="form-select text-xs"><option value="">All Strands</option></select>
+                            </div>
+                            <button type="button" onclick="applyTrackingFilters()" class="btn btn-primary text-xs">Apply Filters</button>
+                        </div>
+                    </div>
+
+                    <div data-tracking-role="alumni" class="app-card p-6">
+                        <h3 class="font-extrabold text-slate-800">Your Graduate Tracking Record</h3>
+                        <p id="myTrackingSummary" class="text-sm text-slate-500 mt-2">Your current education or employment status has not been provided.</p>
+                    </div>
+
+                    <!-- Analytics: staff-only -->
+                    <div data-tracking-role="admin" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="app-card p-6">
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="font-extrabold text-slate-800 text-base">Alumni Employment Breakdown</h3>
-                                <span class="status-badge status-employed text-xs">Live Tally</span>
+                                <h3 class="font-extrabold text-slate-800 text-base">Graduate Outcomes</h3>
+                                <span class="status-badge status-employed text-xs">Includes No Data</span>
                             </div>
                             <div class="h-64 relative">
                                 <canvas id="employmentPieChart"></canvas>
@@ -1428,23 +1456,49 @@
 
                         <div class="app-card p-6">
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="font-extrabold text-slate-800 text-base">Top Hiring Industries</h3>
-                                <span class="status-badge status-freelance text-xs">Industry Analytics</span>
+                                <h3 class="font-extrabold text-slate-800 text-base">Employment by Industry</h3>
+                                <span class="status-badge status-freelance text-xs">Self-reported</span>
                             </div>
+                            <p class="text-[11px] text-slate-500 -mt-2 mb-3">Unreported industries are shown separately; no industry is inferred.</p>
                             <div class="h-64 relative">
                                 <canvas id="industryBarChart"></canvas>
                             </div>
                         </div>
                     </div>
 
+                    <div data-tracking-role="admin" id="postShsPathwaysSection" class="app-card p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-extrabold text-slate-800 text-base">Post-SHS Pathways</h3>
+                                <p class="text-xs text-slate-500 mt-1">SHS graduates only; JHS alumni are excluded from this chart.</p>
+                            </div>
+                        </div>
+                        <div class="h-64 relative"><canvas id="postShsPathwaysChart"></canvas></div>
+                    </div>
+
+                    <div data-tracking-role="registrar" class="app-card p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                            <div>
+                                <h3 class="font-extrabold text-slate-800 text-base">Manage Graduate Records</h3>
+                                <p class="text-xs text-slate-500 mt-1">Review alumni-submitted education and employment information.</p>
+                            </div>
+                        </div>
+                        <div class="data-table-container">
+                            <table class="modern-table">
+                                <thead><tr><th>Alumni</th><th>Level / Batch</th><th>Current Status</th><th>Industry / Strand</th><th>Review</th><th class="text-right">Action</th></tr></thead>
+                                <tbody id="trackingRecordsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <!-- Graduate Tracking Lifecycle Flow -->
-                    <div class="app-card p-6">
+                    <div data-tracking-role="staff" class="app-card p-6">
                         <div class="mb-5">
                             <div class="flex items-center space-x-2">
                                 <i class="fa-solid fa-diagram-project text-emerald-600 text-base"></i>
                                 <h3 class="font-extrabold text-slate-800 text-base">Graduate Tracking Lifecycle</h3>
                             </div>
-                            <p class="text-xs text-slate-400 font-medium mt-1">Complete end-to-end pipeline: alumni updates → validation → tracking records → admin monitoring → report generation. Automated SMS reminders activate after 6 months of inactivity.</p>
+                            <p class="text-xs text-slate-400 font-medium mt-1">Alumni update status → system validates input → graduate tracking record is updated → Admin/Registrar review the data → reports are generated.</p>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -1475,8 +1529,8 @@
                             <!-- Step 4: Admin Monitors -->
                             <div class="p-3.5 rounded-xl border-2 border-purple-200 bg-purple-50/50 relative">
                                 <div class="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-extrabold mb-2 shadow-sm">4</div>
-                                <p class="text-xs font-extrabold text-slate-800">Admin Monitors KPIs</p>
-                                <p class="text-[10px] text-slate-500 mt-1 leading-relaxed">Analytics dashboard tracks employment rate, field alignment, and freshness.</p>
+                                <p class="text-xs font-extrabold text-slate-800">Admin / Registrar Review</p>
+                                <p class="text-[10px] text-slate-500 mt-1 leading-relaxed">Staff review the records; Admin monitors aggregate outcomes.</p>
                                 <span class="absolute top-2 right-2 text-purple-600"><i class="fa-solid fa-chart-line"></i></span>
                             </div>
 
@@ -1489,17 +1543,17 @@
                             </div>
                         </div>
 
-                        <!-- Automated SMS Reminder Loop -->
+                        <!-- Optional Profile Update Reminder Loop -->
                         <div class="mt-4 p-4 rounded-xl border border-rose-200 bg-rose-50/40">
                             <div class="flex items-center gap-2 mb-3">
                                 <i class="fa-solid fa-rotate text-rose-600 text-sm"></i>
-                                <p class="text-xs font-extrabold text-rose-800 uppercase tracking-wider">Automated SMS Reminder Loop</p>
-                                <span class="text-[10px] text-rose-400 font-semibold">If alumni does NOT update for >6 months</span>
+                                <p class="text-xs font-extrabold text-rose-800 uppercase tracking-wider">Optional Profile Update Reminders</p>
+                                <span class="text-[10px] text-rose-400 font-semibold">Admin-configured period</span>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 text-[10px] font-semibold">
                                 <span class="px-3 py-1.5 rounded-full bg-white border border-rose-200 text-rose-700">🔍 System detects stale profile</span>
                                 <i class="fa-solid fa-arrow-right text-rose-300 text-xs"></i>
-                                <span class="px-3 py-1.5 rounded-full bg-white border border-rose-200 text-rose-700">📲 Automatic SMS reminder sent</span>
+                                <span class="px-3 py-1.5 rounded-full bg-white border border-rose-200 text-rose-700">📲 Admin confirms reminder dispatch</span>
                                 <i class="fa-solid fa-arrow-right text-rose-300 text-xs"></i>
                                 <span class="px-3 py-1.5 rounded-full bg-white border border-rose-200 text-rose-700">✉️ Alumni receives reminder</span>
                                 <i class="fa-solid fa-arrow-right text-rose-300 text-xs"></i>
@@ -1515,20 +1569,22 @@
                         </div>
                     </div>
 
-                    <!-- Automated SMS Profile Freshness Monitor -->
-                    <div class="app-card p-6">
+                    <!-- Admin reminder settings and candidates -->
+                    <div data-tracking-role="admin" class="app-card p-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
                             <div>
                                 <div class="flex items-center space-x-2">
                                     <i class="fa-solid fa-clock-rotate-left text-amber-500 text-base"></i>
-                                    <h3 class="font-extrabold text-slate-800 text-base">Automated Profile Freshness & SMS Monitor</h3>
+                                    <h3 class="font-extrabold text-slate-800 text-base">Profiles Needing Update</h3>
                                 </div>
-                                <p class="text-xs text-slate-400 font-medium">Detects alumni whose profiles have not been updated for >6 months and dispatches automated SMS reminders.</p>
+                                <p class="text-xs text-slate-400 font-medium">Review profiles that have not been updated within the configured reminder period.</p>
                             </div>
 
-                            <button onclick="runSmsReminderSweep()" class="btn btn-primary text-xs shadow-xs flex-shrink-0">
-                                <i class="fa-solid fa-paper-plane mr-1"></i> Send SMS Reminders to Outdated Profiles
-                            </button>
+                            <div class="flex items-end gap-2 flex-shrink-0">
+                                <div><label class="form-label" for="trackingReminderMonths">Reminder period (months)</label><input id="trackingReminderMonths" type="number" min="1" max="36" step="1" class="form-input text-xs w-28"></div>
+                                <button type="button" onclick="saveTrackingReminderSettings()" class="btn btn-secondary text-xs">Save</button>
+                                <span id="trackingReminderSettingsMessage" class="text-xs text-slate-500"></span>
+                            </div>
                         </div>
 
                         <!-- Outdated Profiles Table -->
@@ -1541,7 +1597,7 @@
                                         <th>Last Status Update</th>
                                         <th>Contact Number</th>
                                         <th>Profile Status</th>
-                                        <th class="text-right">Action</th>
+                                        <th class="text-right">Reminder</th>
                                     </tr>
                                 </thead>
                                 <tbody id="outdatedProfilesTableBody">
@@ -3668,7 +3724,7 @@
                         <i class="fa-solid fa-briefcase"></i>
                     </div>
                     <div>
-                        <h3 class="font-extrabold text-slate-800 text-sm">Update Employment & Career Status</h3>
+                        <h3 class="font-extrabold text-slate-800 text-sm">Update My Graduate Status</h3>
                         <p class="text-[10px] text-slate-400 font-medium">St. Agnes Academy Official Graduate Tracking Survey</p>
                     </div>
                 </div>
@@ -3688,69 +3744,72 @@
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="form-label" for="trackEmpStatus">Employment Status</label>
-                        <select id="trackEmpStatus" onchange="onTrackEmpStatusChange()" class="form-select text-xs font-medium">
+                        <label class="form-label" for="trackEmpStatus">Current Status</label>
+                        <select id="trackEmpStatus" onchange="onTrackEmpStatusChange()" class="form-select text-xs font-medium" required>
+                            <option value="">Select your current status</option>
+                            <option value="Further Studies">College / University</option>
                             <option value="Employed">Employed</option>
-                            <option value="Unemployed">Unemployed</option>
-                            <option value="Freelance">Freelance / Self-Employed</option>
-                            <option value="Post-grad">Post-graduate Study</option>
+                            <option value="Technical/Vocational Training">Technical / Vocational Training</option>
+                            <option value="Self-employed">Self-employed</option>
+                            <option value="Seeking Employment">Seeking Employment</option>
+                            <option value="Not Currently Seeking">Not Currently Seeking</option>
                         </select>
                     </div>
                     <div>
-                        <label class="form-label" for="trackTimeFirst">Time to First Job</label>
-                        <select id="trackTimeFirst" class="form-select text-xs">
-                            <option value="< 1 Month">Less than 1 Month</option>
-                            <option value="1-3 Months">1 to 3 Months</option>
-                            <option value="3-6 Months">3 to 6 Months</option>
-                            <option value="6-12 Months">6 to 12 Months</option>
-                            <option value="> 1 Year">More than 1 Year</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="companyFieldContainer">
-                    <label class="form-label" for="trackCompany" id="trackCompanyLabel">Current Company / Institution Name</label>
-                    <input type="text" id="trackCompany" required placeholder="e.g. Globe Telecom / St. Luke's Medical Center" class="form-input text-xs">
-                </div>
-
-                <div id="jobTitleFieldContainer">
-                    <label class="form-label" for="trackJobTitle" id="trackJobTitleLabel">Job Position / Title</label>
-                    <input type="text" id="trackJobTitle" required placeholder="e.g. Senior Systems Analyst" class="form-input text-xs">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3" id="trackingDetailsRow">
-                    <div>
-                        <label class="form-label" for="trackRelevance">Degree Field Relevance</label>
-                        <select id="trackRelevance" class="form-select text-xs">
-                            <option value="Directly Related">Directly Related to Degree</option>
-                            <option value="Slightly Related">Slightly Related</option>
-                            <option value="Not Related">Not Related</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label" for="trackLocation">Work Location</label>
+                        <label class="form-label" for="trackLocation">Work Location (Optional)</label>
                         <select id="trackLocation" class="form-select text-xs">
-                            <option value="Local">Local (Metro Manila / Regional)</option>
-                            <option value="Overseas">International / Overseas (OFW)</option>
+                            <option value="Local">Local</option>
+                            <option value="Overseas">Overseas</option>
                         </select>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                <div id="trackingEmploymentFields" class="space-y-3">
                     <div>
-                        <label class="form-label" for="trackEduSchool">Further education / school</label>
-                        <input id="trackEduSchool" class="form-input text-xs" placeholder="School or university">
+                        <label class="form-label" for="trackCompany" id="trackCompanyLabel">Company / Organization</label>
+                        <input type="text" id="trackCompany" placeholder="Company or organization name" class="form-input text-xs">
                     </div>
                     <div>
-                        <label class="form-label" for="trackEduProgram">Education program</label>
-                        <input id="trackEduProgram" class="form-input text-xs" placeholder="Program or degree">
+                        <label class="form-label" for="trackJobTitle" id="trackJobTitleLabel">Job Title</label>
+                        <input type="text" id="trackJobTitle" placeholder="Your role or occupation" class="form-input text-xs">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="trackIndustry">Industry</label>
+                            <select id="trackIndustry" class="form-select text-xs">
+                                <option value="">Select industry</option>
+                                <option>Education</option><option>Information Technology</option><option>Healthcare</option>
+                                <option>Business/Retail</option><option>Hospitality</option><option>Government/Public Service</option>
+                                <option>Manufacturing</option><option>Others</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label" for="trackEmploymentType">Employment Type</label>
+                            <select id="trackEmploymentType" class="form-select text-xs">
+                                <option value="">Select type</option><option>Full-time</option><option>Part-time</option>
+                                <option>Contract</option><option>Temporary</option><option>Self-employed</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="trackingEducationFields" class="hidden grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                    <div>
+                        <label class="form-label" for="trackEduSchool">School / Training Provider</label>
+                        <input id="trackEduSchool" class="form-input text-xs" placeholder="School or training provider">
                     </div>
                     <div>
-                        <label class="form-label" for="trackEduStatus">Education status</label>
-                        <input id="trackEduStatus" class="form-input text-xs" placeholder="Currently studying / Completed">
+                        <label class="form-label" for="trackEduProgram">Course / Program</label>
+                        <input id="trackEduProgram" class="form-input text-xs" placeholder="Course or training program">
                     </div>
                     <div>
-                        <label class="form-label" for="trackEduYear">Enrollment / completion year</label>
+                        <label class="form-label" for="trackEduStatus">Study Status</label>
+                        <select id="trackEduStatus" class="form-select text-xs">
+                            <option value="">Select status</option><option>Currently studying</option><option>Completed</option><option>On leave</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="trackEduYear">Current Year / Completion Year</label>
                         <input id="trackEduYear" class="form-input text-xs" placeholder="e.g. 2026">
                     </div>
                 </div>
@@ -3812,15 +3871,15 @@
          ========================================================= -->
 
     <!-- Modular JavaScript (split from the original monolith) -->
-    <script src="js/config.js?v=20260920"></script>
+    <script src="js/config.js?v=20260926"></script>
     <script src="js/env.js?v=20260920"></script>
-    <script src="js/api.js?v=20260920"></script>
+    <script src="js/api.js?v=20260926"></script>
     <script src="js/utils.js?v=20260920"></script>
     <script src="js/auth.js?v=20260920"></script>
-    <script src="js/access.js?v=20260920"></script>
-    <script src="js/navigation.js?v=20260920"></script>
+    <script src="js/access.js?v=20260926"></script>
+    <script src="js/navigation.js?v=20260926"></script>
     <script src="js/records.js?v=20260920"></script>
     <script src="js/engagement.js?v=20260920"></script>
-    <script src="js/reports.js?v=20260920"></script>
+    <script src="js/reports.js?v=20260926"></script>
 </body>
 </html>

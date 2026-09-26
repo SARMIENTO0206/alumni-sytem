@@ -23,6 +23,7 @@
     let growthChartInstance = null;
     let empChartInstance = null;
     let indChartInstance = null;
+    let pathwayChartInstance = null;
 
     function updateLocalStorage() {
         /* Records are stored in the database via the API. Do not persist demo copies. */

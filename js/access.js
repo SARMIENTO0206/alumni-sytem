@@ -95,10 +95,9 @@ function applyRoleChrome() {
     const pwBox = document.getElementById("profilePasswordBox");
     if (pwBox) pwBox.classList.remove("hidden");
 
-    const ched = document.getElementById("chedTracerBtn");
-    if (ched) ched.classList.toggle("hidden", !isAdminRole());
     const alumniDash = document.getElementById("alumniDashboardPanel");
     if (alumniDash) alumniDash.classList.toggle("hidden", !isAlumniRole());
+    if (typeof applyTrackingRoleView === "function") applyTrackingRoleView();
 }
 
 function renderRoleDashboard() {

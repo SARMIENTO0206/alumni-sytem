@@ -5,22 +5,25 @@
 /* ------------------------------------------------------------------------- */
 
     /* Alumni Table Renderer */
-    function renderAlumniTable() {
+    let alumniTableRows = null;
+
+    function renderAlumniTable(records = alumniList) {
         const body = document.getElementById("alumniTableBody");
         if (!body) return;
+        alumniTableRows = records;
         body.innerHTML = "";
 
-        if (!alumniList.length) {
+        if (!records.length) {
             body.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-semibold">No alumni records yet. Add your first alumni record to get started.</td></tr>`;
             updateStatCounters();
             return;
         }
 
-        alumniList.forEach(item => {
+        records.forEach(item => {
             const tr = document.createElement("tr");
-            const statusClass = item.status === "Employed" ? "status-employed" :
-                                item.status === "Unemployed" ? "status-unemployed" :
-                                item.status === "Freelance" ? "status-freelance" : "status-postgrad";
+            const statusClass = ["Employed", "Self-employed"].includes(item.status) ? "status-employed" :
+                                ["Unemployed", "Seeking Employment"].includes(item.status) ? "status-unemployed" :
+                                item.status === "No Data" ? "status-pending" : "status-postgrad";
 
             tr.innerHTML = `
                 <td class="font-extrabold text-slate-800">
@@ -31,7 +34,7 @@
                 </td>
                 <td class="font-semibold text-slate-600">${item.batch}</td>
                 <td class="text-slate-500">${item.program}</td>
-                <td><span class="status-badge ${statusClass}">${item.status}</span></td>
+                <td><span class="status-badge ${statusClass}">${item.status || "No Data"}</span></td>
                 <td class="text-right">
                     <button type="button" onclick="openAlumniDetails(${item.id})" class="text-xs text-slate-600 hover:underline font-bold mr-3">
                         <i class="fa-solid fa-eye"></i> View
@@ -195,12 +198,7 @@
                 if (query) params.set("q", query);
                 if (filter) params.set("status", filter);
                 const data = await SAA_API.request(`/api/alumni?${params.toString()}`);
-                alumniList = data.alumni || [];
-                const body = document.getElementById("alumniTableBody");
-                if (body) {
-                    body.innerHTML = "";
-                    renderAlumniTable();
-                }
+                renderAlumniTable(data.alumni || []);
                 return;
             }
         } catch (err) {
@@ -216,14 +214,15 @@
 
     function sortTable(columnIndex) {
         currentSortDirection = !currentSortDirection;
-        alumniList.sort((a, b) => {
+        const rows = [...(alumniTableRows || alumniList)];
+        rows.sort((a, b) => {
             let valA = columnIndex === 0 ? a.name.toLowerCase() : parseInt(a.batch);
             let valB = columnIndex === 0 ? b.name.toLowerCase() : parseInt(b.batch);
             if (valA < valB) return currentSortDirection ? -1 : 1;
             if (valA > valB) return currentSortDirection ? 1 : -1;
             return 0;
         });
-        renderAlumniTable();
+        renderAlumniTable(rows);
         showToast("Sorted table records.", "info");
     }
 

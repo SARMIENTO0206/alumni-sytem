@@ -63,11 +63,17 @@ export function initDb() {
       name         TEXT NOT NULL,
       batch        TEXT DEFAULT '',
       program      TEXT DEFAULT '',
-      status       TEXT DEFAULT 'Employed',
+      status       TEXT DEFAULT 'No Data',
       company      TEXT DEFAULT '',
       job_title    TEXT DEFAULT '',
       contact      TEXT DEFAULT '',
       relevance    TEXT DEFAULT 'Not Related',
+      industry     TEXT DEFAULT '',
+      employment_type TEXT DEFAULT '',
+      tracking_review_status TEXT DEFAULT 'Pending',
+      tracking_review_note TEXT DEFAULT '',
+      tracking_reviewed_by TEXT DEFAULT '',
+      tracking_reviewed_at TEXT DEFAULT '',
       time_to_first TEXT DEFAULT '',
       location     TEXT DEFAULT 'Local',
       student_id   TEXT DEFAULT '',
@@ -275,6 +281,12 @@ export function initDb() {
   ensureColumn('alumni', 'education_program', "education_program TEXT DEFAULT ''");
   ensureColumn('alumni', 'education_status', "education_status TEXT DEFAULT ''");
   ensureColumn('alumni', 'education_year', "education_year TEXT DEFAULT ''");
+  ensureColumn('alumni', 'industry', "industry TEXT DEFAULT ''");
+  ensureColumn('alumni', 'employment_type', "employment_type TEXT DEFAULT ''");
+  ensureColumn('alumni', 'tracking_review_status', "tracking_review_status TEXT DEFAULT 'Pending'");
+  ensureColumn('alumni', 'tracking_review_note', "tracking_review_note TEXT DEFAULT ''");
+  ensureColumn('alumni', 'tracking_reviewed_by', "tracking_reviewed_by TEXT DEFAULT ''");
+  ensureColumn('alumni', 'tracking_reviewed_at', "tracking_reviewed_at TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'remarks', "remarks TEXT DEFAULT ''");
@@ -518,6 +530,15 @@ export function mapAlumni(row) {
     email: row.email || '',
     address: row.address || '',
     relevance: row.relevance,
+    industry: row.industry || '',
+    employmentType: row.employment_type || '',
+    educationLevel: row.education_level || row.user_education_level || '',
+    strand: row.strand || row.user_strand || '',
+    track: row.track || row.user_track || '',
+    trackingReviewStatus: row.tracking_review_status || 'Pending',
+    trackingReviewNote: row.tracking_review_note || '',
+    trackingReviewedBy: row.tracking_reviewed_by || '',
+    trackingReviewedAt: row.tracking_reviewed_at || '',
     timeToFirst: row.time_to_first,
     location: row.location,
     studentId: row.student_id,
@@ -643,14 +664,14 @@ export function linkAlumniAccount(userOrId) {
   if (!alumni) {
     const info = db.prepare(
       `INSERT INTO alumni (name, batch, program, status, company, job_title, contact, relevance, time_to_first, location, student_id, last_updated, user_id)
-       VALUES (?, ?, ?, 'Employed', '', '', ?, 'Not Related', '', 'Local', ?, ?, ?)`
+       VALUES (?, ?, ?, 'No Data', '', '', ?, 'Not Related', '', 'Local', ?, ?, ?)`
     ).run(
       userRow.name,
       userRow.batch || '',
       userRow.program || '',
       userRow.contact || '',
       userRow.student_id || '',
-      new Date().toISOString().split('T')[0],
+      '',
       userRow.id
     );
     alumni = db.prepare('SELECT * FROM alumni WHERE id = ?').get(info.lastInsertRowid);

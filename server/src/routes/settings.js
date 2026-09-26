@@ -35,6 +35,9 @@ const DEFAULTS = {
     allowSelfRegistration: true,
     requiredFields: 'name, batch, program'
   },
+  tracking: {
+    reminderMonths: 6
+  },
   security: {
     minPasswordLength: 6,
     sessionNote: 'Sessions expire when the user logs out or the server restarts.'
@@ -48,6 +51,7 @@ router.get('/', (req, res) => {
     notifications: { ...DEFAULTS.notifications, ...(stored.notifications || {}) },
     documents: { ...DEFAULTS.documents, ...(stored.documents || {}) },
     alumni: { ...DEFAULTS.alumni, ...(stored.alumni || {}) },
+    tracking: { ...DEFAULTS.tracking, ...(stored.tracking || {}) },
     security: { ...DEFAULTS.security, ...(stored.security || {}) }
   };
   if (!isAdmin(req.user)) {
@@ -61,11 +65,16 @@ router.get('/', (req, res) => {
 
 router.put('/', requireRole('admin'), (req, res) => {
   const current = getSetting('system_settings', {});
+  const reminderMonths = Number(req.body?.tracking?.reminderMonths ?? current.tracking?.reminderMonths ?? DEFAULTS.tracking.reminderMonths);
+  if (!Number.isInteger(reminderMonths) || reminderMonths < 1 || reminderMonths > 36) {
+    return res.status(400).json({ error: 'Graduate tracking reminder period must be a whole number from 1 to 36 months.' });
+  }
   const next = {
     general: { ...DEFAULTS.general, ...(current.general || {}), ...(req.body?.general || {}) },
     notifications: { ...DEFAULTS.notifications, ...(current.notifications || {}), ...(req.body?.notifications || {}) },
     documents: { ...DEFAULTS.documents, ...(current.documents || {}), ...(req.body?.documents || {}) },
     alumni: { ...DEFAULTS.alumni, ...(current.alumni || {}), ...(req.body?.alumni || {}) },
+    tracking: { ...DEFAULTS.tracking, ...(current.tracking || {}), ...(req.body?.tracking || {}), reminderMonths },
     security: { ...DEFAULTS.security, ...(current.security || {}), ...(req.body?.security || {}) }
   };
   setSetting('system_settings', next);

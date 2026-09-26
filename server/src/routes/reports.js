@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import { db, mapAlumni } from '../db.js';
+import { db } from '../db.js';
 import { isAlumni, requireRole } from '../auth.js';
 
 const staffOrAdmin = requireRole('admin', 'staff');
-const adminOnly = requireRole('admin');
 
 const router = Router();
 
@@ -16,8 +15,11 @@ router.get('/summary', staffOrAdmin, (req, res) => {
     alumni: {
       total: count('SELECT COUNT(*) AS n FROM alumni'),
       employed: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Employed'"),
-      unemployed: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Unemployed'"),
-      freelance: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Freelance'")
+      selfEmployed: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Self-employed','Freelance')"),
+      seekingEmployment: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Unemployed','Seeking Employment')"),
+      furtherStudies: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Further Studies','Post-grad','Postgraduate','Technical/Vocational Training')"),
+      notCurrentlySeeking: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Not Currently Seeking'"),
+      noData: count("SELECT COUNT(*) AS n FROM alumni WHERE status IS NULL OR status = '' OR status = 'No Data'")
     },
     transcriptRequests: {
       total: count('SELECT COUNT(*) AS n FROM transcript_requests'),
@@ -71,7 +73,7 @@ router.get('/dashboard', (req, res) => {
     alumni: count('SELECT COUNT(*) AS n FROM alumni'),
     pendingRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status IN ('Pending','Processing')")
       + count("SELECT COUNT(*) AS n FROM reprints WHERE status IN ('Pending','Processing')"),
-    employed: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Employed'"),
+    employed: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Employed','Self-employed','Freelance')"),
     events: count('SELECT COUNT(*) AS n FROM events'),
     jobs: count("SELECT COUNT(*) AS n FROM job_opportunities WHERE status = 'Published'"),
     placements: count('SELECT COUNT(*) AS n FROM placements')
@@ -97,78 +99,6 @@ router.get('/registrar', staffOrAdmin, (req, res) => {
       ? Math.round((released / (pending + approved + released + rejected)) * 100)
       : 0
   });
-});
-
-/* --------------------------- CHED Tracer Study --------------------------- */
-/* Commission on Higher Education (CHED) graduate tracer study - compliance report. */
-
-const TRACER_HEADERS = [
-  'No.', 'Full Name', 'Sex', 'Year Graduated', 'Degree / Program',
-  'Employment Status', 'Occupation / Job Title', 'Company / Employer',
-  'Time to First Job', 'Field of Study Relevance', 'Location (Local/Abroad)',
-  'Further / Higher Studies', 'Remarks'
-];
-
-function toTracerRows() {
-  const rows = db.prepare('SELECT * FROM alumni ORDER BY batch ASC, name ASC').all();
-  return rows.map((a, i) => {
-    const furtherStudies = (a.status || '').toLowerCase().includes('further') ? 'Yes' : 'No';
-    const relevance = a.relevance || 'Not Indic';
-    const status = a.status || 'Not Indic';
-    const occupation = a.status === 'Unemployed' ? '—' : (a.job_title || '—');
-    return [
-      String(i + 1),
-      a.name,
-      'Not Indic (optional)',
-      a.batch || '',
-      a.program || '',
-      status,
-      occupation,
-      a.company || '—',
-      a.time_to_first || 'Not Indic',
-      relevance,
-      a.location || 'Local',
-      furtherStudies,
-      `Student ID: ${a.student_id || 'N/A'} | Last updated: ${a.last_updated || 'N/A'}`
-    ];
-  });
-}
-
-/** GET /api/reports/tracer-study - CHED tracer study data as JSON. */
-router.get('/tracer-study', adminOnly, (req, res) => {
-  res.json({
-    institution: 'St. Agnes Academy of Caloocan',
-    reportTitle: 'Graduate Tracer Study Report (CHED Compliance)',
-    generatedAt: new Date().toISOString(),
-    headers: TRACER_HEADERS,
-    rows: toTracerRows()
-  });
-});
-
-/** GET /api/reports/tracer-study/download - download the CHED tracer study CSV. */
-router.get('/tracer-study/download', adminOnly, (req, res) => {
-  const escape = (value) => {
-    const v = value == null ? '' : String(value);
-    if (/[",\n;]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
-    return v;
-  };
-
-  const lines = [];
-  lines.push('"ST. AGNES ACADEMY OF CALOOCAN - GRADUATE TRACER STUDY REPORT"');
-  lines.push('"Prepared in accordance with CHED graduate tracer study guidelines"');
-  lines.push(`"Date Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}"`);
-  lines.push('');
-  lines.push(TRACER_HEADERS.map(escape).join(','));
-  for (const row of toTracerRows()) {
-    lines.push(row.map(escape).join(','));
-  }
-
-  const csv = '\uFEFF' + lines.join('\r\n'); // BOM so Excel opens UTF-8 correctly
-  const filename = `saa-trader-study-${new Date().toISOString().split('T')[0]}.csv`;
-
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.send(csv);
 });
 
 export default router;

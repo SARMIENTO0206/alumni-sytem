@@ -9,6 +9,7 @@
     "start": "node index.js",
     "dev": "node --watch index.js",
     "seed": "node scripts/seed.js",
+    "test:tracking": "node scripts/test-tracking.js",
     "test:supabase": "node scripts/test-supabase.js"
   },
   "engines": {

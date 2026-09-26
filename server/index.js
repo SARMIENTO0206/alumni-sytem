@@ -38,7 +38,7 @@ function resolveProjectRoot() {
 
 const PROJECT_ROOT = resolveProjectRoot();
 const PORT = Number(process.env.PORT) || 3000;
-const APP_BUILD = '2026-09-20-live';
+const APP_BUILD = '2026-09-26-graduate-tracking';
 
 const app = express();
 /* PayMongo webhook must read the raw body for HMAC verification. */

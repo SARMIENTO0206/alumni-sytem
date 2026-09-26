@@ -49,10 +49,8 @@ const staffUsers = await req(staff.token, 'GET', '/api/users');
 const adminUsers = await req(admin.token, 'GET', '/api/users');
 console.log('users 403/403/200', usersForbidden.status, staffUsers.status, adminUsers.status);
 
-const tracerAlumni = await req(alumni.token, 'GET', '/api/reports/tracer-study');
-const tracerStaff = await req(staff.token, 'GET', '/api/reports/tracer-study');
 const opsStaff = await req(staff.token, 'GET', '/api/reports/operational');
-console.log('tracer alumni/staff, operational staff', tracerAlumni.status, tracerStaff.status, opsStaff.status);
+console.log('operational report for staff', opsStaff.status);
 
 const steal = await req(alumni.token, 'GET', `/api/transcripts/${requestId + 999}`);
 console.log('missing request', steal.status);

@@ -15,7 +15,7 @@ repo, delete any old `server/data/saa.db`, then run `npm start` in `server/`.
 | Database | SQLite via Node's built-in `node:sqlite` |
 | Auth | bcrypt password hashing + bearer session tokens |
 | AI | OpenAI API (`gpt-4o-mini`) with a built-in fallback engine |
-| Reports | CHED Graduate Tracer Study (CSV) |
+| Reports | JHS/SHS graduate outcome analytics and CSV exports |
 
 > **The system runs fully without an OpenAI key.** AI features use the built-in
 > fallback engine until `OPENAI_API_KEY` is configured.
@@ -28,7 +28,7 @@ repo, delete any old `server/data/saa.db`, then run `npm start` in `server/`.
 | `style.css`  | Design system / brand styling (maroon & gold, school typography) |
 | `logo.jpeg`  | School logo |
 | `js/`        | Front-end logic, split into 8 modules (see below) |
-| `server/`    | Node.js + Express + SQLite REST API (**45 endpoints**), bcrypt hashing, OpenAI routes |
+| `server/`    | Node.js + Express + SQLite REST API, bcrypt hashing, OpenAI routes |
 | `scripts/`   | Verification scripts: `test-api.ps1`, `test-ai.ps1`, `test-ai-live.ps1` |
 
 ### Front-end modules (`js/`)
@@ -42,7 +42,7 @@ repo, delete any old `server/data/saa.db`, then run `npm start` in `server/`.
 | `navigation.js` | View router, counters, digital ID, profile, page navigation |
 | `records.js`    | Alumni database, transcripts, reprints, placements, academic records |
 | `engagement.js` | Events, reunions, donations, resume, notifications engine, newsletter, feedback, AI assistant chat |
-| `reports.js`    | Graduate tracking, CHED tracer study, charts, registrar workflow, AI tools, initialization |
+| `reports.js`    | Graduate tracking, outcome charts, Registrar review, AI tools, initialization |
 
 ## 🧩 System modules
 
@@ -53,7 +53,7 @@ automated communication flows and AI features:
 | - | ------ | --------------- |
 | 1 | Alumni Database | Admin → *Alumni Database* |
 | 2 | Transcript Request Portal | Alumni submit; Registrar reviews and processes; Admin monitors |
-| 3 | Graduate Tracking | *Graduate Tracking* (+ CHED Tracer Study export) |
+| 3 | Graduate Tracking | Admin analytics/exports; Registrar record review; Alumni update their own status |
 | 4 | Job Placement Logs | *Job Placement Logs* / *Job Opportunities* |
 | 5 | Alumni Event Registration | *Alumni Events* |
 | 6 | Batch Reunions Manager | *Batch Reunions* |
@@ -62,7 +62,7 @@ automated communication flows and AI features:
 | 9 | Alumni Newsletter | *Alumni Newsletter* (+ AI Compose) |
 | 10 | Alumni Feedback & Survey | *Surveys & Feedback* |
 | 11 | **AI Chat Support** (OpenAI) | Chat bubble (bottom-right) |
-| + | **Automated SMS Notification Module** | Graduate Tracking → *Run SMS Reminder Sweep* |
+| + | **Profile Update Reminders** | Admin configures the reminder period and confirms each send from Graduate Tracking |
 | + | **Gmail Auto-Reply** (OpenAI) | Admin → *System Reports* → **AI Assistant Tools** |
 | + | **AI Survey Summaries / Dashboard Insights** | Admin → *System Reports* → **AI Assistant Tools** |
 
@@ -70,11 +70,13 @@ automated communication flows and AI features:
 
 | Role | Access |
 | ---- | ------ |
-| **Administrator** | System oversight, reports, and document-request monitoring; does not submit or process alumni requests |
-| **Registrar** | Alumni verification, document-request review and processing, release/claiming, request history, registrar reports |
-| **Alumni** | Own profile, digital ID, transcript/certificate requests, job board, events, reunions, newsletter, surveys |
+| **Administrator** | System oversight, graduate outcome analytics, reports/exports, and reminder-period configuration; does not submit or process alumni requests |
+| **Registrar** | Alumni records, graduate-status review, document-request review and processing, release/claiming, request history, registrar reports |
+| **Alumni** | Own profile and graduate status, digital ID, transcript/certificate requests, job board, events, reunions, newsletter, surveys |
 
 Document requests are free and no longer use online checkout. The Payments history page is removed for all roles. Alumni donation checkout remains available in Donation Campaigns.
+
+Graduate tracking is designed for JHS and SHS alumni. It reports employed, self-employed, seeking-employment, further-study/training, not-currently-seeking, and no-status-data outcomes without treating missing information as unemployment. SHS pathways are shown separately from JHS records, and strand filters are available only for SHS. Industry charts use alumni-reported categories; the Registrar verifies submitted tracking records, while only Alumni can update their own status. Reminder timing is configurable by Admin, and every reminder send requires confirmation.
 
 ## 🛠️ Troubleshooting
 
@@ -156,20 +158,21 @@ Base URL: `http://localhost:3000/api`
 All endpoints except `/health` and `/auth/login` / `/auth/register` require a
 bearer token: `Authorization: Bearer <token>` (issued by `POST /auth/login`).
 
-**45 endpoints total** — `ai(6)`, `alumni(5)`, `auth(4)`, `documents(8)`,
-`engagement(13)`, `reports(4)`, `tracking(4)`, `health(1)`.
+Routes are grouped by authentication, alumni records, document requests,
+engagement, reports, graduate tracking, settings, notifications, and AI tools.
 
-- `GET  /api/health` — service status + active AI engine
-- **Auth (4):** `POST /auth/login`, `POST /auth/register`, `GET /auth/me`, `POST /auth/logout`
-- **Alumni (5):** `GET /alumni`, `POST /alumni`, `GET /alumni/:id`, `PUT /alumni/:id`, `DELETE /alumni/:id`
-- **Documents (8):** `GET/POST /transcripts`, `PUT /transcripts/:id/status`, `GET/POST /reprints`, `PUT /reprints/:id/status`, `GET/POST /placements`
-- **Tracking (4):** `GET /tracking`, `PUT /tracking/:id/employment`, `GET /tracking/stale-profiles`, `POST /tracking/reminders/sweep`
-- **Engagement (13):** `GET/POST /events`, `POST /events/:id/rsvp`, `GET/POST /reunions`, `GET/POST /donations`, `GET/POST /newsletters`, `GET/POST /feedback`, `GET/POST /notifications`
-- **Reports (4):** `GET /reports/summary`, `GET /reports/registrar`, `GET /reports/tracer-study`, `GET /reports/tracer-study/download`
-- **AI / OpenAI (6):** `GET /ai/status`, `POST /ai/assistant`, `POST /ai/compose-announcement`, `POST /ai/gmail-auto-reply`, `POST /ai/summarize-survey`, `POST /ai/dashboard-insights`
+- `GET /api/health` — service status + active AI engine
+- **Auth:** login, registration, profile, password, and session endpoints
+- **Alumni:** role-restricted record search and management
+- **Documents:** transcript, reprint, and placement requests
+- **Tracking:** `GET /tracking`, `GET/PUT /tracking/settings`,
+  `PUT /tracking/:id/employment`, `PUT /tracking/:id/review`,
+  `GET /tracking/stale-profiles`, and `POST /tracking/reminders/sweep`
+- **Engagement:** events, reunions, donations, newsletters, feedback, jobs, and announcements
+- **Reports:** operational, dashboard, and Registrar reports
+- **AI / OpenAI:** assistant, announcement composition, survey summaries, and dashboard insights
 
-Role restrictions apply: `POST /alumni` and `DELETE /alumni/:id` are admin-only,
-while `PUT /transcripts/:id/status` allows admin **and** registrar.
+Administrative and Registrar actions are protected by role-based authorization.
 
 Run the smoke test to verify everything:
 
@@ -243,18 +246,15 @@ powershell -ExecutionPolicy Bypass -File scripts/test-ai.ps1        # all 6 AI e
 powershell -ExecutionPolicy Bypass -File scripts/test-ai-live.ps1   # proves the real OpenAI path is called
 ```
 
-## 📊 CHED Tracer Study compliance
+## 📊 Graduate Tracking validation
 
-The Graduate Tracking module includes a **CHED Graduate Tracer Study report**
-(Commission on Higher Education of the Philippines). Use the
-**"CHED Tracer Study (CSV)"** button in the track dashboard, or:
+Run the role, status, review, and reminder-setting integration checks while the
+API is running:
 
+```bash
+cd server
+npm run test:tracking
 ```
-GET /api/reports/tracer-study/download
-```
-
-Both the API and the UI produce a CHED-standardised CSV (graduate outcomes,
-employment status, field-of-study relevance, time-to-first-job, location, etc.).
 
 ## License
 

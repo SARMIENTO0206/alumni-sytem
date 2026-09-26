@@ -29,11 +29,17 @@ CREATE TABLE IF NOT EXISTS public.alumni (
   name          TEXT NOT NULL,
   batch         TEXT DEFAULT '',
   program       TEXT DEFAULT '',
-  status        TEXT DEFAULT 'Employed',
+  status        TEXT DEFAULT 'No Data',
   company       TEXT DEFAULT '',
   job_title     TEXT DEFAULT '',
   contact       TEXT DEFAULT '',
   relevance     TEXT DEFAULT 'Not Related',
+  industry      TEXT DEFAULT '',
+  employment_type TEXT DEFAULT '',
+  tracking_review_status TEXT DEFAULT 'Pending',
+  tracking_review_note TEXT DEFAULT '',
+  tracking_reviewed_by TEXT DEFAULT '',
+  tracking_reviewed_at TEXT DEFAULT '',
   time_to_first TEXT DEFAULT '',
   location      TEXT DEFAULT 'Local',
   student_id    TEXT DEFAULT '',
@@ -53,6 +59,12 @@ CREATE INDEX IF NOT EXISTS alumni_status_idx ON public.alumni (status);
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS user_id BIGINT DEFAULT 0;
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS address TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS industry TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS employment_type TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_review_status TEXT DEFAULT 'Pending';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_review_note TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_reviewed_by TEXT DEFAULT '';
+ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS tracking_reviewed_at TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS education_school TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS education_program TEXT DEFAULT '';
 ALTER TABLE public.alumni ADD COLUMN IF NOT EXISTS education_status TEXT DEFAULT '';

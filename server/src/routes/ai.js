@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db } from '../db.js';
+import { db, getSetting } from '../db.js';
 import { ask, chat, aiProvider, isAiConfigured, aiModel } from '../ai.js';
 import {
   buildAssistantSystemPrompt,
@@ -19,21 +19,26 @@ const router = Router();
  * ------------------------------------------------------------------ */
 function stats() {
   const count = (sql) => db.prepare(sql).get()?.n || 0;
+  const trackingSettings = getSetting('system_settings', {});
+  const reminderMonths = Number(trackingSettings.tracking?.reminderMonths) || 6;
   const stale = db.prepare('SELECT * FROM alumni').all().filter((a) => {
     if (!a.last_updated) return true;
     const d = new Date(a.last_updated);
     if (isNaN(d.getTime())) return true;
     const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - 6);
+    cutoff.setMonth(cutoff.getMonth() - reminderMonths);
     return d < cutoff;
   }).length;
 
   return {
+    reminderMonths,
     alumni: count('SELECT COUNT(*) AS n FROM alumni'),
     employed: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Employed'"),
-    unemployed: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Unemployed'"),
-    freelance: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Freelance'"),
-    furtherStudies: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Further Studies','Post-grad','Postgraduate')"),
+    unemployed: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Unemployed','Seeking Employment')"),
+    freelance: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Freelance','Self-employed')"),
+    furtherStudies: count("SELECT COUNT(*) AS n FROM alumni WHERE status IN ('Further Studies','Post-grad','Postgraduate','Technical/Vocational Training')"),
+    notSeeking: count("SELECT COUNT(*) AS n FROM alumni WHERE status = 'Not Currently Seeking'"),
+    noTrackingData: count("SELECT COUNT(*) AS n FROM alumni WHERE status IS NULL OR status = '' OR status = 'No Data'"),
     pendingRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Pending'"),
     releasedRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Released'"),
     rejectedRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Rejected'"),
@@ -343,7 +348,8 @@ router.post('/summarize-survey', async (req, res) => {
  * ------------------------------------------------------------------ */
 router.post('/dashboard-insights', async (req, res) => {
   const s = stats();
-  const employmentRate = s.alumni ? Math.round(((s.employed + s.freelance) / s.alumni) * 100) : 0;
+  const knownStatusCount = s.alumni - s.noTrackingData;
+  const employmentRate = knownStatusCount ? Math.round(((s.employed + s.freelance) / knownStatusCount) * 100) : 0;
   const freshness = s.alumni ? Math.round(((s.alumni - s.staleProfiles) / s.alumni) * 100) : 0;
 
   const insights = await ask(
@@ -353,9 +359,9 @@ router.post('/dashboard-insights', async (req, res) => {
       'Use short labeled sections.',
       '',
       `Alumni records: ${s.alumni}`,
-      `Employment - employed: ${s.employed}, freelance: ${s.freelance}, unemployed: ${s.unemployed}, further studies: ${s.furtherStudies}`,
-      `Employment rate: ${employmentRate}%`,
-      `Profile freshness: ${freshness}% (${s.staleProfiles} profiles older than 6 months)`,
+      `Graduate outcomes - employed: ${s.employed}, self-employed: ${s.freelance}, seeking employment: ${s.unemployed}, further studies or training: ${s.furtherStudies}, not currently seeking: ${s.notSeeking}, no status data: ${s.noTrackingData}`,
+      `Employment rate among alumni with reported status: ${employmentRate}%`,
+      `Profile freshness: ${freshness}% (${s.staleProfiles} profiles outside the configured ${s.reminderMonths}-month reminder period)`,
       `Transcript requests - total: ${s.totalRequests}, pending: ${s.pendingRequests}, released: ${s.releasedRequests}, rejected: ${s.rejectedRequests}`,
       `Certificate reprints: ${s.reprints}`,
       `Job placements logged: ${s.placements}`,
@@ -369,12 +375,13 @@ router.post('/dashboard-insights', async (req, res) => {
 
   /* Built-in fallback: rule-based insights from the same figures. */
   const observations = [];
-  observations.push(`Employment rate stands at ${employmentRate}% (${s.employed} employed, ${s.freelance} freelance) out of ${s.alumni} registered alumni.`);
-  if (s.unemployed > 0) observations.push(`${s.unemployed} graduate(s) are recorded as unemployed and may need job-placement or career support.`);
+  observations.push(`Employment rate among alumni with reported status is ${employmentRate}% (${s.employed} employed, ${s.freelance} self-employed).`);
+  if (s.unemployed > 0) observations.push(`${s.unemployed} graduate(s) reported seeking employment and may need job-placement or career support.`);
+  if (s.noTrackingData > 0) observations.push(`${s.noTrackingData} alumni have no graduate status data; they are not counted as unemployed.`);
   if (s.staleProfiles > 0) {
-    observations.push(`Profile freshness is ${freshness}% - ${s.staleProfiles} profile(s) have not been updated in over 6 months; run an SMS reminder sweep from Graduate Tracking.`);
+    observations.push(`Profile freshness is ${freshness}% - ${s.staleProfiles} profile(s) are outside the configured ${s.reminderMonths}-month reminder period; review candidates in Graduate Tracking.`);
   } else {
-    observations.push('All alumni profiles are within the 6-month freshness window.');
+    observations.push(`All alumni profiles are within the configured ${s.reminderMonths}-month reminder period.`);
   }
   if (s.pendingRequests > 0) observations.push(`${s.pendingRequests} transcript request(s) are pending action by the Registrar.`);
   if (s.releasedRequests > 0) observations.push(`${s.releasedRequests} document(s) have been released to alumni.`);

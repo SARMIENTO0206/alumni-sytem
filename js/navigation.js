@@ -242,8 +242,11 @@
         if (viewId === "transcript" && typeof renderTranscriptRequests === "function") renderTranscriptRequests();
         if (viewId === "reprint" && typeof renderReprintRequests === "function") renderReprintRequests();
         if (viewId === "tracking") {
+            if (typeof applyTrackingRoleView === "function") applyTrackingRoleView();
             if (typeof renderTrackingCharts === "function") renderTrackingCharts();
             if (typeof renderOutdatedProfilesTable === "function") renderOutdatedProfilesTable();
+            if (typeof renderTrackingRecordsTable === "function") renderTrackingRecordsTable();
+            if (typeof renderMyTrackingSummary === "function") renderMyTrackingSummary();
         }
         if (viewId === "placement" && typeof renderPlacementLogs === "function") renderPlacementLogs();
         if (viewId === "job-opportunities" && typeof renderJobsGrid === "function") renderJobsGrid();
@@ -451,7 +454,7 @@
         const recentEl = document.getElementById("stat-graduates");
         if (recentEl) recentEl.textContent = String(alumniList.filter(a => String(a.batch) === recentBatch).length);
 
-        const empCount = alumniList.filter(a => a.status === "Employed" || a.status === "Freelance").length;
+        const empCount = alumniList.filter(a => ["Employed", "Self-employed", "Freelance"].includes(a.status)).length;
         const empEl = document.getElementById("stat-employed");
         if (empEl) empEl.textContent = String(empCount);
 

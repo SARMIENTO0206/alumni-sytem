@@ -1,67 +1,156 @@
-/* reports.js - Graduate tracking, CHED tracer study, charts, registrar workflow and app initialization. */
+/* reports.js - Graduate tracking, reports, charts, registrar workflow and app initialization. */
 
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 4712-5052 */
 /* ------------------------------------------------------------------------- */
     /* Graduate Employment Tracking & Profile Freshness Engine */
     const PROFILE_FRESHNESS_MONTHS = 6;
+    const TRACKING_INDUSTRIES = [
+        "Education", "Information Technology", "Healthcare", "Business/Retail",
+        "Hospitality", "Government/Public Service", "Manufacturing", "Others"
+    ];
+    let trackingReminderMonths = PROFILE_FRESHNESS_MONTHS;
+    let activeTrackingFilters = { educationLevel: "", batch: "", strand: "" };
+
+    function trackingAlumni() {
+        let rows = alumniList || [];
+        if (activeTrackingFilters.educationLevel) {
+            rows = rows.filter((a) => (a.educationLevel || "") === activeTrackingFilters.educationLevel);
+        }
+        if (activeTrackingFilters.batch) {
+            rows = rows.filter((a) => String(a.batch || "") === activeTrackingFilters.batch);
+        }
+        if (activeTrackingFilters.strand) {
+            rows = rows.filter((a) => (a.strand || "") === activeTrackingFilters.strand);
+        }
+        return rows;
+    }
+
+    function normalizeTrackingStatus(status) {
+        if (["Freelance", "Self-employed"].includes(status)) return "Self-employed";
+        if (["Unemployed", "Seeking Employment"].includes(status)) return "Seeking Employment";
+        if (["Further Studies", "Post-grad", "Postgraduate"].includes(status)) return "Further Studies";
+        if (status === "Technical/Vocational Training") return "Further Studies";
+        if (status === "Not Currently Seeking") return "Not Currently Seeking";
+        if (status === "Employed") return "Employed";
+        return "No Data";
+    }
+
+    function isTrackingStale(alumnus) {
+        if (!alumnus.lastUpdated) return true;
+        const updated = new Date(alumnus.lastUpdated);
+        if (Number.isNaN(updated.getTime())) return true;
+        const cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - trackingReminderMonths);
+        return updated < cutoff;
+    }
+
+    function populateTrackingFilters() {
+        const rows = alumniList || [];
+        const batch = document.getElementById("trackingBatchFilter");
+        const strand = document.getElementById("trackingStrandFilter");
+        if (batch) {
+            const selected = batch.value;
+            const years = [...new Set(rows.map((a) => String(a.batch || "").trim()).filter(Boolean))].sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+            batch.replaceChildren(new Option("All Years", ""));
+            years.forEach((year) => batch.add(new Option(year, year)));
+            batch.value = selected;
+        }
+        if (strand) {
+            const selected = strand.value;
+            const values = [...new Set(rows.map((a) => String(a.strand || "").trim()).filter(Boolean))].sort();
+            strand.replaceChildren(new Option("All Strands", ""));
+            values.forEach((value) => strand.add(new Option(value, value)));
+            strand.value = selected;
+        }
+        updateTrackingStrandFilter();
+    }
+
+    function updateTrackingStrandFilter() {
+        const level = document.getElementById("trackingEducationLevelFilter")?.value || "";
+        const wrap = document.getElementById("trackingStrandFilterWrap");
+        const strand = document.getElementById("trackingStrandFilter");
+        const disabled = level !== "SHS";
+        if (wrap) wrap.classList.toggle("opacity-50", disabled);
+        if (strand) {
+            strand.disabled = disabled;
+            if (disabled) strand.value = "";
+        }
+    }
+
+    function applyTrackingFilters() {
+        const level = document.getElementById("trackingEducationLevelFilter")?.value || "";
+        const batch = document.getElementById("trackingBatchFilter")?.value || "";
+        const strand = level === "SHS" ? (document.getElementById("trackingStrandFilter")?.value || "") : "";
+        activeTrackingFilters = { educationLevel: level, batch, strand };
+        updateTrackingKPIs();
+        renderTrackingCharts();
+        renderTrackingRecordsTable();
+        renderOutdatedProfilesTable();
+    }
+
+    async function loadTrackingSettings() {
+        if (!currentUser || !["admin", "staff", "registrar"].includes(currentUser.role)) return;
+        try {
+            const data = await SAA_API.request("/api/tracking/settings");
+            trackingReminderMonths = Number(data.reminderMonths) || PROFILE_FRESHNESS_MONTHS;
+            const input = document.getElementById("trackingReminderMonths");
+            if (input) input.value = String(trackingReminderMonths);
+            updateTrackingKPIs();
+            renderOutdatedProfilesTable();
+        } catch (err) {
+            showToast(err.message || "Unable to load graduate tracking settings.", "error");
+        }
+    }
 
     /**
      * Dynamically detect stale alumni profiles that have not been updated
-     * within the freshness period (6 months by default).
+     * within the configured reminder period.
      */
     function detectStaleProfiles() {
-        const reminders = JSON.parse(localStorage.getItem("saaOutdatedReminders") || "{}");
-        const now = new Date();
-        const cutoff = new Date(now.getFullYear(), now.getMonth() - PROFILE_FRESHNESS_MONTHS, now.getDate());
-
-        return alumniList
-            .filter(a => {
-                if (!a.lastUpdated) return true;
-                const last = new Date(a.lastUpdated);
-                return isNaN(last.getTime()) || last < cutoff;
-            })
+        return trackingAlumni()
+            .filter(isTrackingStale)
             .map(a => ({
                 id: a.id,
                 name: a.name,
                 batch: a.batch,
                 lastUpdated: a.lastUpdated || "Never",
                 contact: a.contact || a.phone || "",
-                status: "Needs Update",
-                reminded: !!reminders[a.id]
+                status: "Needs Update"
             }));
     }
 
     /**
-     * Refresh all KPI summary cards in the Graduate Tracking dashboard
+     * Refresh outcome counts for the currently selected graduate filters.
      */
     function updateTrackingKPIs() {
-        const total = alumniList.length;
+        const rows = trackingAlumni();
+        const total = rows.length;
         if (!total) {
             const kpiEmp = document.getElementById("kpiEmployedRate");
-            if (kpiEmp) kpiEmp.textContent = "0%";
-            const kpiField = document.getElementById("kpiFieldRelevance");
-            if (kpiField) kpiField.textContent = "0%";
+            if (kpiEmp) kpiEmp.textContent = "0";
+            ["kpiCurrentlyEmployed", "kpiFurtherStudies", "kpiSeekingEmployment"].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = "0";
+            });
             const kpiFresh = document.getElementById("kpiProfileFreshness");
-            if (kpiFresh) kpiFresh.textContent = "0% Up-to-Date";
+            if (kpiFresh) kpiFresh.textContent = "0%";
             const kpiCountEl = document.getElementById("kpiOutdatedCount");
             if (kpiCountEl) kpiCountEl.textContent = "No alumni records yet";
-            const kpiHire = document.getElementById("kpiTimeToHire");
-            if (kpiHire) kpiHire.textContent = "—";
             return;
         }
-        
-        // 1. Employment Rate (Employed + Freelance)
-        const employedCount = alumniList.filter(a => a.status === "Employed" || a.status === "Freelance").length;
-        const empRate = Math.round((employedCount / total) * 100);
-        const kpiEmp = document.getElementById("kpiEmployedRate");
-        if (kpiEmp) kpiEmp.textContent = empRate + "%";
 
-        // 2. Field Alignment (Directly Related / Employed)
-        const directlyRelated = alumniList.filter(a => a.relevance === "Directly Related").length;
-        const fieldRate = employedCount > 0 ? Math.round((directlyRelated / employedCount) * 100) : 0;
-        const kpiField = document.getElementById("kpiFieldRelevance");
-        if (kpiField) kpiField.textContent = fieldRate + "%";
+        const employedCount = rows.filter((a) => ["Employed", "Self-employed", "Freelance"].includes(a.status)).length;
+        const studiesCount = rows.filter((a) => ["Further Studies", "Post-grad", "Postgraduate", "Technical/Vocational Training"].includes(a.status)).length;
+        const seekingCount = rows.filter((a) => ["Unemployed", "Seeking Employment"].includes(a.status)).length;
+        const kpiEmp = document.getElementById("kpiEmployedRate");
+        if (kpiEmp) kpiEmp.textContent = String(total);
+        const employedEl = document.getElementById("kpiCurrentlyEmployed");
+        if (employedEl) employedEl.textContent = String(employedCount);
+        const studiesEl = document.getElementById("kpiFurtherStudies");
+        if (studiesEl) studiesEl.textContent = String(studiesCount);
+        const seekingEl = document.getElementById("kpiSeekingEmployment");
+        if (seekingEl) seekingEl.textContent = String(seekingCount);
 
         // 3. Profile Freshness
         const stale = detectStaleProfiles();
@@ -69,30 +158,11 @@
         const pct = Math.max(0, Math.round((freshCount / total) * 100));
         const kpiFresh = document.getElementById("kpiProfileFreshness");
         const kpiCountEl = document.getElementById("kpiOutdatedCount");
-        if (kpiFresh) kpiFresh.textContent = pct + "% Up-to-Date";
+        if (kpiFresh) kpiFresh.textContent = pct + "%";
         if (kpiCountEl) {
-            kpiCountEl.textContent = stale.length + " Outdated (>6 Months)";
+            kpiCountEl.textContent = stale.length + " needing update (" + trackingReminderMonths + " months)";
             kpiCountEl.className = "text-[10px] " + (stale.length > 0 ? "text-amber-600 font-semibold mt-0.5" : "text-emerald-600 font-semibold mt-0.5");
         }
-
-        const kpiHire = document.getElementById("kpiTimeToHire");
-        if (kpiHire) kpiHire.textContent = averageTimeToHireLabel();
-    }
-
-    function averageTimeToHireLabel() {
-        const mapMonths = {
-            "< 1 Month": 0.5,
-            "1-3 Months": 2,
-            "3-6 Months": 4.5,
-            "6-12 Months": 9,
-            "> 1 Year": 14
-        };
-        const values = alumniList
-            .map((a) => mapMonths[a.timeToFirst] ?? null)
-            .filter((n) => n != null);
-        if (!values.length) return "—";
-        const avg = values.reduce((sum, n) => sum + n, 0) / values.length;
-        return avg.toFixed(1) + " Months";
     }
 
     /**
@@ -121,17 +191,10 @@
                 </td>
                 <td class="text-slate-600 font-mono text-xs">${a.contact}</td>
                 <td>
-                    <span class="status-badge ${a.reminded ? 'status-pending' : 'status-unemployed'}">
-                        ${a.reminded ? 'SMS Reminded' : 'Overdue (>6 mos)'}
-                    </span>
+                    <span class="status-badge status-pending">Needs update (${trackingReminderMonths}+ months)</span>
                 </td>
                 <td class="text-right space-x-1">
-                    <button onclick="sendSingleSmsReminder(${a.id})" class="btn ${a.reminded ? 'btn-secondary' : 'btn-primary'} text-xs py-1 px-2.5">
-                        <i class="fa-solid fa-comment-sms"></i> ${a.reminded ? 'Resend SMS' : 'Send SMS'}
-                    </button>
-                    <button onclick="openUpdateEmploymentModal(${a.id})" class="btn btn-secondary text-xs py-1 px-2.5">
-                        <i class="fa-solid fa-user-pen"></i> Update
-                    </button>
+                    <span class="text-xs text-slate-400">Eligible for reminder</span>
                 </td>
             </tr>
         `).join("");
@@ -139,28 +202,54 @@
 
     async function runSmsReminderSweep() {
         try {
+            const { staleProfiles } = await SAA_API.request("/api/tracking/stale-profiles");
+            const count = staleProfiles.length;
+            if (!count) {
+                showToast("No profiles currently need an update reminder.", "info");
+                return;
+            }
+            const confirmed = window.confirm(`Send profile update reminders?\n\n${count} alumni across all levels and batches have not updated their graduate information within the configured ${trackingReminderMonths}-month period. Dashboard filters do not limit this send.\n\nSend ${count} reminders?`);
+            if (!confirmed) return;
             const data = await SAA_API.request("/api/tracking/reminders/sweep", { method: "POST" });
             if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
             renderOutdatedProfilesTable();
-            showToast(`Reminders recorded for ${data.dispatchedCount || 0} alumni. SMS delivery depends on provider configuration.`, "info");
+            showToast(`Reminder requests recorded for ${data.dispatchedCount || 0} alumni. SMS delivery depends on provider configuration.`, "info");
         } catch (err) {
             showToast(err.message || "Unable to send tracking reminders.", "error");
         }
     }
 
-    async function sendSingleSmsReminder(id) {
-        const item = detectStaleProfiles().find(a => a.id === id);
-        if (!item) return;
-        if (typeof triggerNotification === "function") {
-            await triggerNotification("SMS", item.contact, "Grad Tracking Update Reminder", "Please update your employment or education status through the Alumni Management System.");
+    async function saveTrackingReminderSettings() {
+        const input = document.getElementById("trackingReminderMonths");
+        const months = Number(input?.value);
+        const message = document.getElementById("trackingReminderSettingsMessage");
+        if (!Number.isInteger(months) || months < 1 || months > 36) {
+            showToast("Reminder period must be from 1 to 36 months.", "error");
+            return;
         }
-        renderOutdatedProfilesTable();
+        try {
+            const result = await SAA_API.request("/api/tracking/settings", {
+                method: "PUT",
+                body: JSON.stringify({ reminderMonths: months })
+            });
+            trackingReminderMonths = result.reminderMonths;
+            if (message) message.textContent = "Saved";
+            updateTrackingKPIs();
+            renderOutdatedProfilesTable();
+            showToast("Graduate tracking reminder period saved.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to save the reminder period.", "error");
+        }
     }
 
     /**
      * Pre-populate alumni dropdown and open employment update modal
      */
     function openUpdateEmploymentModal(targetAlumniId) {
+        if (!currentUser || currentUser.role !== "alumni") {
+            showToast("Only alumni can update their own graduate tracking status.", "error");
+            return;
+        }
         const select = document.getElementById("trackAlumniSelect");
         if (select) {
             select.innerHTML = alumniList.map(a => `
@@ -171,7 +260,9 @@
             if (targetAlumniId) {
                 select.value = targetAlumniId;
             } else if (currentUser && currentUser.role === "alumni") {
-                const match = alumniList.find(a => a.name.toLowerCase() === currentUser.name.toLowerCase() || (currentUser.studentId && a.studentId === currentUser.studentId));
+                const match = alumniList.find(a => Number(a.id) === Number(currentUser.alumniId))
+                    || alumniList.find(a => currentUser.studentId && a.studentId === currentUser.studentId)
+                    || alumniList.find(a => a.name.toLowerCase() === currentUser.name.toLowerCase());
                 if (match) select.value = match.id;
             }
 
@@ -201,11 +292,11 @@
         const alumnus = alumniList.find(a => a.id === targetId);
         if (!alumnus) return;
 
-        if (document.getElementById("trackEmpStatus")) document.getElementById("trackEmpStatus").value = alumnus.status || "Employed";
+        if (document.getElementById("trackEmpStatus")) document.getElementById("trackEmpStatus").value = alumnus.status || "";
         if (document.getElementById("trackCompany")) document.getElementById("trackCompany").value = alumnus.company || "";
         if (document.getElementById("trackJobTitle")) document.getElementById("trackJobTitle").value = alumnus.title || "";
-        if (document.getElementById("trackTimeFirst")) document.getElementById("trackTimeFirst").value = alumnus.timeToFirst || "< 1 Month";
-        if (document.getElementById("trackRelevance")) document.getElementById("trackRelevance").value = alumnus.relevance || "Directly Related";
+        if (document.getElementById("trackIndustry")) document.getElementById("trackIndustry").value = alumnus.industry || "";
+        if (document.getElementById("trackEmploymentType")) document.getElementById("trackEmploymentType").value = alumnus.employmentType || "";
         if (document.getElementById("trackLocation")) document.getElementById("trackLocation").value = alumnus.location || "Local";
         if (document.getElementById("trackEduSchool")) document.getElementById("trackEduSchool").value = alumnus.educationSchool || "";
         if (document.getElementById("trackEduProgram")) document.getElementById("trackEduProgram").value = alumnus.educationProgram || "";
@@ -220,55 +311,20 @@
      */
     function onTrackEmpStatusChange() {
         const status = document.getElementById("trackEmpStatus").value;
-        const companyInput = document.getElementById("trackCompany");
-        const jobTitleInput = document.getElementById("trackJobTitle");
-        const companyLabel = document.getElementById("trackCompanyLabel");
-        const jobTitleLabel = document.getElementById("trackJobTitleLabel");
-        const detailsRow = document.getElementById("trackingDetailsRow");
-
-        if (status === "Unemployed") {
-            if (companyLabel) companyLabel.textContent = "Company / Institution (Optional)";
-            if (jobTitleLabel) jobTitleLabel.textContent = "Previous / Desired Position (Optional)";
-            if (companyInput) {
-                companyInput.required = false;
-                companyInput.placeholder = "Not Applicable (Unemployed)";
-                if (!companyInput.value) companyInput.value = "N/A";
-            }
-            if (jobTitleInput) {
-                jobTitleInput.required = false;
-                jobTitleInput.placeholder = "Not Applicable (Unemployed)";
-                if (!jobTitleInput.value) jobTitleInput.value = "N/A";
-            }
-            if (detailsRow) detailsRow.classList.add("opacity-60");
-        } else if (status === "Post-grad") {
-            if (companyLabel) companyLabel.textContent = "Graduate School / University";
-            if (jobTitleLabel) jobTitleLabel.textContent = "Master's / Doctoral Degree Program";
-            if (companyInput) {
-                companyInput.required = true;
-                companyInput.placeholder = "e.g. Ateneo Graduate School of Business";
-                if (companyInput.value === "N/A") companyInput.value = "";
-            }
-            if (jobTitleInput) {
-                jobTitleInput.required = true;
-                jobTitleInput.placeholder = "e.g. Master of Business Administration";
-                if (jobTitleInput.value === "N/A") jobTitleInput.value = "";
-            }
-            if (detailsRow) detailsRow.classList.remove("opacity-60");
-        } else {
-            if (companyLabel) companyLabel.textContent = "Current Company / Institution Name";
-            if (jobTitleLabel) jobTitleLabel.textContent = "Job Position / Title";
-            if (companyInput) {
-                companyInput.required = true;
-                companyInput.placeholder = "e.g. Globe Telecom / St. Luke's Medical Center";
-                if (companyInput.value === "N/A") companyInput.value = "";
-            }
-            if (jobTitleInput) {
-                jobTitleInput.required = true;
-                jobTitleInput.placeholder = "e.g. Senior Systems Analyst";
-                if (jobTitleInput.value === "N/A") jobTitleInput.value = "";
-            }
-            if (detailsRow) detailsRow.classList.remove("opacity-60");
-        }
+        const employed = status === "Employed" || status === "Self-employed";
+        const studying = status === "Further Studies" || status === "Technical/Vocational Training";
+        const workFields = document.getElementById("trackingEmploymentFields");
+        const educationFields = document.getElementById("trackingEducationFields");
+        if (workFields) workFields.classList.toggle("hidden", !employed);
+        if (educationFields) educationFields.classList.toggle("hidden", !studying);
+        const company = document.getElementById("trackCompany");
+        const title = document.getElementById("trackJobTitle");
+        const school = document.getElementById("trackEduSchool");
+        const program = document.getElementById("trackEduProgram");
+        if (company) company.required = employed;
+        if (title) title.required = employed;
+        if (school) school.required = studying;
+        if (program) program.required = studying;
     }
 
     /**
@@ -281,9 +337,14 @@
         const status = document.getElementById("trackEmpStatus").value;
         const company = document.getElementById("trackCompany").value.trim();
         const title = document.getElementById("trackJobTitle").value.trim();
-        const timeToFirst = document.getElementById("trackTimeFirst") ? document.getElementById("trackTimeFirst").value : "";
-        const relevance = document.getElementById("trackRelevance") ? document.getElementById("trackRelevance").value : "Not Related";
+        const industry = document.getElementById("trackIndustry")?.value || "";
+        const employmentType = document.getElementById("trackEmploymentType")?.value || "";
         const location = document.getElementById("trackLocation") ? document.getElementById("trackLocation").value : "Local";
+        if (!status) {
+            showToast("Select your current education or employment status.", "error");
+            document.getElementById("trackEmpStatus").focus();
+            return;
+        }
 
         let targetAlumnus = alumniList.find(a => a.id === targetId);
         if (!targetAlumnus) {
@@ -299,7 +360,7 @@
             await SAA_API.request(`/api/tracking/${alumnusId}/employment`, {
                 method: "PUT",
                 body: JSON.stringify({
-                    status, company, title, timeToFirst, relevance, location,
+                    status, company, title, industry, employmentType, location,
                     educationSchool: (document.getElementById("trackEduSchool") || {}).value || "",
                     educationProgram: (document.getElementById("trackEduProgram") || {}).value || "",
                     educationStatus: (document.getElementById("trackEduStatus") || {}).value || "",
@@ -321,108 +382,76 @@
     }
 
     function exportGraduateTrackingReport() {
-        let csv = "Alumnus,Batch Year,Program,Employment Status,Company,Job Title,Time to Hire,Field Relevance,Last Updated\n";
-        alumniList.forEach(a => {
-            csv += `"${a.name}","${a.batch}","${a.program || 'N/A'}","${a.status}","${a.company || 'N/A'}","${a.title || 'N/A'}","${a.timeToFirst || 'N/A'}","${a.relevance || 'N/A'}","${a.lastUpdated || 'N/A'}"\n`;
+        const rows = trackingAlumni();
+        const headers = ["Alumnus", "Education Level", "Batch Year", "SHS Strand", "Current Status", "Industry", "Employment Type", "School / Provider", "Course / Training", "Review Status", "Last Updated"];
+        const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+        let csv = headers.map(escapeCsv).join(",") + "\n";
+        rows.forEach(a => {
+            csv += [
+                a.name, a.educationLevel || "Unknown", a.batch, a.strand, a.status || "No Data",
+                a.industry, a.employmentType, a.educationSchool, a.educationProgram,
+                a.trackingReviewStatus || "Pending", a.lastUpdated || ""
+            ].map(escapeCsv).join(",") + "\n";
         });
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "SAA_Graduate_Tracking_Report_2026.csv";
+        a.download = "SAA_Graduate_Tracking_Report.csv";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast("Graduate Tracking Report exported to CSV.", "success");
+        showToast(`Graduate Tracking Report exported (${rows.length} records).`, "success");
     }
 
-    /* ------------------------------------------------------------------ *
-     * CHED Graduate Tracer Study compliance report (Issue #7)
-     * ------------------------------------------------------------------ */
-    const CHED_TRACER_HEADERS = [
-        "No.", "Full Name", "Sex", "Year Graduated", "Degree / Program",
-        "Employment Status", "Occupation / Job Title", "Company / Employer",
-        "Time to First Job", "Field of Study Relevance", "Location (Local/Abroad)",
-        "Further / Higher Studies", "Remarks"
-    ];
-
-    function downloadCsvBlob(filename, csv) {
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+    function renderTrackingRecordsTable() {
+        const body = document.getElementById("trackingRecordsTableBody");
+        if (!body) return;
+        const rows = trackingAlumni();
+        if (!rows.length) {
+            body.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No graduate records match these filters.</td></tr>`;
+            return;
+        }
+        body.innerHTML = rows.map((a) => {
+            const reviewStatus = a.trackingReviewStatus || "Pending";
+            const badge = reviewStatus === "Verified" ? "status-approved" : reviewStatus === "Needs Follow-up" ? "status-pending" : "status-unemployed";
+            const identity = [a.educationLevel || "Unknown", a.batch || "—"].join(" • ");
+            const detail = a.industry || a.strand || "—";
+            const pathwayDetail = a.company
+                ? [a.title, a.company].filter(Boolean).join(" • ")
+                : [a.educationSchool, a.educationProgram].filter(Boolean).join(" • ");
+            return `<tr>
+                <td class="font-bold text-slate-800">${escapeHtml(a.name)}<p class="text-[10px] text-slate-500 font-normal">${escapeHtml(a.studentId || "No student ID linked")}</p></td>
+                <td>${escapeHtml(identity)}</td>
+                <td>${escapeHtml(a.status || "No Data")}${pathwayDetail ? `<p class="text-[10px] text-slate-500 mt-1">${escapeHtml(pathwayDetail)}</p>` : ""}</td>
+                <td>${escapeHtml(detail)}</td>
+                <td><span class="status-badge ${badge}">${escapeHtml(reviewStatus)}</span>${a.trackingReviewNote ? `<p class="text-[10px] text-slate-500 mt-1">${escapeHtml(a.trackingReviewNote)}</p>` : ""}</td>
+                <td class="text-right whitespace-nowrap">
+                    <button type="button" onclick="reviewTrackingRecord(${Number(a.id)}, 'Verified')" class="btn btn-secondary text-xs py-1 px-2">Verify</button>
+                    <button type="button" onclick="reviewTrackingRecord(${Number(a.id)}, 'Needs Follow-up')" class="btn btn-secondary text-xs py-1 px-2">Follow up</button>
+                </td>
+            </tr>`;
+        }).join("");
     }
 
-    /** Local fallback CSV - mirrors the server-side CHED report columns. */
-    function buildChedTracerCsvLocal() {
-        const esc = (v) => {
-            const s = (v == null ? "" : String(v));
-            return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-        };
-        const lines = [
-            '"ST. AGNES ACADEMY OF CALOOCAN - GRADUATE TRACER STUDY REPORT"',
-            '"Prepared in accordance with CHED graduate tracer study guidelines"',
-            `"Date Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}"`,
-            "",
-            CHED_TRACER_HEADERS.map(esc).join(",")
-        ];
-
-        alumniList.slice()
-            .sort((a, b) => String(a.batch).localeCompare(String(b.batch), undefined, { numeric: true }))
-            .forEach((a, i) => {
-                const further = ["Further Studies", "Post-grad", "Postgraduate"].includes(a.status) ? "Yes" : "No";
-                lines.push([
-                    String(i + 1),
-                    a.name,
-                    "Not Indic (optional)",
-                    a.batch || "",
-                    a.program || "",
-                    a.status || "Not Indic",
-                    a.status === "Unemployed" ? "—" : (a.title || "—"),
-                    a.company || "—",
-                    a.timeToFirst || "Not Indic",
-                    a.relevance || "Not Indic",
-                    a.location || "Local",
-                    further,
-                    `Student ID: ${a.studentId || 'N/A'} | Last updated: ${a.lastUpdated || "N/A"}`
-                ].map(esc).join(","));
-            });
-
-        return "\uFEFF" + lines.join("\r\n");
-    }
-
-    /**
-     * CHED Tracer Study export button handler.
-     * Primary path downloads the server-generated CSV (Express + SQLite).
-     * Falls back to a local copy when the API is unreachable.
-     */
-    async function exportChedTracerStudy() {
-        const filename = `saa-tracer-study-${new Date().toISOString().split("T")[0]}.csv`;
+    async function reviewTrackingRecord(id, status) {
+        const note = status === "Needs Follow-up" ? window.prompt("Add a note for the alumnus or internal follow-up:", "") : "";
+        if (status === "Needs Follow-up" && note === null) return;
         try {
-            if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
-                const token = sessionStorage.getItem("saaToken") || "";
-                const res = await fetch(SAA_API.base + "/api/reports/tracer-study/download", {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
-                });
-                if (res.ok) {
-                    downloadCsvBlob(filename, await res.text());
-                    showToast("CHED Tracer Study exported (server-generated report).", "success");
-                    return;
-                }
-            }
-        } catch (e) { /* offline or unreachable - fall through to the local copy */ }
-
-        downloadCsvBlob(filename, buildChedTracerCsvLocal());
-        showToast("CHED Tracer Study exported (local copy). Run the backend for the server report.", "success");
+            await SAA_API.request(`/api/tracking/${id}/review`, {
+                method: "PUT",
+                body: JSON.stringify({ status, note: note || "" })
+            });
+            await SAA_API.refreshAllData();
+            renderTrackingRecordsTable();
+            showToast(`Graduate record marked ${status.toLowerCase()}.`, "success");
+        } catch (err) {
+            showToast(err.message || "Unable to update graduate record review status.", "error");
+        }
     }
 
-/* ------------------------------------------------------------------------- */
+    /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 5229-5374 */
 /* ------------------------------------------------------------------------- */
     /* Verification Tool */
@@ -651,26 +680,42 @@
     }
 
     function renderTrackingCharts() {
+        if (!currentUser || currentUser.role !== "admin") {
+            [empChartInstance, indChartInstance, pathwayChartInstance].forEach((chart) => {
+                if (chart) chart.destroy();
+            });
+            empChartInstance = null;
+            indChartInstance = null;
+            pathwayChartInstance = null;
+            return;
+        }
         setTimeout(() => {
             const pieCanvas = document.getElementById("employmentPieChart");
             const barCanvas = document.getElementById("industryBarChart");
+            const pathwayCanvas = document.getElementById("postShsPathwaysChart");
+            const pathwaySection = document.getElementById("postShsPathwaysSection");
+            const rows = trackingAlumni();
+            const showPathways = activeTrackingFilters.educationLevel !== "JHS";
+            if (pathwaySection) pathwaySection.classList.toggle("hidden", !showPathways);
 
             if (pieCanvas) {
                 if (empChartInstance) empChartInstance.destroy();
 
-                const empCount = alumniList.filter(a => a.status === "Employed").length;
-                const unempCount = alumniList.filter(a => a.status === "Unemployed").length;
-                const freeCount = alumniList.filter(a => a.status === "Freelance").length;
-                // The tracker uses "Further Studies"; honour historical aliases too.
-                const postCount = alumniList.filter(a => ["Further Studies", "Post-grad", "Postgraduate"].includes(a.status)).length;
+                const outcomeLabels = ["Employed", "Self-employed", "Unemployed / Seeking Work", "Further Studies", "Not Currently Seeking", "No Data"];
+                const outcomeCounts = rows.reduce((counts, alumnus) => {
+                    const status = normalizeTrackingStatus(alumnus.status);
+                    const label = status === "Seeking Employment" ? "Unemployed / Seeking Work" : status;
+                    counts[label] += 1;
+                    return counts;
+                }, Object.fromEntries(outcomeLabels.map((label) => [label, 0])));
 
                 empChartInstance = new Chart(pieCanvas.getContext("2d"), {
                     type: "doughnut",
                     data: {
-                        labels: ["Employed", "Unemployed", "Freelance", "Further Studies"],
+                        labels: outcomeLabels,
                         datasets: [{
-                            data: [empCount, unempCount, freeCount, postCount],
-                            backgroundColor: ["#10b981", "#ef4444", "#3b82f6", "#a855f7"]
+                            data: outcomeLabels.map((label) => outcomeCounts[label]),
+                            backgroundColor: ["#10b981", "#3b82f6", "#ef4444", "#a855f7", "#64748b", "#cbd5e1"]
                         }]
                     },
                     options: { responsive: true, maintainAspectRatio: false }
@@ -680,22 +725,20 @@
             if (barCanvas) {
                 if (indChartInstance) indChartInstance.destroy();
 
-                const programCounts = {};
-                alumniList.forEach(a => {
-                    const prog = a.program ? a.program.replace(/^BS\s+/, "") : "General";
-                    programCounts[prog] = (programCounts[prog] || 0) + 1;
+                const industryLabels = [...TRACKING_INDUSTRIES, "Not Reported"];
+                const industryCounts = Object.fromEntries(industryLabels.map((industry) => [industry, 0]));
+                rows.filter((a) => ["Employed", "Self-employed", "Freelance"].includes(a.status)).forEach((a) => {
+                    const category = TRACKING_INDUSTRIES.includes(a.industry) ? a.industry : "Not Reported";
+                    industryCounts[category] += 1;
                 });
-
-                const labels = Object.keys(programCounts);
-                const data = Object.values(programCounts);
 
                 indChartInstance = new Chart(barCanvas.getContext("2d"), {
                     type: "bar",
                     data: {
-                        labels: labels.length ? labels : ["No data"],
+                        labels: industryLabels,
                         datasets: [{
-                            label: "Total Alumni by Program",
-                            data: data.length ? data : [0],
+                            label: "Alumni by self-reported industry",
+                            data: industryLabels.map((industry) => industryCounts[industry]),
                             backgroundColor: "#801235",
                             borderRadius: 6
                         }]
@@ -715,7 +758,121 @@
                     }
                 });
             }
+
+            if (pathwayCanvas) {
+                if (pathwayChartInstance) pathwayChartInstance.destroy();
+                pathwayChartInstance = null;
+                if (!showPathways) return;
+                const shsAlumni = rows.filter((a) => a.educationLevel === "SHS");
+                const pathwayLabels = [
+                    "College / University", "Employed", "Technical / Vocational",
+                    "Self-employed", "Seeking Employment", "Not Currently Seeking", "No Updated Information"
+                ];
+                const pathwayCounts = Object.fromEntries(pathwayLabels.map((label) => [label, 0]));
+                shsAlumni.forEach((a) => {
+                    const status = a.status || "";
+                    const educationText = `${a.educationProgram || ""} ${a.educationSchool || ""}`.toLowerCase();
+                    let pathway = "No Updated Information";
+                    if (status === "Technical/Vocational Training" || /technical|vocational|tesda|tvet/.test(educationText)) pathway = "Technical / Vocational";
+                    else if (["Further Studies", "Post-grad", "Postgraduate"].includes(status)) pathway = "College / University";
+                    else if (status === "Employed") pathway = "Employed";
+                    else if (["Self-employed", "Freelance"].includes(status)) pathway = "Self-employed";
+                    else if (["Unemployed", "Seeking Employment"].includes(status)) pathway = "Seeking Employment";
+                    else if (status === "Not Currently Seeking") pathway = "Not Currently Seeking";
+                    pathwayCounts[pathway] += 1;
+                });
+                const pathwayData = pathwayLabels.map((label) => shsAlumni.length
+                    ? Math.round((pathwayCounts[label] / shsAlumni.length) * 100)
+                    : 0);
+                pathwayChartInstance = new Chart(pathwayCanvas.getContext("2d"), {
+                    type: "bar",
+                    data: {
+                        labels: pathwayLabels,
+                        datasets: [{
+                            label: "Share of SHS Alumni (%)",
+                            data: pathwayData,
+                            backgroundColor: ["#801235", "#10b981", "#0ea5e9", "#3b82f6", "#f59e0b", "#64748b", "#cbd5e1"],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: { callback: (value) => `${value}%` },
+                                grid: { color: "#f1f5f9" }
+                            },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
         }, 100);
+    }
+
+    function renderMyTrackingSummary() {
+        const summary = document.getElementById("myTrackingSummary");
+        if (!summary || !currentUser || currentUser.role !== "alumni") return;
+        const alumnus = (alumniList || []).find((a) => Number(a.id) === Number(currentUser.alumniId))
+            || (alumniList || []).find((a) => currentUser.studentId && a.studentId === currentUser.studentId)
+            || (alumniList || []).find((a) => a.name.toLowerCase() === String(currentUser.name || "").toLowerCase());
+        if (!alumnus || !alumnus.status) {
+            summary.textContent = "You have not shared your current education or employment status yet.";
+            return;
+        }
+        const details = alumnus.company
+            ? ` ${alumnus.title ? `as ${alumnus.title} ` : ""}at ${alumnus.company}.`
+            : alumnus.educationSchool
+                ? ` at ${alumnus.educationSchool}${alumnus.educationProgram ? `, studying ${alumnus.educationProgram}` : ""}.`
+                : ".";
+        summary.textContent = `Your status: ${alumnus.status}${details} Last updated: ${alumnus.lastUpdated || "Not recorded"}.`;
+    }
+
+    function applyTrackingRoleView() {
+        const role = currentUser?.role || "";
+        const viewTitle = document.getElementById("currentViewTitle");
+        document.querySelectorAll("[data-tracking-role]").forEach((element) => {
+            const scope = element.getAttribute("data-tracking-role");
+            const visible = scope === "admin"
+                ? role === "admin"
+                : scope === "staff"
+                    ? ["admin", "staff", "registrar"].includes(role)
+                    : scope === "registrar"
+                        ? ["staff", "registrar"].includes(role)
+                        : scope === "alumni" && role === "alumni";
+            element.classList.toggle("hidden", !visible);
+        });
+        const title = document.getElementById("trackingPageHeading");
+        const description = document.getElementById("trackingPageDescription");
+        const alumniSelect = document.getElementById("trackAlumniSelectContainer");
+        if (alumniSelect) alumniSelect.classList.toggle("hidden", role === "alumni");
+        if (role === "alumni") {
+            if (viewTitle) viewTitle.textContent = "My Graduate Status";
+            if (title) title.textContent = "My Graduate Tracking";
+            if (description) description.textContent = "Update your own education and employment information.";
+            renderMyTrackingSummary();
+        } else if (role === "staff" || role === "registrar") {
+            if (viewTitle) viewTitle.textContent = "Graduate Record Review";
+            if (title) title.textContent = "Graduate Record Review";
+            if (description) description.textContent = "Review and verify education and employment information reported by alumni.";
+        } else {
+            if (viewTitle) viewTitle.textContent = "Graduate Tracking Analytics";
+            if (title) title.textContent = "Graduate Tracking Analytics";
+            if (description) description.textContent = "Monitor JHS and SHS education pathways and employment outcomes.";
+        }
+        const educationFilter = document.getElementById("trackingEducationLevelFilter");
+        if (educationFilter && !educationFilter.dataset.listenerAttached) {
+            educationFilter.addEventListener("change", updateTrackingStrandFilter);
+            educationFilter.dataset.listenerAttached = "true";
+        }
+        populateTrackingFilters();
+        renderTrackingRecordsTable();
+        renderMyTrackingSummary();
+        if (role === "admin" || role === "staff" || role === "registrar") loadTrackingSettings();
     }
 
 
@@ -834,6 +991,13 @@
         if (typeof renderNewsletterArchive === "function") renderNewsletterArchive();
         if (typeof renderDonorProgress === "function") renderDonorProgress();
         if (typeof updateTrackingKPIs === "function") updateTrackingKPIs();
+        if (typeof populateTrackingFilters === "function") populateTrackingFilters();
+        if (currentAppView === "tracking") {
+            if (typeof renderTrackingRecordsTable === "function") renderTrackingRecordsTable();
+            if (typeof renderMyTrackingSummary === "function") renderMyTrackingSummary();
+            if (typeof renderTrackingCharts === "function") renderTrackingCharts();
+            if (typeof renderOutdatedProfilesTable === "function") renderOutdatedProfilesTable();
+        }
         if (typeof renderPlacementLogs === "function") renderPlacementLogs();
         if (typeof renderTranscriptRequests === "function") renderTranscriptRequests();
         if (typeof renderReprintRequests === "function") renderReprintRequests();

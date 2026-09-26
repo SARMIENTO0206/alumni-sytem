@@ -18,7 +18,10 @@ router.get('/', (req, res) => {
   const status = String(req.query.status || '').trim();
   const program = String(req.query.program || '').trim().toLowerCase();
 
-  let rows = scopeAlumniRows(req.user, db.prepare('SELECT * FROM alumni ORDER BY id DESC').all());
+  let rows = scopeAlumniRows(req.user, db.prepare(`
+    SELECT a.*, u.education_level AS education_level, u.strand AS strand, u.track AS track
+    FROM alumni a LEFT JOIN users u ON u.id = a.user_id ORDER BY a.id DESC
+  `).all());
   if (q) {
     rows = rows.filter((a) =>
       [a.name, a.student_id, a.program, a.company, a.job_title]
@@ -36,7 +39,10 @@ router.get('/', (req, res) => {
 
 /** GET /api/alumni/:id - single alumni record. */
 router.get('/:id', (req, res) => {
-  const row = db.prepare('SELECT * FROM alumni WHERE id = ?').get(Number(req.params.id));
+  const row = db.prepare(`
+    SELECT a.*, u.education_level AS education_level, u.strand AS strand, u.track AS track
+    FROM alumni a LEFT JOIN users u ON u.id = a.user_id WHERE a.id = ?
+  `).get(Number(req.params.id));
   if (!row) return res.status(404).json({ error: 'Alumni record not found.' });
   if (!ownsAlumniRecord(req.user, row)) {
     return res.status(403).json({ error: 'You can only view your own alumni record.' });
@@ -60,8 +66,9 @@ router.post('/', requireRole('admin', 'staff'), (req, res) => {
     `INSERT INTO alumni (name, batch, program, status, company, job_title, contact, relevance, time_to_first, location, student_id, last_updated)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'Not Related', '', 'Local', ?, ?)`
   ).run(
-    name, batch || '', program || '', status || 'Employed', company || '', title || '',
-    mobile, generatedStudentId, new Date().toISOString().split('T')[0]
+    name, batch || '', program || '', status || 'No Data', company || '', title || '',
+    mobile, generatedStudentId,
+    (status && status !== 'No Data' ? new Date().toISOString().split('T')[0] : '')
   );
 
   const row = db.prepare('SELECT * FROM alumni WHERE id = ?').get(info.lastInsertRowid);
