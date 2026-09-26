@@ -2662,12 +2662,41 @@
                     <div class="app-card p-6 space-y-6">
                         <div>
                             <h3 class="text-lg font-extrabold text-slate-800">Announcements</h3>
-                            <p class="text-xs text-slate-400">Official notices published in the system.</p>
+                            <p class="text-xs text-slate-400">Official school notices for the alumni community.</p>
                         </div>
                         <form id="announcementCompose" class="hidden space-y-3 border border-slate-100 rounded-xl p-4" onsubmit="publishAnnouncement(event)">
-                            <input id="announceTitle" class="form-input text-sm" placeholder="Announcement title" required>
-                            <textarea id="announceBody" class="form-textarea text-sm" rows="4" placeholder="Announcement content"></textarea>
-                            <button type="submit" class="btn btn-primary text-xs">Publish Announcement</button>
+                            <h4 class="font-extrabold text-sm text-slate-800">Create Announcement</h4>
+                            <label class="form-label" for="announceTitle">Title *</label>
+                            <input id="announceTitle" class="form-input text-sm" placeholder="e.g. Alumni General Assembly 2026" maxlength="160" required>
+                            <label class="form-label" for="announceBody">Message *</label>
+                            <textarea id="announceBody" class="form-textarea text-sm" rows="4" placeholder="Write the official announcement..." maxlength="10000" required></textarea>
+                            <fieldset class="space-y-2">
+                                <legend class="form-label">Publish</legend>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <label class="flex items-center gap-2"><input type="radio" name="announcementTiming" value="now" checked onchange="toggleAnnouncementSchedule()"> Publish now</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="announcementTiming" value="schedule" onchange="toggleAnnouncementSchedule()"> Schedule</label>
+                                </div>
+                                <div id="announcementScheduleField" class="hidden">
+                                    <label class="form-label" for="announcePublishAt">Publish date and time *</label>
+                                    <input id="announcePublishAt" type="datetime-local" class="form-input text-sm">
+                                </div>
+                            </fieldset>
+                            <div>
+                                <label class="form-label" for="announceExpiresAt">Expiration date (optional)</label>
+                                <input id="announceExpiresAt" type="date" class="form-input text-sm">
+                            </div>
+                            <fieldset class="space-y-2">
+                                <legend class="form-label">Notify through</legend>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <label class="flex items-center gap-2"><input id="announceInApp" type="checkbox" checked> In-app notification</label>
+                                    <label class="flex items-center gap-2"><input id="announceEmail" type="checkbox"> Email</label>
+                                    <label class="flex items-center gap-2"><input id="announceSms" type="checkbox"> SMS</label>
+                                </div>
+                            </fieldset>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="submit" name="action" value="draft" class="btn btn-secondary text-xs">Save Draft</button>
+                                <button type="submit" name="action" value="publish" class="btn btn-primary text-xs">Publish Announcement</button>
+                            </div>
                         </form>
                         <div id="announcementsPageList" class="space-y-4"></div>
                     </div>
@@ -2698,28 +2727,80 @@
                 </div>
 
                 <div id="view-sms" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6 max-w-2xl">
-                        <h3 class="text-lg font-extrabold text-slate-800">SMS</h3>
-                        <p id="smsConfigStatus" class="text-xs text-slate-500 mb-4">Checking SMS provider configuration…</p>
-                        <form class="space-y-3" onsubmit="logInternalMessage(event, 'SMS')">
-                            <input id="smsRecipient" class="form-input text-sm" placeholder="Recipient mobile (09XXXXXXXXX or +639XXXXXXXXX)" required>
-                            <input id="smsSubject" class="form-input text-sm" placeholder="Subject / template name" required>
-                            <textarea id="smsMessage" class="form-textarea text-sm" rows="4" placeholder="Message" maxlength="160"></textarea>
+                    <div class="app-card p-6 space-y-5">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-800">SMS</h3>
+                            <p id="smsConfigStatus" class="text-xs text-slate-500">Checking SMS service…</p>
+                        </div>
+                        <form id="smsComposeForm" class="space-y-3 max-w-2xl" onsubmit="logInternalMessage(event, 'SMS')">
+                            <fieldset>
+                                <legend class="form-label">Recipients *</legend>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <label class="flex items-center gap-2"><input type="radio" name="smsRecipientMode" value="individual" checked onchange="updateCommunicationRecipientUI('SMS')"> Individual Alumni</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="smsRecipientMode" value="all" onchange="updateCommunicationRecipientUI('SMS')"> All Alumni</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="smsRecipientMode" value="selected" onchange="updateCommunicationRecipientUI('SMS')"> Selected Recipients</label>
+                                </div>
+                            </fieldset>
+                            <div id="smsRecipientPicker">
+                                <label class="form-label" for="smsRecipientSearch">Search alumni</label>
+                                <input id="smsRecipientSearch" class="form-input text-sm mb-2" placeholder="Search by name, batch, or email" oninput="filterCommunicationRecipients('SMS')">
+                                <select id="smsRecipients" class="form-input text-sm" size="5" aria-label="Select alumni recipients" required onchange="rememberCommunicationRecipients('SMS')"></select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="smsTemplate">Template</label>
+                                <select id="smsTemplate" class="form-input text-sm" onchange="applyCommunicationTemplate('SMS')">
+                                    <option value="">No template</option>
+                                    <option value="announcement">Announcement reminder</option>
+                                    <option value="event">Event reminder</option>
+                                    <option value="profile">Profile update reminder</option>
+                                </select>
+                            </div>
+                            <label class="form-label" for="smsMessage">Message *</label>
+                            <textarea id="smsMessage" class="form-textarea text-sm" rows="4" placeholder="Write an SMS message..." maxlength="160" required oninput="updateSmsCharacterCount()"></textarea>
+                            <p id="smsCharacterCount" class="text-xs text-slate-500">Characters: 0 / 160 • Estimated SMS: 0</p>
                             <button type="submit" class="btn btn-primary text-xs">Send SMS</button>
                         </form>
+                        <section>
+                            <h4 class="font-extrabold text-sm text-slate-800 mb-3">Message History / Delivery Logs</h4>
+                            <div class="data-table-container"><table class="modern-table"><thead><tr><th>Recipient</th><th>Message</th><th>Date</th><th>Status</th></tr></thead><tbody id="smsHistoryList"></tbody></table></div>
+                        </section>
                     </div>
                 </div>
 
                 <div id="view-gmail" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6 max-w-2xl">
-                        <h3 class="text-lg font-extrabold text-slate-800">Email</h3>
-                        <p id="emailConfigStatus" class="text-xs text-slate-500 mb-4">Checking SMTP configuration…</p>
-                        <form class="space-y-3" onsubmit="logInternalMessage(event, 'EMAIL')">
-                            <input id="emailRecipient" class="form-input text-sm" placeholder="Recipient email" required>
-                            <input id="emailSubject" class="form-input text-sm" placeholder="Subject" required>
-                            <textarea id="emailBody" class="form-textarea text-sm" rows="6" placeholder="Email body"></textarea>
+                    <div class="app-card p-6 space-y-5">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-800">Email</h3>
+                            <p id="emailConfigStatus" class="text-xs text-slate-500">Checking email service…</p>
+                        </div>
+                        <form id="emailComposeForm" class="space-y-3 max-w-2xl" onsubmit="logInternalMessage(event, 'EMAIL')">
+                            <fieldset>
+                                <legend class="form-label">Recipients *</legend>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <label class="flex items-center gap-2"><input type="radio" name="emailRecipientMode" value="individual" checked onchange="updateCommunicationRecipientUI('EMAIL')"> Individual Alumni</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="emailRecipientMode" value="all" onchange="updateCommunicationRecipientUI('EMAIL')"> All Alumni</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="emailRecipientMode" value="selected" onchange="updateCommunicationRecipientUI('EMAIL')"> Selected Recipients</label>
+                                </div>
+                            </fieldset>
+                            <div id="emailRecipientPicker">
+                                <label class="form-label" for="emailRecipientSearch">Search alumni</label>
+                                <input id="emailRecipientSearch" class="form-input text-sm mb-2" placeholder="Search by name, batch, or email" oninput="filterCommunicationRecipients('EMAIL')">
+                                <select id="emailRecipients" class="form-input text-sm" size="5" aria-label="Select alumni recipients" required onchange="rememberCommunicationRecipients('EMAIL')"></select>
+                            </div>
+                            <label class="form-label" for="emailSubject">Subject *</label>
+                            <input id="emailSubject" class="form-input text-sm" placeholder="Email subject" maxlength="200" required>
+                            <label class="form-label" for="emailBody">Message *</label>
+                            <textarea id="emailBody" class="form-textarea text-sm" rows="6" placeholder="Write the email message..." required></textarea>
+                            <div>
+                                <label class="form-label" for="emailAttachment">Attachment (optional, PDF up to 1 MB)</label>
+                                <input id="emailAttachment" type="file" class="form-input text-sm" accept="application/pdf,.pdf">
+                            </div>
                             <button type="submit" class="btn btn-primary text-xs">Send Email</button>
                         </form>
+                        <section>
+                            <h4 class="font-extrabold text-sm text-slate-800 mb-3">Message History / Delivery Logs</h4>
+                            <div class="data-table-container"><table class="modern-table"><thead><tr><th>Recipient</th><th>Subject</th><th>Date</th><th>Status</th></tr></thead><tbody id="emailHistoryList"></tbody></table></div>
+                        </section>
                     </div>
                 </div>
 

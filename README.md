@@ -61,7 +61,8 @@ automated communication flows and AI features:
 | 8 | Certificate Reprint Request | Alumni submit; Registrar reviews and processes; Admin monitors |
 | 9 | Alumni Newsletter | Registrar drafts and submits; Admin reviews and publishes; Alumni read published editions |
 | 10 | Alumni Feedback & Survey | *Surveys & Feedback* |
-| 11 | **AI Chat Support** (OpenAI) | Chat bubble (bottom-right) |
+| 11 | **Communications** | Admin/Registrar manage announcements and manual SMS/email; Notifications is each user's automatic inbox |
+| 12 | **AI Chat Support** (OpenAI) | Chat bubble (bottom-right) |
 | + | **Profile Update Reminders** | Admin configures the reminder period and confirms each send from Graduate Tracking |
 | + | **Gmail Auto-Reply** (OpenAI) | Admin → *System Reports* → **AI Assistant Tools** |
 | + | **AI Survey Summaries / Dashboard Insights** | Admin → *System Reports* → **AI Assistant Tools** |
@@ -70,13 +71,15 @@ automated communication flows and AI features:
 
 | Role | Access |
 | ---- | ------ |
-| **Administrator** | System oversight, graduate outcome analytics, reports/exports, and reminder-period configuration; does not submit or process alumni requests |
-| **Registrar** | Alumni records, graduate-status review, document-request review and processing, release/claiming, request history, registrar reports |
-| **Alumni** | Own profile and graduate status, digital ID, transcript/certificate requests, job board, events, reunions, newsletter, surveys |
+| **Administrator** | System oversight, graduate outcome analytics, reports/exports, communications oversight, and reminder-period configuration; does not submit or process alumni requests |
+| **Registrar** | Alumni records, graduate-status review, document-request review and processing, release/claiming, announcements, manual SMS/email, request history, registrar reports |
+| **Alumni** | Own profile and graduate status, digital ID, transcript/certificate requests, job board, announcements, notifications, events, reunions, newsletter, surveys |
 
 Document requests are free and no longer use online checkout. The Payments history page is removed for all roles. Alumni donation checkout remains available in Donation Campaigns.
 
 Newsletters are general to all Alumni. Registrar staff can save drafts, edit their own drafts, and submit them for approval; Admin can approve and publish or return a draft with an editing note. In-app, email, and short SMS notifications are sent to the selected active Alumni audience only when Admin publishes. Newsletter delivery counts are recorded for staff review.
+
+Communications keeps content and alerts separate: announcements can be saved as drafts, published immediately, or scheduled with an optional expiration date and selected in-app/email/SMS channels; Notifications is the signed-in user's inbox for system-generated alerts. Admin and Registrar can send SMS or email to one, selected, or all active Alumni accounts and review delivery history. Manual email supports an optional PDF attachment up to 1 MB; broadcast sends are limited to 500 recipients.
 
 Graduate tracking is designed for JHS and SHS alumni. It reports employed, self-employed, seeking-employment, further-study/training, not-currently-seeking, and no-status-data outcomes without treating missing information as unemployment. SHS pathways are shown separately from JHS records, and strand filters are available only for SHS. Industry charts use alumni-reported categories; the Registrar verifies submitted tracking records, while only Alumni can update their own status. Reminder timing is configurable by Admin, and every reminder send requires confirmation.
 

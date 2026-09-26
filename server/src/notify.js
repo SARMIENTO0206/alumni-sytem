@@ -208,8 +208,8 @@ export function mailAndSmsHealth() {
     mail: {
       configured: mailConfig().configured,
       message: mailConfig().configured
-        ? 'SMTP is configured. Emails are accepted only after the provider accepts the message.'
-        : 'SMTP is not configured. Add SMTP_HOST, SMTP_USER, and SMTP_PASS to server/.env.'
+        ? 'Email service is available. Messages are accepted only after the provider accepts them.'
+        : 'Email service is currently unavailable. Please contact the system administrator.'
     },
     sms: {
       configured: smsConfig().configured,

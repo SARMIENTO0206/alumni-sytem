@@ -32,6 +32,83 @@ const [admin, registrar, alumni] = await Promise.all([
   login('alumni', 'alumni123')
 ]);
 
+const communicationRecipients = await req(registrar.token, 'GET', '/api/notifications/communications/recipients');
+assert(communicationRecipients.status === 200 && communicationRecipients.data.recipients.length >= 1, 'Registrar can load the active Alumni recipient list');
+const alumniCommunicationRecipients = await req(alumni.token, 'GET', '/api/notifications/communications/recipients');
+assert(alumniCommunicationRecipients.status === 403, 'Alumni cannot access the communications recipient list');
+const communicationsHistory = await req(admin.token, 'GET', '/api/notifications/communications/history');
+assert(communicationsHistory.status === 200 && Array.isArray(communicationsHistory.data.messages), 'Admin can load communications delivery history');
+const alumniCommunicationsHistory = await req(alumni.token, 'GET', '/api/notifications/communications/history');
+assert(alumniCommunicationsHistory.status === 403, 'Alumni cannot access communications delivery history');
+const invalidCommunicationSend = await req(registrar.token, 'POST', '/api/notifications/communications/send', {
+  channel: 'SMS',
+  recipientMode: 'selected',
+  userIds: [],
+  message: 'Validation test'
+});
+assert(invalidCommunicationSend.status === 400, 'communications send rejects an empty recipient selection');
+const invalidEmailAttachment = await req(registrar.token, 'POST', '/api/notifications/communications/send', {
+  channel: 'EMAIL',
+  recipientMode: 'individual',
+  userIds: [alumni.user.id],
+  subject: 'Attachment validation test',
+  message: 'This message must not be sent.',
+  attachment: { filename: 'not-a-pdf.pdf', contentType: 'application/pdf', contentBase64: 'bm90IGEgcGRm' }
+});
+assert(invalidEmailAttachment.status === 400, 'communications endpoint rejects non-PDF attachments');
+const announcementDraft = await req(registrar.token, 'POST', '/api/announcements', {
+  title: `Communications Draft ${Date.now()}`,
+  body: 'Draft announcement for workflow testing.',
+  status: 'Draft',
+  sendInApp: false,
+  sendEmail: false,
+  sendSms: false
+});
+assert(announcementDraft.status === 201 && announcementDraft.data.announcement.status === 'Draft', 'Registrar can save an announcement draft without selecting delivery channels');
+const alumniAnnouncementsBeforePublish = await req(alumni.token, 'GET', '/api/announcements');
+assert(!alumniAnnouncementsBeforePublish.data.announcements.some((item) => item.id === announcementDraft.data.announcement.id), 'Alumni cannot see an unpublished announcement');
+const invalidScheduledAnnouncement = await req(registrar.token, 'POST', '/api/announcements', {
+  title: 'Past Scheduled Announcement',
+  body: 'This should be rejected.',
+  status: 'Scheduled',
+  publishAt: new Date(Date.now() - 60000).toISOString(),
+  sendInApp: true
+});
+assert(invalidScheduledAnnouncement.status === 400, 'scheduled announcements must use a future publish time');
+const noChannelAnnouncement = await req(registrar.token, 'POST', '/api/announcements', {
+  title: 'No Channel Announcement',
+  body: 'This should be rejected.',
+  status: 'Published',
+  sendInApp: false,
+  sendEmail: false,
+  sendSms: false
+});
+assert(noChannelAnnouncement.status === 400, 'published announcements must select at least one notification channel');
+const publishedAnnouncement = await req(registrar.token, 'POST', '/api/announcements', {
+  title: `Communications Published ${Date.now()}`,
+  body: 'Published announcement for in-app delivery testing.',
+  status: 'Published',
+  sendInApp: true,
+  sendEmail: false,
+  sendSms: false
+});
+assert(publishedAnnouncement.status === 201 && publishedAnnouncement.data.notification.attempted >= 1, 'publishing an announcement dispatches its selected in-app notification');
+const alumniPublishedAnnouncements = await req(alumni.token, 'GET', '/api/announcements');
+assert(alumniPublishedAnnouncements.data.announcements.some((item) => item.id === publishedAnnouncement.data.announcement.id), 'Alumni can view a published announcement');
+const scheduledAnnouncement = await req(registrar.token, 'POST', '/api/announcements', {
+  title: `Communications Scheduled ${Date.now()}`,
+  body: 'Scheduled announcement for activation testing.',
+  status: 'Scheduled',
+  publishAt: new Date(Date.now() + 1200).toISOString(),
+  sendInApp: true,
+  sendEmail: false,
+  sendSms: false
+});
+assert(scheduledAnnouncement.status === 201 && scheduledAnnouncement.data.announcement.status === 'Scheduled', 'Registrar can schedule a future announcement');
+await new Promise((resolve) => setTimeout(resolve, 1500));
+const activatedAnnouncements = await req(alumni.token, 'GET', '/api/announcements');
+assert(activatedAnnouncements.data.announcements.some((item) => item.id === scheduledAnnouncement.data.announcement.id), 'scheduled announcements publish and become visible to Alumni when due');
+
 const alumniRecords = await req(alumni.token, 'GET', '/api/tracking');
 assert(alumniRecords.status === 200 && alumniRecords.data.alumni.length >= 1, 'alumni should see their linked tracking record');
 const ownRecord = alumniRecords.data.alumni.find((record) =>
@@ -205,4 +282,4 @@ assert(registrarDelete.status === 403, 'Registrar can archive but cannot delete 
 const adminDelete = await req(admin.token, 'DELETE', `/api/jobs/${job.data.job.id}`);
 assert(adminDelete.status === 204, `Admin can delete job listings (received ${adminDelete.status}: ${JSON.stringify(adminDelete.data)})`);
 
-console.log('Graduate tracking, Career Management, and Newsletter approval and role checks passed.');
+console.log('Graduate tracking, Communications, Career Management, and Newsletter role checks passed.');

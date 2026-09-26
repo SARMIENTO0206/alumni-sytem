@@ -353,6 +353,12 @@ export function initDb() {
   ensureColumn('alumni', 'email', "email TEXT DEFAULT ''");
   ensureColumn('alumni', 'address', "address TEXT DEFAULT ''");
   ensureColumn('announcements', 'audience', "audience TEXT DEFAULT 'alumni'");
+  ensureColumn('announcements', 'publish_at', "publish_at TEXT DEFAULT ''");
+  ensureColumn('announcements', 'expires_at', "expires_at TEXT DEFAULT ''");
+  ensureColumn('announcements', 'send_in_app', 'send_in_app INTEGER DEFAULT 1');
+  ensureColumn('announcements', 'send_email', 'send_email INTEGER DEFAULT 0');
+  ensureColumn('announcements', 'send_sms', 'send_sms INTEGER DEFAULT 0');
+  ensureColumn('announcements', 'created_by', 'created_by INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'fee_centavos', 'fee_centavos INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'payment_status', "payment_status TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'copies', 'copies INTEGER DEFAULT 1');

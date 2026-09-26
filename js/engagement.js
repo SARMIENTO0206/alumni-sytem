@@ -1665,7 +1665,7 @@
             if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
             const status = data.deliveryStatus || "";
             if (status === "accepted") showToast(`${channel} accepted by the provider.`, "success");
-            else if (status === "not_configured") showToast(channel === "SMS" ? "SMS provider is not configured." : "SMTP is not configured. The message was recorded but not sent.", "error");
+            else if (status === "not_configured") showToast(channel === "SMS" ? "SMS service is currently unavailable. Please contact the system administrator." : "Email service is currently unavailable. Please contact the system administrator.", "error");
             else showToast(`${channel} status: ${status || "recorded"}.`, "info");
         } catch (err) {
             showToast(err.message || "Unable to send the notification.", "error");

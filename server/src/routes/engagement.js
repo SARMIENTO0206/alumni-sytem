@@ -1290,28 +1290,125 @@ router.delete('/jobs/:id', requireRole('admin'), (req, res) => {
 
 /* ----------------------------- Announcements ------------------------------ */
 
-router.get('/announcements', (req, res) => {
-  const rows = db.prepare('SELECT * FROM announcements ORDER BY id DESC').all();
-  const visible = (isAdmin(req.user) || isStaff(req.user)) ? rows : rows.filter((a) => a.status === 'Published');
+function announcementDateError(value, field) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return `${field} must be a valid date.`;
+  return '';
+}
+
+async function notifyAnnouncement(announcement) {
+  const shortMessage = `${announcement.title} has been published by St. Agnes Academy. View Announcements in the Alumni Portal.`;
+  const results = await dispatchAlumniAudience(
+    `New announcement: ${announcement.title}`,
+    shortMessage,
+    'announcement',
+    announcement.id,
+    {
+      inApp: Boolean(announcement.send_in_app),
+      sendEmail: Boolean(announcement.send_email),
+      sendSms: Boolean(announcement.send_sms),
+      forceChannels: true,
+      emailSubject: announcement.title,
+      emailMessage: `${announcement.body || ''}\n\nView Announcements in the Alumni Portal.`,
+      smsMessage: `St. Agnes Alumni: ${announcement.title} is now available. Log in to the Alumni Portal for details.`
+    }
+  );
+  return { attempted: results.length };
+}
+
+async function activateDueAnnouncements() {
+  const due = db.prepare(`
+    SELECT * FROM announcements
+    WHERE status = 'Scheduled' AND publish_at != '' AND publish_at <= ?
+    ORDER BY id
+  `).all(new Date().toISOString());
+  for (const row of due) {
+    const updated = db.prepare(
+      "UPDATE announcements SET status = 'Published' WHERE id = ? AND status = 'Scheduled'"
+    ).run(row.id);
+    if (!updated.changes) continue;
+    const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(row.id);
+    try {
+      await notifyAnnouncement(announcement);
+    } catch (error) {
+      console.error(`Unable to notify Alumni about scheduled announcement ${row.id}:`, error);
+    }
+  }
+}
+
+const announcementScheduler = setInterval(() => {
+  activateDueAnnouncements().catch((error) => {
+    console.error('Unable to activate scheduled announcements:', error);
+  });
+}, 30000);
+announcementScheduler.unref?.();
+
+router.get('/announcements', async (req, res) => {
+  await activateDueAnnouncements();
+  const rows = db.prepare(`
+    SELECT * FROM announcements
+    WHERE (expires_at = '' OR expires_at IS NULL OR expires_at >= date('now'))
+    ORDER BY id DESC
+  `).all();
+  const visible = (isAdmin(req.user) || isStaff(req.user))
+    ? rows
+    : rows.filter((announcement) => announcement.status === 'Published');
   res.json({ announcements: visible });
 });
 
-router.post('/announcements', requireRole('admin', 'staff'), (req, res) => {
-  const { title, body, status, audience } = req.body || {};
+router.post('/announcements', requireRole('admin', 'staff'), async (req, res) => {
+  const title = String(req.body?.title || '').trim();
+  const body = String(req.body?.body || '').trim();
+  const status = String(req.body?.status || 'Draft');
+  const publishDateError = announcementDateError(req.body?.publishAt, 'Publish date');
+  const expirationDateError = announcementDateError(req.body?.expiresAt, 'Expiration date');
   if (!title) return res.status(400).json({ error: 'Announcement title is required.' });
-  const info = db.prepare('INSERT INTO announcements (title, body, status, audience) VALUES (?, ?, ?, ?)').run(
-    title, body || '', status || 'Published', audience || 'alumni'
-  );
-  const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(info.lastInsertRowid);
-  if ((status || 'Published') === 'Published') {
-    dispatchAlumniAudience(title, body || 'A new announcement was published.', 'announcement', announcement.id).catch(() => {});
+  if (!body) return res.status(400).json({ error: 'Announcement message is required.' });
+  if (title.length > 160 || body.length > 10000) return res.status(400).json({ error: 'Announcement title or message exceeds the allowed length.' });
+  if (publishDateError) return res.status(400).json({ error: publishDateError });
+  if (expirationDateError) return res.status(400).json({ error: expirationDateError });
+  if (!['Draft', 'Scheduled', 'Published'].includes(status)) return res.status(400).json({ error: 'Choose Draft, Scheduled, or Published.' });
+  const publishDate = req.body?.publishAt ? new Date(req.body.publishAt).toISOString() : '';
+  const expirationDate = req.body?.expiresAt ? new Date(req.body.expiresAt).toISOString().slice(0, 10) : '';
+  if (status === 'Scheduled' && (!publishDate || new Date(publishDate) <= new Date())) {
+    return res.status(400).json({ error: 'Choose a future publish date and time.' });
   }
-  res.status(201).json({ announcement });
+  if (expirationDate && publishDate && expirationDate < publishDate.slice(0, 10)) {
+    return res.status(400).json({ error: 'Expiration date must be after the publish date.' });
+  }
+  if (expirationDate && status === 'Published' && expirationDate < new Date().toISOString().slice(0, 10)) {
+    return res.status(400).json({ error: 'Expiration date cannot be in the past.' });
+  }
+  const sendInApp = req.body?.sendInApp !== false;
+  const sendEmail = req.body?.sendEmail === true;
+  const sendSms = req.body?.sendSms === true;
+  if (!sendInApp && !sendEmail && !sendSms && status !== 'Draft') {
+    return res.status(400).json({ error: 'Select at least one notification channel before publishing.' });
+  }
+  const info = db.prepare(`
+    INSERT INTO announcements
+      (title, body, status, audience, publish_at, expires_at, send_in_app, send_email, send_sms, created_by)
+    VALUES (?, ?, ?, 'alumni', ?, ?, ?, ?, ?, ?)
+  `).run(
+    title, body, status, publishDate, expirationDate,
+    sendInApp ? 1 : 0, sendEmail ? 1 : 0, sendSms ? 1 : 0, req.user.id
+  );
+  let announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(info.lastInsertRowid);
+  let notification = null;
+  if (status === 'Published') {
+    notification = await notifyAnnouncement(announcement);
+  }
+  writeAudit(req.user, status === 'Published' ? 'publish' : 'create', 'announcement', announcement.id, `${status}: ${title}`);
+  res.status(201).json({ announcement, notification });
 });
 
 router.get('/announcements/:id', (req, res) => {
   const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(Number(req.params.id));
   if (!announcement) return res.status(404).json({ error: 'Announcement not found.' });
+  if (announcement.expires_at && announcement.expires_at < new Date().toISOString().slice(0, 10)) {
+    return res.status(404).json({ error: 'Announcement not found.' });
+  }
   if (announcement.status !== 'Published' && !isAdmin(req.user) && !isStaff(req.user)) {
     return res.status(403).json({ error: 'This announcement is not available.' });
   }
