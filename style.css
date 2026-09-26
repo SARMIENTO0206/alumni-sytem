@@ -1213,15 +1213,6 @@ button.stat-card {
   40% { transform: translateY(-5px); opacity: 1; }
 }
 
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.6)); }
-}
-
-.pulse-brand {
-  animation: pulseGlow 3s infinite ease-in-out;
-}
-
 .fade-in {
   animation: fadeIn 0.3s ease-in-out;
 }
