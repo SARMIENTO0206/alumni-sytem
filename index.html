@@ -1944,19 +1944,19 @@
                             </form>
                         </div>
 
-                        <div id="newsletterListHeader" class="flex items-center justify-between mb-3">
-                            <h4 id="newsletterListTitle" class="font-extrabold text-slate-800 text-sm">
+                        <div id="newsletterListHeader" class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <h4 id="newsletterListTitle" class="min-w-0 font-extrabold text-slate-800 text-sm">
                                 <i class="fa-solid fa-layer-group text-[#801235] mr-1"></i> Newsletters
                             </h4>
-                            <button id="adminNewsletterBtn" onclick="openNewsletterComposer()" class="btn btn-primary text-xs hidden">
+                            <button id="adminNewsletterBtn" onclick="openNewsletterComposer()" class="btn btn-primary ml-auto w-auto max-w-full shrink-0 whitespace-nowrap text-xs hidden">
                                 <i class="fa-solid fa-pen-nib mr-1"></i> Create Newsletter
                             </button>
                         </div>
-                        <div id="newsletterStatusTabs" class="flex flex-wrap gap-2 mb-4 hidden" role="tablist" aria-label="Newsletter status">
-                            <button type="button" onclick="setNewsletterFilter('All')" class="btn btn-secondary text-xs" data-newsletter-filter="All">All</button>
-                            <button type="button" onclick="setNewsletterFilter('Draft')" class="btn btn-secondary text-xs" data-newsletter-filter="Draft">Drafts</button>
-                            <button type="button" onclick="setNewsletterFilter('For Approval')" class="btn btn-secondary text-xs" data-newsletter-filter="For Approval">For Approval</button>
-                            <button type="button" onclick="setNewsletterFilter('Published')" class="btn btn-secondary text-xs" data-newsletter-filter="Published">Published</button>
+                        <div id="newsletterStatusTabs" class="flex min-w-0 flex-wrap items-center gap-2 mb-4 hidden" role="tablist" aria-label="Newsletter status">
+                            <button type="button" onclick="setNewsletterFilter('All')" class="btn btn-secondary whitespace-nowrap text-xs" data-newsletter-filter="All">All</button>
+                            <button type="button" onclick="setNewsletterFilter('Draft')" class="btn btn-secondary whitespace-nowrap text-xs" data-newsletter-filter="Draft">Drafts</button>
+                            <button type="button" onclick="setNewsletterFilter('For Approval')" class="btn btn-secondary whitespace-nowrap text-xs" data-newsletter-filter="For Approval">For Approval</button>
+                            <button type="button" onclick="setNewsletterFilter('Published')" class="btn btn-secondary whitespace-nowrap text-xs" data-newsletter-filter="Published">Published</button>
                         </div>
 
                         <div id="newsletterArchiveList" class="space-y-3">
