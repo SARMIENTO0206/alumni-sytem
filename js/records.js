@@ -115,7 +115,19 @@
         document.getElementById("transcriptDetailName").textContent = item.name || "Request";
         document.getElementById("transcriptDetailDate").textContent = item.date || "—";
         document.getElementById("transcriptDetailStatus").textContent = item.status || "—";
-        document.getElementById("transcriptDetailPurpose").textContent = item.purpose || "Official Record";
+        const detailLines = [
+            `Alumni: ${item.name || "—"}`,
+            `Educational Level: ${item.educationLevel || "—"}`,
+            `Batch: ${item.batch || "—"}`,
+            `Strand: ${item.strand || "—"}`,
+            `Student ID: ${item.studentId || "—"}`,
+            `Document: ${item.type || "Academic Record"}`,
+            `Purpose: ${item.purpose || "—"}`,
+            `Copies: ${Number(item.copies || 1)}`,
+            `Delivery: ${item.delivery || "—"}`,
+            item.requestNotes ? `Additional Notes: ${item.requestNotes}` : ""
+        ].filter(Boolean);
+        document.getElementById("transcriptDetailPurpose").textContent = detailLines.join("\n");
         const remarksEl = document.getElementById("transcriptDetailRemarks");
         if (remarksEl) remarksEl.textContent = item.remarks || item.correctionNotes || "—";
         const claimEl = document.getElementById("transcriptDetailClaim");
@@ -140,22 +152,22 @@
                 : "";
         }
         const role = typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role;
-        const isProcessor = ["admin", "staff", "registrar"].includes(role);
+        const isProcessor = ["staff", "registrar"].includes(role);
         const isOwnerAlumni = role === "alumni";
         const needsPay = item.paymentStatus && item.paymentStatus !== "paid";
         const paid = !needsPay;
         const actions = document.getElementById("transcriptDetailActions");
         if (actions) {
             let html = "";
-            if (needsPay && isOwnerAlumni) html += `<button type="button" onclick="payDocumentRequest('transcript', ${item.id})" class="btn btn-primary text-xs">Pay QR</button>`;
+            if (needsPay && isOwnerAlumni && item.status === "Approved") html += `<button type="button" onclick="payDocumentRequest('transcript', ${item.id})" class="btn btn-primary text-xs">Pay QR</button>`;
             html += `<button type="button" onclick="openClaimStub(${item.id})" class="btn btn-secondary text-xs">View Claim Stub</button>`;
             if (isOwnerAlumni && item.canCancel) html += `<button type="button" onclick="cancelDocumentRequest('transcript', ${item.id})" class="btn btn-danger text-xs">Cancel Request</button>`;
-            if (isProcessor && item.status === "Pending" && paid) {
+            if (isProcessor && ["Pending", "Payment Required"].includes(item.status)) {
                 html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Approved')" class="btn btn-success text-xs">Approve</button>`;
                 html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Rejected')" class="btn btn-danger text-xs">Reject</button>`;
                 html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'For Correction')" class="btn btn-secondary text-xs">Return for Correction</button>`;
             }
-            if (isProcessor && item.status === "Approved") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Processing')" class="btn btn-primary text-xs">Start Processing</button>`;
+            if (isProcessor && item.status === "Approved" && paid) html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Processing')" class="btn btn-primary text-xs">Start Processing</button>`;
             if (isProcessor && item.status === "Processing") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Ready for Release')" class="btn btn-primary text-xs">Ready for Release</button>`;
             if (isProcessor && item.status === "Ready for Release") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Released')" class="btn btn-primary text-xs">Mark Released / Claimed</button>`;
             actions.innerHTML = html;
@@ -322,8 +334,19 @@
 
     /* Document Requests */
     function openRequestDocModal(docType) {
+        if (currentUser?.role !== "alumni") {
+            showToast("Only alumni can submit document requests. Registrar staff process requests; administrators can monitor them.", "warning");
+            return;
+        }
         document.getElementById("requestDocModalTitle").textContent = `Request ${docType}`;
-        document.getElementById("docType").value = docType;
+        const typeSelect = document.getElementById("docType");
+        const isReprint = String(docType || "").toLowerCase().includes("reprint");
+        typeSelect.value = isReprint ? "Diploma Reprint" : "Transcript of Records";
+        document.getElementById("docPurpose").value = "";
+        document.getElementById("docReprintReason").value = "";
+        document.getElementById("docRequestNotes").value = "";
+        document.getElementById("docAttachments").value = "";
+        toggleReprintRequestFields();
 
         const emailEl = document.getElementById("docEmail");
         const contactEl = document.getElementById("docContact");
@@ -333,6 +356,20 @@
 
         document.getElementById("requestDocModal").classList.add("active");
         if (typeof updateDocumentFeePreview === "function") updateDocumentFeePreview();
+    }
+
+    function toggleReprintRequestFields() {
+        const type = document.getElementById("docType")?.value || "";
+        const isReprint = type.toLowerCase().includes("reprint");
+        document.getElementById("reprintReasonField")?.classList.toggle("hidden", !isReprint);
+        document.getElementById("docPurposeField")?.classList.toggle("hidden", isReprint);
+        document.getElementById("docDeliveryField")?.classList.toggle("hidden", isReprint);
+        const purpose = document.getElementById("docPurpose");
+        if (purpose) purpose.required = !isReprint;
+        const reason = document.getElementById("docReprintReason");
+        if (reason) reason.required = isReprint;
+        const delivery = document.getElementById("docDelivery");
+        if (delivery) delivery.disabled = isReprint;
     }
 
     async function updateDocumentFeePreview() {
@@ -377,6 +414,8 @@
         const email = document.getElementById("docEmail") ? document.getElementById("docEmail").value : (currentUser?.email || "");
         const contact = document.getElementById("docContact") ? document.getElementById("docContact").value : (currentUser?.contact || "");
         const copies = document.getElementById("docCopies") ? document.getElementById("docCopies").value : 1;
+        const reprintReason = document.getElementById("docReprintReason")?.value || "";
+        const requestNotes = document.getElementById("docRequestNotes")?.value.trim() || "";
 
         const payload = {
             name: currentUser ? currentUser.name : "",
@@ -385,10 +424,13 @@
             purpose: purpose,
             type: type,
             delivery: delivery,
-            copies
+            copies,
+            reason: reprintReason,
+            requestNotes
         };
-        if (!payload.name || !purpose) {
-            showToast("Name and purpose are required.", "error");
+        const isReprint = type && String(type).toLowerCase().includes("reprint");
+        if (!payload.name || (!isReprint && !purpose)) {
+            showToast(isReprint ? "Your account name is required." : "Name and purpose are required.", "error");
             return;
         }
         (async () => {
@@ -398,7 +440,6 @@
                     return;
                 }
                 payload.attachments = await readFilesAsAttachments(document.getElementById("docAttachments"));
-                const isReprint = type && String(type).toLowerCase().includes("reprint");
                 const path = isReprint ? "/api/reprints" : "/api/transcripts";
                 const created = await SAA_API.request(path, { method: "POST", body: JSON.stringify(payload) });
                 await SAA_API.refreshAllData();
@@ -406,16 +447,7 @@
                 renderReprintRequests();
                 closeRequestDocModal();
                 const record = created.request || created.reprint;
-                const fee = Number(record && record.fee ? record.fee : 0);
-                showToast(`Request submitted. Status is ${record.status}. The Registrar reviews requests after payment.`, "info");
-                if (record && record.paymentStatus !== "paid") {
-                    payDocumentRequest(
-                        isReprint ? "reprint" : "transcript",
-                        record.id,
-                        fee,
-                        isReprint ? "Certificate reprint fee" : "Document request fee"
-                    );
-                }
+                showToast(`Request submitted. Status is ${record.status}. The Registrar will review it before any required payment.`, "success");
             } catch (err) {
                 showToast(err.message || "Unable to submit the request. Please try again.", "error");
             }
@@ -426,6 +458,29 @@
         const body = document.getElementById("transcriptTableBody");
         if (!body) return;
         body.innerHTML = "";
+        const role = typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role;
+        const isAlumni = role === "alumni";
+        const isRegistrar = role === "staff" || role === "registrar";
+        const requestButton = document.getElementById("transcriptRequestButton");
+        const heading = document.querySelector("#transcriptListPanel h3");
+        const description = document.querySelector("#transcriptListPanel h3 + p");
+        if (requestButton) requestButton.classList.toggle("hidden", !isAlumni);
+        document.getElementById("documentRequestOverview")?.classList.toggle("hidden", isAlumni);
+        if (heading) heading.textContent = isAlumni ? "My Academic Record Requests" : isRegistrar ? "Transcript & Academic Record Requests" : "Document Requests Overview";
+        if (description) description.textContent = isAlumni
+            ? "Submit academic record requests and track their review, payment, and release status."
+            : isRegistrar
+                ? "Review, verify, process, and release alumni academic record requests."
+                : "Monitor academic record request status. Processing controls are reserved for Registrar staff.";
+        const allRequests = [].concat(transcriptRequests || [], reprintRequests || []);
+        const setCount = (id, count) => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = String(count);
+        };
+        setCount("documentPendingCount", allRequests.filter((request) => ["Pending", "For Correction", "Payment Required"].includes(request.status)).length);
+        setCount("documentProcessingCount", allRequests.filter((request) => ["Approved", "Processing"].includes(request.status)).length);
+        setCount("documentReadyCount", allRequests.filter((request) => request.status === "Ready for Release").length);
+        setCount("documentCompletedCount", allRequests.filter((request) => ["Released", "Completed"].includes(request.status)).length);
 
         if (!transcriptRequests.length) {
             body.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-semibold">No transcript requests yet.</td></tr>`;
@@ -438,13 +493,12 @@
                                 item.status === "Rejected" ? "status-rejected" :
                                 item.status === "Released" ? "status-released" : "status-pending";
 
-            const role = typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role;
-            const canProcess = ["admin", "staff", "registrar"].includes(role);
+            const canProcess = isRegistrar;
             const needsPay = item.paymentStatus && item.paymentStatus !== "paid";
-            const payBtn = needsPay && role === "alumni"
+            const payBtn = needsPay && isAlumni && item.status === "Approved"
                 ? `<button type="button" onclick="payDocumentRequest('transcript', ${item.id}, ${Number(item.fee || 0)}, 'Document request fee')" class="btn btn-primary text-xs px-2.5 py-1 mr-1">Pay QR</button>`
                 : "";
-            const cancelBtn = role === "alumni" && item.canCancel
+            const cancelBtn = isAlumni && item.canCancel
                 ? `<button type="button" onclick="cancelDocumentRequest('transcript', ${item.id})" class="text-xs text-rose-600 font-semibold hover:underline ml-2">Cancel</button>`
                 : "";
 
@@ -459,14 +513,13 @@
                     </button>
                 </td>
                 <td class="text-slate-500">${item.date}</td>
-                <td class="text-slate-600 font-medium">${item.purpose || "Official Record"}</td>
+                <td class="text-slate-600 font-medium">${item.type || "Academic Record"}</td>
                 <td><span class="status-badge ${statusClass}">${item.status}${item.paymentStatus ? ` / ${item.paymentStatus}` : ""}</span></td>
                 <td class="text-right">
                     ${payBtn}
-                    ${(canProcess && item.status === "Pending" && !needsPay) ? `
-                        <button onclick="updateRequestStatus(${item.id}, 'Approved')" class="btn btn-success text-xs px-2.5 py-1 mr-1">Approve</button>
-                        <button onclick="updateRequestStatus(${item.id}, 'Rejected')" class="btn btn-danger text-xs px-2.5 py-1">Reject</button>
-                    ` : `<button type="button" onclick="openTranscriptDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">View</button>`}
+                    ${canProcess && ["Pending", "Payment Required", "For Correction", "Approved", "Processing", "Ready for Release"].includes(item.status)
+                        ? `<button type="button" onclick="openTranscriptDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">View / Process</button>`
+                        : `<button type="button" onclick="openTranscriptDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">View Details</button>`}
                     ${cancelBtn}
                 </td>
             `;
@@ -517,6 +570,7 @@
             if (typeof renderReleaseClaiming === "function") renderReleaseClaiming();
             if (typeof renderRequestHistory === "function") renderRequestHistory();
             if (type === "transcript" && typeof showTranscriptDetails === "function") showTranscriptDetails(id, true);
+            if (type === "reprint" && typeof showReprintDetails === "function") showReprintDetails(id, true);
             showToast(`Request marked as ${newStatus}. The alumni will be notified.`, "success");
         } catch (err) {
             showToast(err.message || "Unable to update request status.", "error");
@@ -613,6 +667,33 @@
         const body = document.getElementById("reprintTableBody");
         if (!body) return;
         body.innerHTML = "";
+        const role = typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role;
+        const isAlumni = role === "alumni";
+        const isRegistrar = role === "staff" || role === "registrar";
+        const requestButton = document.getElementById("reprintRequestButton");
+        const heading = document.querySelector("#view-reprint h3");
+        const description = document.querySelector("#view-reprint h3 + p");
+        if (requestButton) requestButton.classList.toggle("hidden", !isAlumni);
+        document.getElementById("documentRequestOverview")?.classList.toggle("hidden", isAlumni);
+        const allRequests = [].concat(transcriptRequests || [], reprintRequests || []);
+        const setCount = (id, count) => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = String(count);
+        };
+        setCount("documentPendingCount", allRequests.filter((request) => ["Pending", "For Correction", "Payment Required"].includes(request.status)).length);
+        setCount("documentProcessingCount", allRequests.filter((request) => ["Approved", "Processing"].includes(request.status)).length);
+        setCount("documentReadyCount", allRequests.filter((request) => request.status === "Ready for Release").length);
+        setCount("documentCompletedCount", allRequests.filter((request) => ["Released", "Completed"].includes(request.status)).length);
+        if (heading) heading.textContent = isAlumni
+            ? "My Certificate & Diploma Reprint Requests"
+            : isRegistrar
+                ? "Certificate & Diploma Reprint Requests"
+                : "Certificate Reprint Overview";
+        if (description) description.textContent = isAlumni
+            ? "Request eligible certificate reprints and follow their review, payment, and release status."
+            : isRegistrar
+                ? "Review and process alumni certificate and diploma reprint requests."
+                : "Monitor certificate reprint request status. Processing controls are reserved for Registrar staff.";
         if (!reprintRequests.length) {
             body.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-semibold">No certificate reprint requests yet.</td></tr>`;
             return;
@@ -621,7 +702,7 @@
         reprintRequests.forEach(item => {
             const tr = document.createElement("tr");
             const statusClass = item.status === "Approved" ? "status-approved" : "status-pending";
-            const canProcess = ["admin", "staff", "registrar"].includes(typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role);
+            const canProcess = isRegistrar;
             const needsPay = item.paymentStatus && item.paymentStatus !== "paid";
 
             tr.innerHTML = `
@@ -629,10 +710,11 @@
                 <td class="text-slate-600">${item.type}</td>
                 <td><span class="status-badge ${statusClass}">${item.status}${item.paymentStatus ? ` / ${item.paymentStatus}` : ""}</span></td>
                 <td class="text-right">
-                    ${needsPay ? `<button type="button" onclick="payDocumentRequest('reprint', ${item.id}, ${Number(item.fee || 0)}, 'Certificate reprint fee')" class="btn btn-primary text-xs px-2.5 py-1 mr-1">Pay GCash</button>` : ""}
-                    ${(canProcess && (item.status === "Pending" || item.status === "Processing")) ? `
-                        <button onclick="approveReprint(${item.id})" class="btn btn-success text-xs px-2.5 py-1">Approve Reprint</button>
-                    ` : (needsPay ? "" : `<span class="text-xs text-slate-400">Processed</span>`)}
+                    ${needsPay && isAlumni && item.status === "Approved" ? `<button type="button" onclick="payDocumentRequest('reprint', ${item.id}, ${Number(item.fee || 0)}, 'Certificate reprint fee')" class="btn btn-primary text-xs px-2.5 py-1 mr-1">Pay QR</button>` : ""}
+                    ${canProcess && ["Pending", "Payment Required", "For Correction", "Approved", "Processing", "Ready for Release"].includes(item.status)
+                        ? `<button type="button" onclick="openReprintDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">View / Process</button>`
+                        : `<button type="button" onclick="openReprintDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">View Details</button>`}
+                    ${isAlumni && item.canCancel ? `<button type="button" onclick="cancelDocumentRequest('reprint', ${item.id})" class="text-xs text-rose-600 font-semibold hover:underline ml-2">Cancel</button>` : ""}
                 </td>
             `;
             body.appendChild(tr);
@@ -665,26 +747,71 @@
         document.getElementById("reprintDetailStatus").textContent = item.status || "—";
         const actions = document.getElementById("reprintDetailActions");
         const needsPay = item.paymentStatus && item.paymentStatus !== "paid";
+        const role = typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role;
+        const isAlumni = role === "alumni";
+        const isRegistrar = role === "staff" || role === "registrar";
         if (actions) {
-            actions.innerHTML = needsPay
-                ? `<button type="button" onclick="payDocumentRequest('reprint', ${item.id})" class="btn btn-primary text-xs">Pay QR</button>`
-                : `<button type="button" onclick="switchView('payment-history')" class="btn btn-secondary text-xs">View Payments</button>`;
+            actions.replaceChildren();
+            const details = document.createElement("div");
+            details.className = "w-full space-y-2 text-xs text-slate-600";
+            const info = document.createElement("p");
+            info.textContent = [
+                `Alumni: ${item.name || "—"}`,
+                `Educational Level: ${item.educationLevel || "—"}`,
+                `Batch: ${item.batch || "—"}`,
+                `Strand: ${item.strand || "—"}`,
+                `Student ID: ${item.studentId || "—"}`,
+                `Reason: ${item.reason || "—"}`,
+                `Copies: ${Number(item.copies || 1)}`
+            ].join(" · ");
+            details.appendChild(info);
+            if (item.requestNotes) {
+                const notes = document.createElement("p");
+                notes.className = "whitespace-pre-wrap";
+                notes.textContent = `Additional Details: ${item.requestNotes}`;
+                details.appendChild(notes);
+            }
+            if (item.remarks) {
+                const remarks = document.createElement("p");
+                remarks.className = "whitespace-pre-wrap";
+                remarks.textContent = `Registrar remarks: ${item.remarks}`;
+                details.appendChild(remarks);
+            }
+            actions.appendChild(details);
+            const addAction = (label, className, callback) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = className;
+                button.textContent = label;
+                button.addEventListener("click", callback);
+                actions.appendChild(button);
+            };
+            if (isAlumni && needsPay && item.status === "Approved") {
+                addAction("Pay QR", "btn btn-primary text-xs", () => payDocumentRequest("reprint", item.id));
+            }
+            if (isAlumni && item.canCancel) {
+                addAction("Cancel Request", "btn btn-danger text-xs", () => cancelDocumentRequest("reprint", item.id));
+            }
+            if (isRegistrar && ["Pending", "Payment Required"].includes(item.status)) {
+                addAction("Approve", "btn btn-success text-xs", () => updateRequestStatus(item.id, "Approved", "reprint"));
+                addAction("Request Information", "btn btn-secondary text-xs", () => updateRequestStatus(item.id, "For Correction", "reprint"));
+                addAction("Reject", "btn btn-danger text-xs", () => updateRequestStatus(item.id, "Rejected", "reprint"));
+            } else if (isRegistrar && item.status === "For Correction") {
+                addAction("Return to Pending", "btn btn-secondary text-xs", () => updateRequestStatus(item.id, "Pending", "reprint"));
+                addAction("Reject", "btn btn-danger text-xs", () => updateRequestStatus(item.id, "Rejected", "reprint"));
+            } else if (isRegistrar && item.status === "Approved" && !needsPay) {
+                addAction("Start Processing", "btn btn-primary text-xs", () => updateRequestStatus(item.id, "Processing", "reprint"));
+            } else if (isRegistrar && item.status === "Processing") {
+                addAction("Ready for Release", "btn btn-primary text-xs", () => updateRequestStatus(item.id, "Ready for Release", "reprint"));
+            } else if (isRegistrar && item.status === "Ready for Release") {
+                addAction("Mark Released", "btn btn-primary text-xs", () => updateRequestStatus(item.id, "Released", "reprint"));
+            }
         }
         if (!silent) switchView("reprint", { detailId: item.id });
     }
 
     async function approveReprint(id) {
-        try {
-            await SAA_API.request(`/api/reprints/${id}/status`, {
-                method: "PUT",
-                body: JSON.stringify({ status: "Approved" })
-            });
-            await SAA_API.refreshAllData();
-            renderReprintRequests();
-            showToast("Certificate reprint request approved.", "success");
-        } catch (err) {
-            showToast(err.message || "Unable to update reprint status.", "error");
-        }
+        await updateRequestStatus(id, "Approved", "reprint");
     }
 
     /* Placements */
@@ -821,4 +948,3 @@
         URL.revokeObjectURL(url);
         showToast(source.length ? "Academic records exported to CSV." : "No academic records to export yet.", source.length ? "success" : "info");
     }
-

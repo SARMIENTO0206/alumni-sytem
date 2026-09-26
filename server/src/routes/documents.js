@@ -10,7 +10,6 @@ import {
   DOCUMENT_STATUSES,
   assertAlumniCannotProcess,
   assertProcessorTransition,
-  isDocumentProcessor,
   mapAttachment,
   paidRequiredFor,
   requestIsPaid,
@@ -23,6 +22,11 @@ const router = Router();
 const mapTranscript = (r) => ({
   id: r.id, name: r.name, email: r.email, contact: r.contact, date: r.date,
   purpose: r.purpose, status: r.status, type: r.type, delivery: r.delivery,
+  educationLevel: r.user_education_level || r.alumni_education_level || '',
+  batch: r.user_batch || r.alumni_batch || r.alumni_education_year || '',
+  strand: r.user_strand || r.alumni_strand || '',
+  studentId: r.user_student_id || r.alumni_student_id || '',
+  requestNotes: r.request_notes || '',
   paymentRef: r.payment_ref, remarks: r.remarks || '', userId: r.user_id || 0, alumniId: r.alumni_id || 0,
   feeCentavos: r.fee_centavos || 0, fee: pesosFromCentavos(r.fee_centavos || 0),
   paymentStatus: r.payment_status || '',
@@ -40,6 +44,11 @@ const mapTranscript = (r) => ({
 
 const mapReprint = (r) => ({
   id: r.id, name: r.name, type: r.type, status: r.status, remarks: r.remarks || '',
+  educationLevel: r.user_education_level || r.alumni_education_level || '',
+  batch: r.user_batch || r.alumni_batch || r.alumni_education_year || '',
+  strand: r.user_strand || r.alumni_strand || '',
+  studentId: r.user_student_id || r.alumni_student_id || '',
+  reason: r.reason || '', requestNotes: r.request_notes || '',
   userId: r.user_id || 0, alumniId: r.alumni_id || 0,
   feeCentavos: r.fee_centavos || 0, fee: pesosFromCentavos(r.fee_centavos || 0),
   paymentStatus: r.payment_status || '',
@@ -164,17 +173,38 @@ function saveAttachments(kind, requestId, userId, files) {
   return saved.map(mapAttachment);
 }
 
+function requesterFields() {
+  return `
+    u.education_level AS user_education_level, u.batch AS user_batch,
+    u.strand AS user_strand, u.student_id AS user_student_id,
+    a.batch AS alumni_batch, a.education_year AS alumni_education_year,
+    a.student_id AS alumni_student_id
+  `;
+}
+
 /* ------------------------------- Transcripts ------------------------------ */
 
 router.get('/transcripts', (req, res) => {
-  const rows = scopeOwn(req.user, db.prepare('SELECT * FROM transcript_requests ORDER BY id DESC').all());
+  const rows = scopeOwn(req.user, db.prepare(`
+    SELECT r.*, ${requesterFields()}
+    FROM transcript_requests r
+    LEFT JOIN users u ON u.id = r.user_id
+    LEFT JOIN alumni a ON a.id = r.alumni_id
+    ORDER BY r.id DESC
+  `).all());
   const status = String(req.query.status || '').trim();
   const filtered = status ? rows.filter((r) => r.status === status) : rows;
   res.json({ requests: filtered.map(mapTranscript) });
 });
 
 router.get('/transcripts/:id', (req, res) => {
-  const row = db.prepare('SELECT * FROM transcript_requests WHERE id = ?').get(Number(req.params.id));
+  const row = db.prepare(`
+    SELECT r.*, ${requesterFields()}
+    FROM transcript_requests r
+    LEFT JOIN users u ON u.id = r.user_id
+    LEFT JOIN alumni a ON a.id = r.alumni_id
+    WHERE r.id = ?
+  `).get(Number(req.params.id));
   if (denyIfNotOwner(req, res, row, 'Transcript request')) return;
   res.json({
     request: mapTranscript(row),
@@ -183,17 +213,33 @@ router.get('/transcripts/:id', (req, res) => {
   });
 });
 
-router.post('/transcripts', (req, res) => {
-  const { email, contact, purpose, type, delivery, copies, attachments } = req.body || {};
-  const name = isAlumni(req.user) ? (req.user.name || req.body?.name) : req.body?.name;
+router.post('/transcripts', requireRole('alumni'), (req, res) => {
+  const { email, contact, purpose, type, delivery, copies, attachments, requestNotes } = req.body || {};
+  const name = req.user.name;
   const owner = ownerIds(req.user, name);
-  if (!name || !purpose) return res.status(400).json({ error: 'Name and purpose are required.' });
+  const validTypes = new Set([
+    'Transcript of Records',
+    'Certification of Grades',
+    'Form 137 / Permanent Record',
+    'Other Academic Record'
+  ]);
+  const validPurposes = new Set(['Employment', 'College Admission', 'Scholarship', 'Transfer', 'Personal Copy', 'Other']);
+  const copyCount = Number(copies);
+  if (!name || !validTypes.has(type) || !validPurposes.has(purpose)) {
+    return res.status(400).json({ error: 'Choose a valid academic document type and request purpose.' });
+  }
+  if (!Number.isInteger(copyCount) || copyCount < 1 || copyCount > 10) {
+    return res.status(400).json({ error: 'Number of copies must be between 1 and 10.' });
+  }
+  if (String(requestNotes || '').length > 2000) {
+    return res.status(400).json({ error: 'Additional notes must be 2,000 characters or fewer.' });
+  }
 
   const fee = documentFeeCentavos(delivery);
-  const initialStatus = fee > 0 ? 'Payment Required' : 'Pending';
+  const initialStatus = 'Pending';
   const info = db.prepare(
-    `INSERT INTO transcript_requests (name, email, contact, date, purpose, status, type, delivery, payment_ref, user_id, alumni_id, remarks, fee_centavos, payment_status, copies)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, '', ?, 'pending', ?)`
+    `INSERT INTO transcript_requests (name, email, contact, date, purpose, status, type, delivery, payment_ref, user_id, alumni_id, remarks, fee_centavos, payment_status, copies, request_notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, '', ?, ?, ?, ?)`
   ).run(
     name,
     email || req.user.email || '',
@@ -206,7 +252,9 @@ router.post('/transcripts', (req, res) => {
     owner.userId,
     owner.alumniId,
     fee,
-    Math.max(1, Math.min(10, Number(copies) || 1))
+    fee > 0 ? 'pending' : '',
+    copyCount,
+    String(requestNotes || '').trim().slice(0, 2000)
   );
 
   const row = db.prepare('SELECT * FROM transcript_requests WHERE id = ?').get(info.lastInsertRowid);
@@ -218,7 +266,7 @@ router.post('/transcripts', (req, res) => {
   writeAudit(req.user, 'create', 'transcript', row.id, name);
   writeRequestHistory(req.user, 'transcript', row.id, 'Submitted', purpose);
   const payNote = fee > 0
-    ? `Payment of PHP ${pesosFromCentavos(row.fee_centavos)} is required before the Registrar can review it.`
+    ? `Estimated payment of PHP ${pesosFromCentavos(row.fee_centavos)} may be required after Registrar review.`
     : 'The Registrar will review this request.';
   dispatchNotification({
     userId: owner.userId,
@@ -245,7 +293,7 @@ router.post('/transcripts', (req, res) => {
   });
 });
 
-router.put('/transcripts/:id/status', requireRole('admin', 'staff'), (req, res) => {
+router.put('/transcripts/:id/status', requireRole('staff'), (req, res) => {
   const id = Number(req.params.id);
   const { status, remarks, claimWindow, claimNotes } = req.body || {};
   if (!DOCUMENT_STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status value.' });
@@ -281,11 +329,9 @@ router.post('/transcripts/:id/cancel', (req, res) => {
   const existing = db.prepare('SELECT * FROM transcript_requests WHERE id = ?').get(id);
   if (denyIfNotOwner(req, res, existing, 'Transcript request')) return;
   if (!isAlumni(req.user) || Number(existing.user_id) !== Number(req.user.id)) {
-    if (!isDocumentProcessor(req.user)) {
-      return res.status(403).json({ error: 'You can only cancel your own request.' });
-    }
+    return res.status(403).json({ error: 'You can only cancel your own request.' });
   }
-  if (!ALUMNI_CANCEL_FROM.includes(existing.status) && isAlumni(req.user) && !isDocumentProcessor(req.user)) {
+  if (!ALUMNI_CANCEL_FROM.includes(existing.status)) {
     return res.status(400).json({ error: 'This request can no longer be cancelled. Contact the Registrar.' });
   }
   if (['Released', 'Cancelled'].includes(existing.status)) {
@@ -306,7 +352,7 @@ router.post('/transcripts/:id/cancel', (req, res) => {
   res.json({ request: mapTranscript(row) });
 });
 
-router.post('/transcripts/:id/attachments', (req, res) => {
+router.post('/transcripts/:id/attachments', requireRole('alumni', 'staff'), (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM transcript_requests WHERE id = ?').get(id);
   if (denyIfNotOwner(req, res, existing, 'Transcript request')) return;
@@ -358,14 +404,26 @@ router.post('/transcripts/:id/correction-response', (req, res) => {
 /* ------------------------------- Reprints --------------------------------- */
 
 router.get('/reprints', (req, res) => {
-  const rows = scopeOwn(req.user, db.prepare('SELECT * FROM reprints ORDER BY id DESC').all());
+  const rows = scopeOwn(req.user, db.prepare(`
+    SELECT r.*, ${requesterFields()}
+    FROM reprints r
+    LEFT JOIN users u ON u.id = r.user_id
+    LEFT JOIN alumni a ON a.id = r.alumni_id
+    ORDER BY r.id DESC
+  `).all());
   const status = String(req.query.status || '').trim();
   const filtered = status ? rows.filter((r) => r.status === status) : rows;
   res.json({ reprints: filtered.map(mapReprint) });
 });
 
 router.get('/reprints/:id', (req, res) => {
-  const row = db.prepare('SELECT * FROM reprints WHERE id = ?').get(Number(req.params.id));
+  const row = db.prepare(`
+    SELECT r.*, ${requesterFields()}
+    FROM reprints r
+    LEFT JOIN users u ON u.id = r.user_id
+    LEFT JOIN alumni a ON a.id = r.alumni_id
+    WHERE r.id = ?
+  `).get(Number(req.params.id));
   if (denyIfNotOwner(req, res, row, 'Certificate reprint request')) return;
   res.json({
     reprint: mapReprint(row),
@@ -374,16 +432,31 @@ router.get('/reprints/:id', (req, res) => {
   });
 });
 
-router.post('/reprints', (req, res) => {
+router.post('/reprints', requireRole('alumni'), (req, res) => {
   const type = req.body?.type;
-  const name = isAlumni(req.user) ? (req.user.name || req.body?.name) : req.body?.name;
+  const reason = String(req.body?.reason || '').trim();
+  const requestNotes = String(req.body?.requestNotes || '').trim();
+  const name = req.user.name;
   const owner = ownerIds(req.user, name);
-  if (!name || !type) return res.status(400).json({ error: 'Name and certificate type are required.' });
+  const validTypes = new Set([
+    'Diploma Reprint',
+    'Graduation Certificate Reprint',
+    'Certificate of Completion Reprint',
+    'Other Eligible Certificate Reprint'
+  ]);
+  const copyCount = Number(req.body?.copies);
+  if (!name || !validTypes.has(type) || !['Lost', 'Damaged', 'Incorrect Information', 'Other'].includes(reason)) {
+    return res.status(400).json({ error: 'Choose a certificate type and a valid reprint reason.' });
+  }
+  if (!Number.isInteger(copyCount) || copyCount < 1 || copyCount > 10) {
+    return res.status(400).json({ error: 'Number of copies must be between 1 and 10.' });
+  }
+  if (requestNotes.length > 2000) return res.status(400).json({ error: 'Additional details must be 2,000 characters or fewer.' });
   const fee = documentFeeCentavos('');
-  const initialStatus = fee > 0 ? 'Payment Required' : 'Pending';
+  const initialStatus = 'Pending';
   const info = db.prepare(
-    "INSERT INTO reprints (name, type, status, user_id, alumni_id, remarks, fee_centavos, payment_status, copies) VALUES (?, ?, ?, ?, ?, '', ?, 'pending', ?)"
-  ).run(name, type, initialStatus, owner.userId, owner.alumniId, fee, Math.max(1, Math.min(10, Number(req.body?.copies) || 1)));
+    "INSERT INTO reprints (name, type, status, user_id, alumni_id, remarks, fee_centavos, payment_status, copies, reason, request_notes) VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?)"
+  ).run(name, type, initialStatus, owner.userId, owner.alumniId, fee, fee > 0 ? 'pending' : '', copyCount, reason, requestNotes);
   const row = db.prepare('SELECT * FROM reprints WHERE id = ?').get(info.lastInsertRowid);
   if (req.body?.attachments) {
     try { saveAttachments('reprint', row.id, req.user.id, req.body.attachments); } catch (err) {
@@ -414,7 +487,7 @@ router.post('/reprints', (req, res) => {
   res.status(201).json({ reprint: mapReprint(row), attachments: loadAttachments('reprint', row.id) });
 });
 
-router.put('/reprints/:id/status', requireRole('admin', 'staff'), (req, res) => {
+router.put('/reprints/:id/status', requireRole('staff'), (req, res) => {
   const id = Number(req.params.id);
   const { status, remarks, claimWindow, claimNotes } = req.body || {};
   if (!DOCUMENT_STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status value.' });
@@ -448,7 +521,10 @@ router.post('/reprints/:id/cancel', (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM reprints WHERE id = ?').get(id);
   if (denyIfNotOwner(req, res, existing, 'Certificate reprint request')) return;
-  if (isAlumni(req.user) && !isDocumentProcessor(req.user) && !ALUMNI_CANCEL_FROM.includes(existing.status)) {
+  if (!isAlumni(req.user) || Number(existing.user_id) !== Number(req.user.id)) {
+    return res.status(403).json({ error: 'You can only cancel your own request.' });
+  }
+  if (!ALUMNI_CANCEL_FROM.includes(existing.status)) {
     return res.status(400).json({ error: 'This request can no longer be cancelled. Contact the Registrar.' });
   }
   if (['Released', 'Cancelled'].includes(existing.status)) {
@@ -463,7 +539,7 @@ router.post('/reprints/:id/cancel', (req, res) => {
   res.json({ reprint: mapReprint(row) });
 });
 
-router.post('/reprints/:id/attachments', (req, res) => {
+router.post('/reprints/:id/attachments', requireRole('alumni', 'staff'), (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM reprints WHERE id = ?').get(id);
   if (denyIfNotOwner(req, res, existing, 'Certificate reprint request')) return;

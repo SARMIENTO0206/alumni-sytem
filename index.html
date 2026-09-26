@@ -481,8 +481,8 @@
                 <div class="sidebar-group">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('transcript')" id="nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Transcript Requests</span></button>
-                        <button type="button" onclick="switchView('reprint')" id="nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
+                        <button type="button" onclick="switchView('transcript')" id="nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Document Requests Overview</span></button>
+                        <button type="button" onclick="switchView('reprint')" id="nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprint Overview</span></button>
                         <button type="button" onclick="switchView('payment-history')" id="nav-payment-history" class="sidebar-link"><i class="fa-solid fa-qrcode"></i><span>Payments</span></button>
                     </div>
                 </div>
@@ -591,7 +591,7 @@
                 <div class="sidebar-group">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('transcript')" id="registrar-nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Transcript Requests</span></button>
+                        <button type="button" onclick="switchView('transcript')" id="registrar-nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Academic Record Requests</span></button>
                         <button type="button" onclick="switchView('reprint')" id="registrar-nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
                         <button type="button" onclick="switchView('request-approval')" id="registrar-nav-request-approval" class="sidebar-link"><i class="fa-solid fa-check-double"></i><span>Approval Queue</span></button>
                         <button type="button" onclick="switchView('release-claiming')" id="registrar-nav-release-claiming" class="sidebar-link"><i class="fa-solid fa-box-open"></i><span>Release & Claiming</span></button>
@@ -1263,10 +1263,17 @@
                                 <h3 class="text-lg font-extrabold text-slate-800">Transcript & Academic Records Requests</h3>
                                 <p class="text-xs text-slate-400 font-medium">Official requests for Transcript of Records (TOR) and grade certifications.</p>
                             </div>
-                            <button onclick="openRequestDocModal('Transcript of Records')" class="btn btn-primary text-xs">
+                            <button id="transcriptRequestButton" onclick="openRequestDocModal('Transcript of Records')" class="hidden btn btn-primary text-xs">
                                 <i class="fa-solid fa-plus"></i>
                                 <span>Request New Transcript</span>
                             </button>
+                        </div>
+
+                        <div id="documentRequestOverview" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+                            <div class="rounded-xl bg-amber-50 border border-amber-100 p-4"><p class="text-[10px] uppercase tracking-wider font-bold text-amber-700">Pending</p><p id="documentPendingCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></div>
+                            <div class="rounded-xl bg-blue-50 border border-blue-100 p-4"><p class="text-[10px] uppercase tracking-wider font-bold text-blue-700">Processing</p><p id="documentProcessingCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></div>
+                            <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-4"><p class="text-[10px] uppercase tracking-wider font-bold text-emerald-700">Ready</p><p id="documentReadyCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></div>
+                            <div class="rounded-xl bg-slate-50 border border-slate-200 p-4"><p class="text-[10px] uppercase tracking-wider font-bold text-slate-500">Completed</p><p id="documentCompletedCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></div>
                         </div>
 
                         <div class="data-table-container">
@@ -1275,7 +1282,7 @@
                                     <tr>
                                         <th>Alumnus / Requestor</th>
                                         <th>Request Date</th>
-                                        <th>Purpose</th>
+                                        <th>Document</th>
                                         <th>Status</th>
                                         <th class="text-right">Actions</th>
                                     </tr>
@@ -1296,7 +1303,7 @@
                         <div class="grid sm:grid-cols-2 gap-3 text-sm">
                             <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Date</p><p id="transcriptDetailDate" class="font-semibold text-slate-800">—</p></div>
                             <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Status</p><p id="transcriptDetailStatus" class="font-semibold text-slate-800">—</p></div>
-                            <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Purpose</p><p id="transcriptDetailPurpose" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Request Details</p><p id="transcriptDetailPurpose" class="font-semibold text-slate-800 whitespace-pre-wrap">—</p></div>
                             <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Registrar remarks</p><p id="transcriptDetailRemarks" class="font-semibold text-slate-800 whitespace-pre-wrap">—</p></div>
                             <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Release / claim</p><p id="transcriptDetailClaim" class="font-semibold text-slate-800">—</p></div>
                         </div>
@@ -1318,7 +1325,7 @@
                                 <h3 class="text-lg font-extrabold text-slate-800">Certificate & Diploma Reprint Requests</h3>
                                 <p class="text-xs text-slate-400 font-medium">Official reprint applications for diplomas, graduation certificates, and awards.</p>
                             </div>
-                            <button onclick="openRequestDocModal('Diploma / Certificate Reprint')" class="btn btn-primary text-xs">
+                            <button id="reprintRequestButton" onclick="openRequestDocModal('Diploma / Certificate Reprint')" class="hidden btn btn-primary text-xs">
                                 <i class="fa-solid fa-plus"></i>
                                 <span>Request Certificate Reprint</span>
                             </button>
@@ -3138,23 +3145,39 @@
             <form onsubmit="submitDocumentRequest(event)" class="space-y-3.5">
                 <div>
                     <label class="form-label" for="docType">Document Type</label>
-                    <select id="docType" class="form-select text-xs">
-                        <option>Official Transcript of Records (TOR)</option>
-                        <option>Official Diploma Copy</option>
-                        <option>Certificate of Graduation</option>
-                        <option>Good Moral Certificate</option>
-                        <option>Course Description / Syllabus</option>
+                    <select id="docType" class="form-select text-xs" onchange="toggleReprintRequestFields()">
+                        <option>Transcript of Records</option>
+                        <option>Certification of Grades</option>
+                        <option>Form 137 / Permanent Record</option>
+                        <option>Other Academic Record</option>
+                        <option>Diploma Reprint</option>
+                        <option>Graduation Certificate Reprint</option>
+                        <option>Certificate of Completion Reprint</option>
+                        <option>Other Eligible Certificate Reprint</option>
                     </select>
                 </div>
 
-                <div>
+                <div id="docPurposeField">
                     <label class="form-label" for="docPurpose">Purpose of Request</label>
-                    <select id="docPurpose" class="form-select text-xs">
-                        <option>Local / Overseas Employment</option>
-                        <option>Board Exam / PRC Application</option>
-                        <option>Graduate School / Further Studies</option>
-                        <option>Visa / Embassy Application</option>
+                    <select id="docPurpose" class="form-select text-xs" required>
+                        <option value="" disabled selected>Select purpose</option>
+                        <option>Employment</option>
+                        <option>College Admission</option>
+                        <option>Scholarship</option>
+                        <option>Transfer</option>
                         <option>Personal Copy</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+
+                <div id="reprintReasonField" class="hidden">
+                    <label class="form-label" for="docReprintReason">Reason for Reprint</label>
+                    <select id="docReprintReason" class="form-select text-xs">
+                        <option value="">Select a reason</option>
+                        <option>Lost</option>
+                        <option>Damaged</option>
+                        <option>Incorrect Information</option>
+                        <option>Other</option>
                     </select>
                 </div>
 
@@ -3163,7 +3186,7 @@
                         <label class="form-label" for="docCopies">Number of Copies</label>
                         <input type="number" id="docCopies" required min="1" max="10" value="1" class="form-input text-xs">
                     </div>
-                    <div>
+                    <div id="docDeliveryField">
                         <label class="form-label" for="docDelivery">Claiming Method</label>
                         <select id="docDelivery" class="form-select text-xs" onchange="updateDocumentFeePreview()">
                             <option>Pick-up at Registrar Window</option>
@@ -3185,6 +3208,11 @@
                 </div>
 
                 <div>
+                    <label class="form-label" for="docRequestNotes">Additional Notes / Details</label>
+                    <textarea id="docRequestNotes" rows="3" maxlength="2000" placeholder="Additional details for the Registrar..." class="form-textarea text-xs"></textarea>
+                </div>
+
+                <div>
                     <label class="form-label" for="docAttachments">Supporting documents (optional)</label>
                     <input type="file" id="docAttachments" accept=".pdf,.png,.jpg,.jpeg" multiple class="form-input text-xs">
                     <p class="text-[10px] text-slate-400 mt-1">PDF, JPG, or PNG. Maximum 3 files, 1 MB each. The Registrar reviews these with your request.</p>
@@ -3193,7 +3221,7 @@
                 <div class="p-3 rounded-xl bg-[#f8f4ee] border border-amber-900/10 flex items-center justify-between">
                     <div>
                         <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Amount due</p>
-                        <p class="text-[11px] text-slate-500">Document fee is calculated by the server. GCash is required before processing.</p>
+                        <p class="text-[11px] text-slate-500">The Registrar reviews your request first. If a fee applies, payment becomes available after approval.</p>
                     </div>
                     <p class="text-lg font-extrabold text-[#801235]" id="docFeePreview">₱150.00</p>
                 </div>
@@ -3210,7 +3238,7 @@
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeRequestDocModal()" class="btn btn-secondary text-xs">Cancel</button>
-                    <button type="submit" class="btn btn-primary text-xs">Submit Official Request</button>
+                    <button type="submit" class="btn btn-primary text-xs">Submit Request</button>
                 </div>
             </form>
         </div>

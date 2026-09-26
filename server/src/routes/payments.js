@@ -305,6 +305,11 @@ function resolveChargeable(req) {
       err.status = 400;
       throw err;
     }
+    if (!['Approved', 'Payment Required'].includes(record.status)) {
+      const err = new Error('Payment becomes available after the Registrar approves the request.');
+      err.status = 400;
+      throw err;
+    }
     amount = record.fee_centavos || documentFeeCentavos(record.delivery);
     description = `${relatedType === 'reprint' ? 'Certificate reprint' : 'Transcript request'} #${record.id}`;
     alumniId = record.alumni_id || alumniId;

@@ -278,9 +278,12 @@ export function initDb() {
   ensureColumn('transcript_requests', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'remarks', "remarks TEXT DEFAULT ''");
+  ensureColumn('transcript_requests', 'request_notes', "request_notes TEXT DEFAULT ''");
   ensureColumn('reprints', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('reprints', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('reprints', 'remarks', "remarks TEXT DEFAULT ''");
+  ensureColumn('reprints', 'reason', "reason TEXT DEFAULT ''");
+  ensureColumn('reprints', 'request_notes', "request_notes TEXT DEFAULT ''");
   ensureColumn('placements', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('placements', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('donations', 'user_id', 'user_id INTEGER DEFAULT 0');

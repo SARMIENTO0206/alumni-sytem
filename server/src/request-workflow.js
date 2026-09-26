@@ -13,6 +13,7 @@ export const DOCUMENT_STATUSES = [
 ];
 
 const PROCESSOR_TRANSITIONS = {
+  'Payment Required': ['Pending', 'Approved', 'Rejected', 'For Correction'],
   Pending: ['Approved', 'Rejected', 'For Correction'],
   'For Correction': ['Pending', 'Rejected'],
   Approved: ['Processing'],
@@ -28,7 +29,7 @@ export function isDocumentProcessor(user) {
 }
 
 export function paidRequiredFor(status) {
-  return ['Approved', 'Processing', 'Ready for Release', 'Released'].includes(status);
+  return ['Processing', 'Ready for Release', 'Released'].includes(status);
 }
 
 export function requestIsPaid(row) {

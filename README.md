@@ -52,13 +52,13 @@ automated communication flows and AI features:
 | # | Module | How to reach it |
 | - | ------ | --------------- |
 | 1 | Alumni Database | Admin → *Alumni Database* |
-| 2 | Transcript Request Portal | *Transcript Requests* (Alumni/Admin/Registrar) |
+| 2 | Transcript Request Portal | Alumni submit; Registrar reviews and processes; Admin monitors |
 | 3 | Graduate Tracking | *Graduate Tracking* (+ CHED Tracer Study export) |
 | 4 | Job Placement Logs | *Job Placement Logs* / *Job Opportunities* |
 | 5 | Alumni Event Registration | *Alumni Events* |
 | 6 | Batch Reunions Manager | *Batch Reunions* |
 | 7 | Donor Campaign Tool | *Donor Campaigns* |
-| 8 | Certificate Reprint Request | *Certificate Reprints* |
+| 8 | Certificate Reprint Request | Alumni submit; Registrar reviews and processes; Admin monitors |
 | 9 | Alumni Newsletter | *Alumni Newsletter* (+ AI Compose) |
 | 10 | Alumni Feedback & Survey | *Surveys & Feedback* |
 | 11 | **AI Chat Support** (OpenAI) | Chat bubble (bottom-right) |
@@ -70,8 +70,8 @@ automated communication flows and AI features:
 
 | Role | Access |
 | ---- | ------ |
-| **Administrator** | Full access — alumni records, events, reunions, donations, newsletters, reports, AI tools |
-| **Registrar** | Verification, request approval, document preparation, release/claiming, request history, registrar reports |
+| **Administrator** | System oversight, reports, and document-request monitoring; does not submit or process alumni requests |
+| **Registrar** | Alumni verification, document-request review and processing, release/claiming, request history, registrar reports |
 | **Alumni** | Own profile, digital ID, transcript/certificate requests, job board, events, reunions, newsletter, surveys |
 
 ## 🛠️ Troubleshooting
