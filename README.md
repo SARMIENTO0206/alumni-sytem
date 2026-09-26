@@ -3,7 +3,7 @@
 A web-based Alumni Management System with automated text-message flows and
 OpenAI API integration.
 
-**Latest shared copy:** https://github.com/SARMIENTO0206/alumni-sytem (ignore
+**Latest shared copy:** <https://github.com/SARMIENTO0206/alumni-sytem> (ignore
 `SoloLevelings/nicose-sarmiento` — outdated). There is no demo mode; other
 devices must clone this repo and run `npm start` in `server/`.
 
@@ -93,7 +93,7 @@ npm install
 npm start          # => http://localhost:3000
 ```
 
-Open **http://localhost:3000** — first run creates `server/data/saa.db` with
+Open <http://localhost:3000> — first run creates `server/data/saa.db` with
 system accounts only (no sample alumni data):
 
 | Role | Username | Password |
