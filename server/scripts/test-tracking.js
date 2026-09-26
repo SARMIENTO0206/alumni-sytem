@@ -121,6 +121,13 @@ const adminRecords = await req(admin.token, 'GET', '/api/tracking');
 assert(adminRecords.status === 200 && adminRecords.data.alumni.length >= 1, 'Admin can monitor all tracking records');
 assert(!('fieldAlignment' in adminRecords.data.summary), 'tracking summary must not report degree field alignment');
 const testTimestamp = Date.now();
+const adminCreateAlumni = await req(admin.token, 'POST', '/api/alumni', {
+  name: `Admin Must Not Create ${testTimestamp}`,
+  batch: '2022',
+  program: 'SHS',
+  studentId: `ADMIN-CREATE-${testTimestamp}`
+});
+assert(adminCreateAlumni.status === 403, 'only Registrar can create an alumni record');
 const created = await req(registrar.token, 'POST', '/api/alumni', {
   name: `Tracking Test Other Alumni ${testTimestamp}`,
   batch: '2022',
@@ -131,6 +138,8 @@ assert(created.status === 201 && created.data.alumni.status === 'No Data', 'new 
 assert(created.data.alumni.verificationStatus === 'Pending Verification', 'manually added alumni records must require school record verification');
 assert(!created.data.alumni.lastUpdated, 'new alumni without status data must be considered stale');
 const otherRecordId = created.data.alumni.id;
+const adminEditAlumni = await req(admin.token, 'PUT', `/api/alumni/${otherRecordId}`, { program: 'Admin Edit Attempt' });
+assert(adminEditAlumni.status === 403, 'Admin cannot edit alumni records');
 const adminVerifyRecord = await req(admin.token, 'POST', `/api/alumni/${otherRecordId}/verify`);
 assert(adminVerifyRecord.status === 403, 'only Registrar staff can verify manually added alumni records');
 const registrarVerifyRecord = await req(registrar.token, 'POST', `/api/alumni/${otherRecordId}/verify`);

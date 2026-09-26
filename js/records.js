@@ -15,8 +15,7 @@
         const staff = isStaffRole();
         const admin = isAdminRole();
         const recordStatus = alumniRecordStatus(item);
-        const documentsLabel = admin ? "Documents" : "Academic Record";
-        const editAction = recordStatus !== "Archived"
+        const editAction = staff && recordStatus !== "Archived"
             ? `<button type="button" onclick="editAlumniModal(${Number(item.id)})" class="text-xs text-brand-magenta hover:underline font-bold">Edit</button>`
             : "";
         const verifyAction = staff && recordStatus === "Pending Verification"
@@ -27,8 +26,9 @@
                 ? `<button type="button" onclick="restoreAlumniRecord(${Number(item.id)})" class="text-xs text-emerald-700 hover:underline font-bold">Restore</button>`
                 : `<button type="button" onclick="archiveAlumniRecord(${Number(item.id)})" class="text-xs text-rose-700 hover:underline font-bold">Archive</button>`
             : "";
-        const documentAction = recordStatus === "Archived" ? "" :
-            `<button type="button" onclick="viewAlumniAcademicRecord(${Number(item.id)})" class="text-xs text-slate-600 hover:underline font-bold">${documentsLabel}</button>`;
+        const documentAction = staff && recordStatus !== "Archived"
+            ? `<button type="button" onclick="viewAlumniAcademicRecord(${Number(item.id)})" class="text-xs text-slate-600 hover:underline font-bold">Academic Record</button>`
+            : "";
 
         return `
             <div class="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
@@ -46,6 +46,15 @@
         alumniTableRows = records;
         body.innerHTML = "";
         const recordStatusFilter = document.getElementById("filterRecordStatus");
+        const staff = isStaffRole();
+        const addButton = document.getElementById("addAlumniRecordButton");
+        if (addButton) addButton.classList.toggle("hidden", !staff);
+        const description = document.getElementById("alumniDatabaseDescription");
+        if (description) {
+            description.textContent = staff
+                ? "Maintain alumni records, confirm official school information, and review academic records."
+                : "Monitor official alumni records, review documents, and manage archived records.";
+        }
         if (recordStatusFilter) {
             const admin = isAdminRole();
             recordStatusFilter.querySelector('option[value="All"]')?.classList.toggle("hidden", !admin);
@@ -299,7 +308,7 @@
 
     /* Add/Edit Alumni */
     function openAddAlumniModal() {
-        if (!isAdminRole() && !isStaffRole()) return;
+        if (!isStaffRole()) return;
         document.getElementById("alumniModalTitle").textContent = "Add New Alumnus";
         document.getElementById("editAlumniId").value = "";
         document.getElementById("newAlumniName").value = "";
@@ -312,7 +321,7 @@
     }
 
     function editAlumniModal(id) {
-        if (!isAdminRole() && !isStaffRole()) return;
+        if (!isStaffRole()) return;
         const item = (alumniTableRows || []).find(a => Number(a.id) === Number(id)) ||
             alumniList.find(a => Number(a.id) === Number(id));
         if (!item) return;

@@ -61,8 +61,8 @@ router.get('/:id', (req, res) => {
   res.json({ alumni: mapAlumni(row) });
 });
 
-/** POST /api/alumni - create an alumni record (admin / staff). */
-router.post('/', requireRole('admin', 'staff'), (req, res) => {
+/** POST /api/alumni - Registrar creates an alumni record for verification. */
+router.post('/', requireRole('staff'), (req, res) => {
   const { name, batch, program, status, company, title, contact, studentId } = req.body || {};
   if (!name) return res.status(400).json({ error: 'Name is required.' });
   let mobile = '';
@@ -91,8 +91,8 @@ router.post('/', requireRole('admin', 'staff'), (req, res) => {
   res.status(201).json({ alumni: mapAlumni(row) });
 });
 
-/** PUT /api/alumni/:id - update an alumni record (admin / staff). */
-router.put('/:id', requireRole('admin', 'staff'), (req, res) => {
+/** PUT /api/alumni/:id - Registrar maintains an alumni record. */
+router.put('/:id', requireRole('staff'), (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'Alumni record not found.' });

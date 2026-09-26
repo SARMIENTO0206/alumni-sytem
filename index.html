@@ -975,22 +975,22 @@
 
 
                 <!-- =================================================
-                     VIEW: ALUMNI DATABASE (ADMIN)
+                     VIEW: ALUMNI DATABASE (ADMIN / REGISTRAR)
                      ================================================= -->
                 <div id="view-database" class="hidden space-y-6 fade-in">
                     <div id="alumniListPanel" class="app-card p-6">
                         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                             <div>
                                 <h3 class="text-lg font-extrabold text-slate-800">Alumni Directory & Records</h3>
-                                <p class="text-xs text-slate-400 font-medium">Search, filter, manage, and export official alumni database records.</p>
+                                <p id="alumniDatabaseDescription" class="text-xs text-slate-400 font-medium">Search, filter, manage, and export official alumni database records.</p>
                             </div>
 
                             <div class="flex flex-wrap items-center gap-2.5">
-                                <button type="button" onclick="exportToCSV()" class="btn btn-secondary text-xs">
+                                <button type="button" id="exportAlumniCsvButton" onclick="exportToCSV()" class="btn btn-secondary text-xs">
                                     <i class="fa-solid fa-file-csv text-emerald-600"></i>
                                     <span>Export CSV</span>
                                 </button>
-                                <button type="button" onclick="openAddAlumniModal()" class="btn btn-primary text-xs">
+                                <button type="button" id="addAlumniRecordButton" onclick="openAddAlumniModal()" class="btn btn-primary text-xs">
                                     <i class="fa-solid fa-plus"></i>
                                     <span>Add New Alumnus</span>
                                 </button>
