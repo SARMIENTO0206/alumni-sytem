@@ -1824,20 +1824,232 @@
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 5212-5227 */
 /* ------------------------------------------------------------------------- */
+    let feedbackResponses = [];
+    let selectedFeedbackResponseId = null;
+
+    function renderFeedbackResponseRows() {
+        const body = document.getElementById("feedbackResponsesBody");
+        if (!body) return;
+        const search = (document.getElementById("feedbackSearch")?.value || "").trim().toLowerCase();
+        const category = document.getElementById("feedbackCategoryFilter")?.value || "";
+        const batch = document.getElementById("feedbackBatchFilter")?.value || "";
+        const status = document.getElementById("feedbackStatusFilter")?.value || "";
+        const rows = feedbackResponses.filter((response) => {
+            const matchesSearch = !search || [response.name, response.category, response.message]
+                .some((value) => String(value || "").toLowerCase().includes(search));
+            return matchesSearch &&
+                (!category || response.category === category) &&
+                (!batch || response.batch === batch) &&
+                (!status || response.status === status);
+        });
+
+        body.replaceChildren();
+        if (!rows.length) {
+            const row = body.insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = 5;
+            cell.className = "py-8 text-center text-slate-400";
+            cell.textContent = "No survey responses match these filters.";
+            return;
+        }
+
+        rows.forEach((response) => {
+            const row = body.insertRow();
+            const name = row.insertCell();
+            name.className = "py-3 pr-4 font-semibold text-slate-700";
+            name.textContent = response.name || "Alumni";
+
+            const topic = row.insertCell();
+            topic.className = "py-3 pr-4 text-slate-500";
+            topic.textContent = response.category || "Other";
+
+            const rating = row.insertCell();
+            rating.className = "py-3 pr-4 whitespace-nowrap";
+            rating.textContent = `${"★".repeat(Math.max(0, Math.min(5, Number(response.rating) || 0)))}${"☆".repeat(Math.max(0, 5 - (Number(response.rating) || 0)))} ${Number(response.rating) || 0}/5`;
+            rating.setAttribute("aria-label", `Rating ${Number(response.rating) || 0} out of 5`);
+
+            const statusCell = row.insertCell();
+            statusCell.className = "py-3 pr-4";
+            const badge = document.createElement("span");
+            const responseStatus = response.status || "New";
+            badge.className = `status-badge ${responseStatus === "Reviewed" ? "status-approved" : responseStatus === "Follow-up" ? "status-freelance" : "status-postgrad"}`;
+            badge.textContent = responseStatus;
+            statusCell.appendChild(badge);
+
+            const action = row.insertCell();
+            action.className = "py-3";
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "text-xs font-bold text-brand-magenta hover:underline";
+            button.textContent = "View Details";
+            button.addEventListener("click", () => showFeedbackDetails(response.id));
+            action.appendChild(button);
+        });
+    }
+
+    function setFeedbackFilterOptions(selectId, values, allLabel) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        const previous = select.value;
+        select.replaceChildren();
+        const all = document.createElement("option");
+        all.value = "";
+        all.textContent = allLabel;
+        select.appendChild(all);
+        [...new Set(values.filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b))).forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
+        });
+        if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+    }
+
+    function showFeedbackDetails(id) {
+        const response = feedbackResponses.find((item) => String(item.id) === String(id));
+        const panel = document.getElementById("feedbackDetailPanel");
+        const fields = document.getElementById("feedbackDetailFields");
+        if (!response || !panel || !fields) return;
+        selectedFeedbackResponseId = response.id;
+        const educationLevel = response.educationLevel === "SHS"
+            ? "Senior High School"
+            : response.educationLevel === "JHS"
+                ? "Junior High School"
+                : response.educationLevel || "—";
+        const details = [
+            ["Alumni", response.name || "Alumni"],
+            ["Educational Level", educationLevel],
+            ["Batch", response.batch || "—"],
+            ["Category", response.category || "Other"],
+            ["Overall Satisfaction", `${"★".repeat(Math.max(0, Math.min(5, Number(response.rating) || 0)))} ${Number(response.rating) || 0}/5`],
+            ["Recommendation Score", Number(response.recommendationRating) > 0 || response.recommendationRating === 0
+                ? `${response.recommendationRating}/10`
+                : "Not provided"],
+            ["Suggested Improvement", response.improvement || "—"],
+            ["Additional Feedback", response.message || "—"],
+            ["Requested Contact", response.contactRequested ? "Yes" : "No"],
+            ["Submitted", response.createdAt ? new Date(response.createdAt).toLocaleString() : "—"]
+        ];
+        fields.replaceChildren();
+        details.forEach(([label, value]) => {
+            const item = document.createElement("div");
+            const term = document.createElement("dt");
+            term.className = "text-slate-400";
+            term.textContent = label;
+            const description = document.createElement("dd");
+            description.className = "mt-1 font-semibold text-slate-700 whitespace-pre-wrap break-words";
+            description.textContent = String(value);
+            item.append(term, description);
+            fields.appendChild(item);
+        });
+        const status = document.getElementById("feedbackReviewStatus");
+        const note = document.getElementById("feedbackInternalNote");
+        if (status) status.value = response.status || "New";
+        if (note) note.value = response.internalNote || "";
+        panel.classList.remove("hidden");
+        panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function closeFeedbackDetails() {
+        document.getElementById("feedbackDetailPanel")?.classList.add("hidden");
+        selectedFeedbackResponseId = null;
+    }
+
+    async function saveFeedbackReview(event) {
+        event.preventDefault();
+        if (!selectedFeedbackResponseId) return;
+        try {
+            const data = await SAA_API.request(`/api/feedback/${selectedFeedbackResponseId}`, {
+                method: "PUT",
+                body: JSON.stringify({
+                    status: document.getElementById("feedbackReviewStatus").value,
+                    internalNote: document.getElementById("feedbackInternalNote").value.trim()
+                })
+            });
+            feedbackResponses = feedbackResponses.map((item) =>
+                String(item.id) === String(selectedFeedbackResponseId)
+                    ? Object.assign({}, item, data.feedback)
+                    : item
+            );
+            const followUp = document.getElementById("feedbackFollowUpCount");
+            if (followUp) followUp.textContent = String(feedbackResponses.filter((item) => item.status === "Follow-up").length);
+            renderFeedbackResponseRows();
+            showFeedbackDetails(selectedFeedbackResponseId);
+            showToast("Feedback review saved.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to save the feedback review.", "error");
+        }
+    }
+
+    async function renderFeedbackPage() {
+        const isAlumni = currentUser?.role === "alumni";
+        const isAdmin = currentUser?.role === "admin";
+        const formPanel = document.getElementById("alumniSurveyFormPanel");
+        const reviewPanel = document.getElementById("feedbackReviewPanel");
+        const title = document.getElementById("feedbackReviewTitle");
+        const description = document.getElementById("feedbackReviewDescription");
+        if (formPanel) formPanel.classList.toggle("hidden", !isAlumni);
+        if (reviewPanel) reviewPanel.classList.toggle("hidden", isAlumni);
+        if (!isAlumni && title) title.textContent = isAdmin ? "Survey & Feedback Management" : "Survey & Feedback Responses";
+        if (!isAlumni && description) {
+            description.textContent = isAdmin
+                ? "Review all alumni feedback. Category routing keeps Registrar responses focused on alumni and document services."
+                : "Review feedback routed to the Registrar team. System and event feedback is handled by the appropriate administrators.";
+        }
+
+        const search = document.getElementById("feedbackSearch");
+        const category = document.getElementById("feedbackCategoryFilter");
+        const batch = document.getElementById("feedbackBatchFilter");
+        const status = document.getElementById("feedbackStatusFilter");
+        if (search) search.oninput = renderFeedbackResponseRows;
+        if (category) category.onchange = renderFeedbackResponseRows;
+        if (batch) batch.onchange = renderFeedbackResponseRows;
+        if (status) status.onchange = renderFeedbackResponseRows;
+
+        try {
+            const data = await SAA_API.request("/api/feedback");
+            feedbackResponses = data.feedback || [];
+            if (!isAlumni) {
+                const total = document.getElementById("feedbackTotalResponses");
+                const average = document.getElementById("feedbackAverageRating");
+                const followUp = document.getElementById("feedbackFollowUpCount");
+                const averageRating = feedbackResponses.length
+                    ? feedbackResponses.reduce((sum, item) => sum + Number(item.rating || 0), 0) / feedbackResponses.length
+                    : 0;
+                if (total) total.textContent = String(feedbackResponses.length);
+                if (average) average.textContent = feedbackResponses.length ? `${averageRating.toFixed(1)} / 5` : "—";
+                if (followUp) followUp.textContent = String(feedbackResponses.filter((item) => item.status === "Follow-up").length);
+                setFeedbackFilterOptions("feedbackCategoryFilter", feedbackResponses.map((item) => item.category), "All Categories");
+                setFeedbackFilterOptions("feedbackBatchFilter", feedbackResponses.map((item) => item.batch), "All Batches");
+                renderFeedbackResponseRows();
+            }
+        } catch (err) {
+            showToast(err.message || "Unable to load survey responses.", "error");
+        }
+    }
+
     async function submitSurvey(event) {
         event.preventDefault();
-        const category = document.getElementById("surveyCategory") ? document.getElementById("surveyCategory").value : "General";
-        const rating = document.querySelector('input[name="rating"]:checked')?.value || "5";
-        const message = document.getElementById("surveyFeedback") ? document.getElementById("surveyFeedback").value.trim() : "";
-        const improvement = document.getElementById("surveyImprovement") ? document.getElementById("surveyImprovement").value.trim() : "";
+        if (currentUser?.role !== "alumni") {
+            showToast("Only alumni accounts can submit feedback.", "error");
+            return;
+        }
+        const category = document.getElementById("surveyCategory").value;
+        const rating = document.querySelector('input[name="rating"]:checked')?.value;
+        const recommendationRating = document.querySelector('input[name="recommendRating"]:checked')?.value;
+        const message = document.getElementById("surveyFeedback").value.trim();
+        const improvement = document.getElementById("surveyImprovement").value.trim();
+        const contactRequested = document.getElementById("surveyContactMe").checked;
         try {
             await SAA_API.request("/api/feedback", {
                 method: "POST",
                 body: JSON.stringify({
-                    name: currentUser ? currentUser.name : "Anonymous",
                     rating: Number(rating),
+                    recommendationRating: Number(recommendationRating),
                     category,
-                    message: [message, improvement].filter(Boolean).join("\n\n")
+                    message,
+                    improvement,
+                    contactRequested
                 })
             });
             openFeedbackConfirmationModal();

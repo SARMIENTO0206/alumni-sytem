@@ -291,6 +291,11 @@ export function initDb() {
   ensureColumn('donations', 'is_anonymous', 'is_anonymous INTEGER DEFAULT 0');
   ensureColumn('feedback', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('feedback', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
+  ensureColumn('feedback', 'recommendation_rating', 'recommendation_rating INTEGER DEFAULT NULL');
+  ensureColumn('feedback', 'improvement', "improvement TEXT DEFAULT ''");
+  ensureColumn('feedback', 'contact_requested', 'contact_requested INTEGER DEFAULT 0');
+  ensureColumn('feedback', 'status', "status TEXT DEFAULT 'New'");
+  ensureColumn('feedback', 'internal_note', "internal_note TEXT DEFAULT ''");
   ensureColumn('job_applications', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('job_applications', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('notifications', 'user_id', 'user_id INTEGER DEFAULT 0');

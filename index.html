@@ -501,7 +501,7 @@
                         <button type="button" onclick="switchView('reunions')" id="nav-reunions" class="sidebar-link"><i class="fa-solid fa-people-group"></i><span>Batch Reunions</span></button>
                         <button type="button" onclick="switchView('donor')" id="nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Campaign Management</span></button>
                         <button type="button" onclick="switchView('newsletter')" id="nav-newsletter" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span></button>
-                        <button type="button" onclick="switchView('feedback')" id="nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Surveys & Feedback</span></button>
+                        <button type="button" onclick="switchView('feedback')" id="nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Feedback Management</span></button>
                     </div>
                 </div>
                 <div class="sidebar-group">
@@ -613,7 +613,7 @@
                         <button type="button" onclick="switchView('reunions')" id="staff-nav-reunions" class="sidebar-link"><i class="fa-solid fa-people-group"></i><span>Batch Reunions</span></button>
                         <button type="button" onclick="switchView('donor')" id="staff-nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Donation Records</span></button>
                         <button type="button" onclick="switchView('newsletter')" id="staff-nav-newsletter" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span></button>
-                        <button type="button" onclick="switchView('feedback')" id="staff-nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Surveys & Feedback</span></button>
+                        <button type="button" onclick="switchView('feedback')" id="staff-nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Survey Responses</span></button>
                     </div>
                 </div>
                 <div class="sidebar-group">
@@ -1880,7 +1880,7 @@
                      VIEW: ALUMNI SURVEYS & FEEDBACK
                      ================================================= -->
                 <div id="view-feedback" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6 sm:p-8 max-w-2xl mx-auto">
+                    <div id="alumniSurveyFormPanel" class="app-card p-6 sm:p-8 max-w-2xl mx-auto">
                         <div class="text-center mb-6">
                             <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-2 text-lg">
                                 <i class="fa-regular fa-comments"></i>
@@ -1895,13 +1895,15 @@
                                 <label class="form-label" for="surveyCategory">What is your feedback about?</label>
                                 <select id="surveyCategory" required class="form-select text-xs">
                                     <option value="" disabled selected>Select feedback topic / category...</option>
-                                    <option value="Curriculum">Curriculum</option>
-                                    <option value="Faculty/Teachers">Faculty/Teachers</option>
-                                    <option value="Student Services">Student Services</option>
-                                    <option value="Career Preparation">Career Preparation</option>
-                                    <option value="Alumni Activities">Alumni Activities</option>
+                                    <option value="Alumni Services">Alumni Services</option>
+                                    <option value="Registrar / Document Requests">Registrar / Document Requests</option>
+                                    <option value="Alumni Events & Reunions">Alumni Events & Reunions</option>
+                                    <option value="Alumni Portal/System">Alumni Portal/System</option>
+                                    <option value="Career & Graduate Services">Career & Graduate Services</option>
+                                    <option value="School Programs & Activities">School Programs & Activities</option>
                                     <option value="Facilities">Facilities</option>
-                                    <option value="Technology">Technology</option>
+                                    <option value="Communication / Newsletter">Communication / Newsletter</option>
+                                    <option value="Alumni Records">Alumni Records</option>
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
@@ -2013,6 +2015,99 @@
                             </button>
                         </form>
                     </div>
+
+                    <section id="feedbackReviewPanel" class="hidden space-y-6" aria-labelledby="feedbackReviewTitle">
+                        <div>
+                            <h3 id="feedbackReviewTitle" class="text-xl font-extrabold text-slate-800">Survey &amp; Feedback Responses</h3>
+                            <p id="feedbackReviewDescription" class="text-xs text-slate-400 mt-1">Review feedback routed to the Registrar team.</p>
+                        </div>
+                        <div class="grid sm:grid-cols-3 gap-4">
+                            <article class="app-card p-5">
+                                <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Total Responses</p>
+                                <p id="feedbackTotalResponses" class="text-2xl font-extrabold text-slate-800 mt-1">0</p>
+                            </article>
+                            <article class="app-card p-5">
+                                <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Average Rating</p>
+                                <p id="feedbackAverageRating" class="text-2xl font-extrabold text-slate-800 mt-1">—</p>
+                            </article>
+                            <article class="app-card p-5">
+                                <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Needs Follow-up</p>
+                                <p id="feedbackFollowUpCount" class="text-2xl font-extrabold text-amber-600 mt-1">0</p>
+                            </article>
+                        </div>
+
+                        <section class="app-card p-6 sm:p-8" aria-labelledby="feedbackResponsesTitle">
+                            <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                                <div>
+                                    <h4 id="feedbackResponsesTitle" class="text-lg font-extrabold text-slate-800">Survey Responses</h4>
+                                    <p class="text-xs text-slate-400 mt-1">Select a response to review its details and update its status.</p>
+                                </div>
+                            </div>
+                            <div class="grid sm:grid-cols-4 gap-3 mb-4">
+                                <label class="sr-only" for="feedbackSearch">Search alumni feedback</label>
+                                <input id="feedbackSearch" type="search" placeholder="Search alumni..." class="form-input text-xs">
+                                <label class="sr-only" for="feedbackCategoryFilter">Filter by category</label>
+                                <select id="feedbackCategoryFilter" class="form-select text-xs">
+                                    <option value="">All Categories</option>
+                                </select>
+                                <label class="sr-only" for="feedbackBatchFilter">Filter by batch</label>
+                                <select id="feedbackBatchFilter" class="form-select text-xs">
+                                    <option value="">All Batches</option>
+                                </select>
+                                <label class="sr-only" for="feedbackStatusFilter">Filter by status</label>
+                                <select id="feedbackStatusFilter" class="form-select text-xs">
+                                    <option value="">All Statuses</option>
+                                    <option value="New">New</option>
+                                    <option value="Reviewed">Reviewed</option>
+                                    <option value="Follow-up">Follow-up</option>
+                                </select>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs">
+                                    <thead>
+                                        <tr class="border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-400">
+                                            <th class="py-3 pr-4">Alumni</th>
+                                            <th class="py-3 pr-4">Category</th>
+                                            <th class="py-3 pr-4">Rating</th>
+                                            <th class="py-3 pr-4">Status</th>
+                                            <th class="py-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="feedbackResponsesBody">
+                                        <tr><td colspan="5" class="py-8 text-center text-slate-400">Loading survey responses…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section id="feedbackDetailPanel" class="hidden app-card p-6 sm:p-8" aria-labelledby="feedbackDetailTitle">
+                            <div class="flex items-center justify-between gap-3 mb-5">
+                                <div>
+                                    <h4 id="feedbackDetailTitle" class="text-lg font-extrabold text-slate-800">Feedback Details</h4>
+                                    <p class="text-xs text-slate-400 mt-1">Review the alumni response and record internal follow-up notes.</p>
+                                </div>
+                                <button type="button" onclick="closeFeedbackDetails()" class="btn btn-secondary text-xs">Close</button>
+                            </div>
+                            <dl id="feedbackDetailFields" class="grid sm:grid-cols-2 gap-4 text-xs"></dl>
+                            <form id="feedbackReviewForm" onsubmit="saveFeedbackReview(event)" class="mt-6 border-t border-slate-100 pt-5 space-y-4">
+                                <div>
+                                    <label class="form-label" for="feedbackReviewStatus">Status</label>
+                                    <select id="feedbackReviewStatus" class="form-select text-xs">
+                                        <option value="New">New</option>
+                                        <option value="Reviewed">Reviewed</option>
+                                        <option value="Follow-up">Follow-up</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="feedbackInternalNote">Internal Note</label>
+                                    <textarea id="feedbackInternalNote" rows="3" maxlength="2000" placeholder="Registrar notes..." class="form-textarea text-xs"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary text-xs">
+                                    <i class="fa-solid fa-check mr-1"></i> Save Review
+                                </button>
+                            </form>
+                        </section>
+                    </section>
                 </div>
 
 

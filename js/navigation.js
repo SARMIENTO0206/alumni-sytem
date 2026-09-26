@@ -253,6 +253,7 @@
         if (viewId === "reunions" && typeof renderReunionsGrid === "function") renderReunionsGrid();
         if (viewId === "newsletter" && typeof renderNewsletterArchive === "function") renderNewsletterArchive();
         if (viewId === "donor" && typeof renderDonorProgress === "function") renderDonorProgress();
+        if (viewId === "feedback" && typeof renderFeedbackPage === "function") renderFeedbackPage();
         if (viewId === "academic-records" && typeof renderAcademicRecords === "function") renderAcademicRecords();
         if (viewId === "reports") {
             if (typeof updateReports === "function") updateReports();
@@ -415,7 +416,11 @@
             reunions: "Batch Reunions Manager",
             donor: "Donor Campaign Portal",
             newsletter: "Alumni Newsletter Broadcast",
-            feedback: "Alumni Surveys & Feedback",
+            feedback: currentUser?.role === "alumni"
+                ? "Alumni Surveys & Feedback"
+                : currentUser?.role === "admin"
+                    ? "Survey & Feedback Management"
+                    : "Survey Response Review",
             reports: "System Reports & Statistics",
             verification: "Alumni Record Verification",
             "request-approval": "Request Approval Queue",
