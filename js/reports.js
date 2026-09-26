@@ -471,7 +471,7 @@
     function renderRequestApproval() {
         const box = document.getElementById("approvalRequestsList");
         if (!box) return;
-        const pending = transcriptRequests.filter(r => ["Pending", "For Correction", "Payment Required"].includes(r.status));
+        const pending = transcriptRequests.filter(r => ["Pending", "For Correction"].includes(r.status));
         if (!pending.length) {
             box.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No pending requests at this time.</div>`;
             return;
@@ -480,12 +480,10 @@
             <div class="p-4 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
                 <div>
                     <p class="font-extrabold text-slate-800 text-sm">${r.name}</p>
-                    <p class="text-xs text-slate-400">Transcript Request • ${r.purpose || "Official Record"} • ${r.date} • ${r.status} • Payment: ${(r.paymentStatus || "pending").toUpperCase()}</p>
+                    <p class="text-xs text-slate-400">Transcript Request • ${r.purpose || "Official Record"} • ${r.date} • ${r.status}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    ${r.status === "Payment Required" || (r.paymentStatus && r.paymentStatus !== "paid")
-                        ? `<span class="text-xs text-amber-700 font-bold">Awaiting verified GCash payment</span>`
-                        : r.status === "For Correction"
+                    ${r.status === "For Correction"
                         ? `<span class="text-xs text-amber-700 font-bold">Waiting for alumni correction</span>`
                         : `<button onclick="updateRequestStatus(${r.id}, 'Approved')" class="btn btn-success text-xs py-1.5 px-3">Approve</button>
                            <button onclick="updateRequestStatus(${r.id}, 'For Correction')" class="btn btn-secondary text-xs py-1.5 px-3">Return</button>

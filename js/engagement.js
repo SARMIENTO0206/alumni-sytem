@@ -1159,7 +1159,7 @@
         const messageEl = document.getElementById("qrPageMessage");
         const refEl = document.getElementById("qrPageRef");
         const expiryEl = document.getElementById("qrPageExpiry");
-        if (purposeEl) purposeEl.textContent = payment.purpose || "Document Request";
+        if (purposeEl) purposeEl.textContent = payment.purpose || "Donation";
         if (subtitleEl) subtitleEl.textContent = payment.description || "";
         if (requestEl) requestEl.textContent = payment.requestCode || "—";
         if (amountEl) amountEl.textContent = amount;
@@ -1438,73 +1438,6 @@
         URL.revokeObjectURL(url);
     }
 
-    async function renderPaymentHistory() {
-        const box = document.getElementById("paymentHistoryList");
-        if (!box) return;
-        try {
-            const data = await SAA_API.request("/api/payments");
-            paymentsList = data.payments || [];
-            if (!paymentsList.length) {
-                box.innerHTML = `<p class="text-sm text-slate-400">No payment records yet.</p>`;
-            } else {
-                box.innerHTML = paymentsList.map((p) => {
-                    const paid = p.status === "paid";
-                    const action = paid
-                        ? `<button type="button" onclick="openPaymentReceiptView(${p.id})" class="btn btn-primary text-xs py-1.5">View Receipt</button>`
-                        : `<button type="button" onclick="switchView('payment', { detailId: '${p.id}' })" class="btn btn-secondary text-xs py-1.5">Continue Payment</button>`;
-                    return `<div class="p-4 border border-slate-200 rounded-xl bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <button type="button" class="text-left" onclick="${paid ? `openPaymentReceiptView(${p.id})` : `switchView('payment', { detailId: '${p.id}' })`}">
-                            <p class="font-extrabold text-slate-800">${p.requestCode || ("PAY-" + p.id)}</p>
-                            <p class="text-xs text-slate-500">${p.purpose || p.description || ""}</p>
-                            <p class="text-xs mt-1">₱${Number(p.amount || 0).toFixed(2)} • QR Ph • <span class="font-extrabold uppercase">${p.status}</span></p>
-                            <p class="text-[11px] text-slate-400">${p.paidAt || p.createdAt || ""}</p>
-                        </button>
-                        ${action}
-                    </div>`;
-                }).join("");
-            }
-        } catch (err) {
-            box.innerHTML = `<p class="text-sm text-rose-600">${err.message || "Unable to load payments."}</p>`;
-        }
-        const report = document.getElementById("paymentReportPanel");
-        if (report && typeof isAlumniRole === "function" && !isAlumniRole()) {
-            report.classList.remove("hidden");
-            try {
-                const data = await SAA_API.request("/api/reports/payments");
-                const s = data.summary || {};
-                document.getElementById("paymentReportSummary").innerHTML = [
-                    ["Total", s.total],
-                    ["Paid", s.paid],
-                    ["Pending", s.pending],
-                    ["Failed", s.failed],
-                    ["Cancelled", s.cancelled],
-                    ["Expired", s.expired],
-                    ["Total Paid", `₱${s.totalPaidAmount || "0.00"}`]
-                ].map(([l, v]) => `<div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] uppercase text-slate-400 font-bold">${l}</p><p class="text-lg font-extrabold">${v ?? 0}</p></div>`).join("");
-                document.getElementById("paymentReportTable").innerHTML = (data.payments || []).map((p) => `
-                    <tr>
-                        <td><button type="button" class="text-[#801235] font-bold" onclick="${p.status === "paid" ? `openPaymentReceiptView(${p.id})` : `switchView('payment', { detailId: '${p.id}' })`}">${p.requestCode || p.id}</button></td>
-                        <td>₱${Number(p.amount || 0).toFixed(2)}</td>
-                        <td>${p.method || "qrph"}</td>
-                        <td class="uppercase font-bold">${p.status}</td>
-                        <td class="font-mono text-xs">${p.referenceId || "—"}</td>
-                        <td>${p.paidAt || p.createdAt || ""}</td>
-                    </tr>
-                `).join("") || `<tr><td colspan="6" class="text-center text-slate-400">No payments yet.</td></tr>`;
-            } catch (err) {
-                document.getElementById("paymentReportSummary").innerHTML = `<p class="text-xs text-slate-400">${err.message || ""}</p>`;
-            }
-        } else if (report) {
-            report.classList.add("hidden");
-        }
-    }
-
-    function closePaymentReturnView() {
-        if (paymentReturnTimer) { clearInterval(paymentReturnTimer); paymentReturnTimer = null; }
-        if (qrCountdownTimer) { clearInterval(qrCountdownTimer); qrCountdownTimer = null; }
-        switchView("payment-history");
-    }
-
     function closePaymentReceiptModal() {
         const modal = document.getElementById("paymentReceiptModal");
         if (modal) modal.classList.remove("active");
@@ -1512,12 +1445,6 @@
 
     function printPaymentConfirmation() {
         printServerReceipt();
-    }
-
-    function payDocumentRequest(relatedType, relatedId) {
-        startQrPayment({ relatedType, relatedId }).catch((err) => {
-            showToast(err.message || "Unable to start QR payment.", "error");
-        });
     }
 
     /* Resume & Document Upload Engine */

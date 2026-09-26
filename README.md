@@ -74,6 +74,8 @@ automated communication flows and AI features:
 | **Registrar** | Alumni verification, document-request review and processing, release/claiming, request history, registrar reports |
 | **Alumni** | Own profile, digital ID, transcript/certificate requests, job board, events, reunions, newsletter, surveys |
 
+Document requests are free and no longer use online checkout. The Payments history page is removed for all roles. Alumni donation checkout remains available in Donation Campaigns.
+
 ## 🛠️ Troubleshooting
 
 | Symptom | Cause / fix |

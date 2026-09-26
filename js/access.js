@@ -692,8 +692,8 @@ function renderRequestStatusView() {
     const box = document.getElementById("requestStatusList");
     if (!box) return;
     const rows = []
-        .concat((transcriptRequests || []).map((r) => ({ kind: "Transcript", type: "transcript", id: r.id, name: r.name, status: r.paymentStatus === "paid" ? `${r.status} / PAID` : r.status, date: r.date, extra: r.purpose, paymentStatus: r.paymentStatus })))
-        .concat((reprintRequests || []).map((r) => ({ kind: "Certificate Reprint", type: "reprint", id: r.id, name: r.name, status: r.paymentStatus === "paid" ? `${r.status} / PAID` : r.status, date: "", extra: r.type, paymentStatus: r.paymentStatus })));
+        .concat((transcriptRequests || []).map((r) => ({ kind: "Transcript", id: r.id, name: r.name, status: r.status, date: r.date, extra: r.purpose })))
+        .concat((reprintRequests || []).map((r) => ({ kind: "Certificate Reprint", id: r.id, name: r.name, status: r.status, date: "", extra: r.type })));
     if (!rows.length) {
         box.innerHTML = `<tr><td colspan="5" class="text-center text-slate-400">You have no document requests yet.</td></tr>`;
         return;
@@ -704,25 +704,9 @@ function renderRequestStatusView() {
             <td>${escapeHtml(r.extra || "—")}</td>
             <td>${escapeHtml(r.date || "—")}</td>
             <td><span class="status-badge">${escapeHtml(r.status)}</span></td>
-            <td>${escapeHtml(r.name)} ${r.paymentStatus === "paid"
-                ? `<button type="button" class="text-[10px] text-[#801235] font-bold" onclick="openRelatedReceipt('${r.type}', ${r.id})">View Receipt</button>`
-                : `<button type="button" class="text-[10px] text-[#801235] font-bold" onclick="payDocumentRequest('${r.type}', ${r.id})">Pay QR</button>`}</td>
+            <td>${escapeHtml(r.name)}</td>
         </tr>
     `).join("");
-}
-
-async function openRelatedReceipt(relatedType, relatedId) {
-    try {
-        const data = await SAA_API.request("/api/payments");
-        const match = (data.payments || []).find((p) => String(p.relatedType) === String(relatedType) && String(p.relatedId) === String(relatedId) && p.status === "paid");
-        if (match) {
-            switchView("payment-receipt", { detailId: String(match.id) });
-            return;
-        }
-        switchView("payment-history");
-    } catch (err) {
-        showToast(err.message || "Unable to open the receipt.", "error");
-    }
 }
 
 async function loadApplicationsView() {

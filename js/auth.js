@@ -387,29 +387,26 @@
             "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
             "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback", "reports",
             "verification", "academic-records", "request-history", "registrar-reports", "users", "settings",
-            "announcements", "notifications", "sms", "gmail", "ai-chat", "applications", "unauthorized",
-            "payment-return", "payment", "payment-history", "payment-receipt"
+            "announcements", "notifications", "sms", "gmail", "ai-chat", "applications", "unauthorized"
         ],
         staff: [
             "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
             "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback",
             "verification", "academic-records", "request-approval", "document-processing",
             "release-claiming", "request-history", "registrar-reports", "settings",
-            "announcements", "notifications", "sms", "gmail", "ai-chat", "applications", "unauthorized",
-            "payment-return", "payment", "payment-history", "payment-receipt"
+            "announcements", "notifications", "sms", "gmail", "ai-chat", "applications", "unauthorized"
         ],
         registrar: [
             "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
             "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback",
             "verification", "academic-records", "request-approval", "document-processing",
             "release-claiming", "request-history", "registrar-reports", "settings",
-            "announcements", "notifications", "sms", "gmail", "ai-chat", "applications", "unauthorized",
-            "payment-return", "payment", "payment-history", "payment-receipt"
+            "announcements", "notifications", "sms", "gmail", "ai-chat", "applications", "unauthorized"
         ],
         alumni: [
             "dashboard", "idcard", "profile", "job-opportunities", "transcript",
             "reprint", "tracking", "events", "reunions", "donor", "newsletter", "feedback",
             "request-status", "announcements", "notifications", "settings", "ai-chat",
-            "applications", "unauthorized", "payment-return", "payment", "payment-history", "payment-receipt"
+            "applications", "unauthorized", "payment", "payment-receipt"
         ]
     };

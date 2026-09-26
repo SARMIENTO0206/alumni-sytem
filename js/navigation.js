@@ -12,7 +12,7 @@
         "reports", "verification", "request-approval", "document-processing", "release-claiming",
         "request-history", "registrar-reports", "academic-records", "users", "settings",
         "announcements", "notifications", "sms", "gmail", "ai-chat", "request-status",
-        "applications", "unauthorized", "payment-return", "payment", "payment-history", "payment-receipt"
+        "applications", "unauthorized", "payment", "payment-receipt"
     ];
 
     const VIEW_TO_HASH = {
@@ -48,9 +48,7 @@
         "request-status": "/request-status",
         applications: "/applications",
         unauthorized: "/unauthorized",
-        "payment-return": "/payment-return",
         payment: "/payment",
-        "payment-history": "/payments",
         "payment-receipt": "/payment-receipt"
     };
 
@@ -101,8 +99,8 @@
         unauthorized: "unauthorized",
         "payment-return": "payment",
         payment: "payment",
-        payments: "payment-history",
-        "payment-history": "payment-history",
+        payments: "unauthorized",
+        "payment-history": "unauthorized",
         "payment-receipt": "payment-receipt"
     };
 
@@ -279,8 +277,7 @@
         if (viewId === "applications" && typeof loadApplicationsView === "function") loadApplicationsView();
         if (viewId === "ai-chat" && typeof loadAiChatView === "function") loadAiChatView();
         if (viewId === "unauthorized" && typeof renderUnauthorizedView === "function") renderUnauthorizedView();
-        if ((viewId === "payment" || viewId === "payment-return") && typeof renderPaymentQrPage === "function") renderPaymentQrPage();
-        if (viewId === "payment-history" && typeof renderPaymentHistory === "function") renderPaymentHistory();
+        if (viewId === "payment" && typeof renderPaymentQrPage === "function") renderPaymentQrPage();
         if (viewId === "payment-receipt" && typeof renderPaymentReceiptPage === "function") renderPaymentReceiptPage();
         if (viewId === "profile" && typeof applyRoleChrome === "function") applyRoleChrome();
     }
@@ -439,9 +436,7 @@
             "request-status": "Request Status",
             applications: "Applications / Referrals",
             unauthorized: "Access Denied",
-            "payment-return": "Payment",
-            payment: "Payment",
-            "payment-history": "Payment History",
+            payment: "Donation Checkout",
             "payment-receipt": "Payment Receipt"
         };
         return titles[id] || "Alumni Portal";

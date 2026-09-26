@@ -16,7 +16,6 @@
     let announcementsList = [];
     let notificationsList = [];
     let applicationsList = [];
-    let paymentsList = [];
     let lastVerifiedPayment = null;
 
     let currentUser = null;

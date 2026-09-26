@@ -66,7 +66,7 @@
     async function refreshAllData() {
         if (!(await apiHealth())) return false;
         try {
-            const [alumni, transcripts, reprints, placements, events, reunions, donations, newsletters, jobs, announcements, notifications, payments] = await Promise.all([
+            const [alumni, transcripts, reprints, placements, events, reunions, donations, newsletters, jobs, announcements, notifications] = await Promise.all([
                 apiRequest("/api/alumni"),
                 apiRequest("/api/transcripts"),
                 apiRequest("/api/reprints"),
@@ -77,8 +77,7 @@
                 apiRequest("/api/newsletters"),
                 apiRequest("/api/jobs").catch(() => ({ jobs: [] })),
                 apiRequest("/api/announcements").catch(() => ({ announcements: [] })),
-                apiRequest("/api/notifications").catch(() => ({ notifications: [] })),
-                apiRequest("/api/payments").catch(() => ({ payments: [] }))
+                apiRequest("/api/notifications").catch(() => ({ notifications: [] }))
             ]);
             alumniList = alumni.alumni || [];
             transcriptRequests = transcripts.requests || [];
@@ -94,7 +93,6 @@
             newslettersList = newsletters.newsletters || [];
             jobsList = jobs.jobs || [];
             announcementsList = announcements.announcements || [];
-            paymentsList = payments.payments || [];
             notificationsList = (notifications.notifications || []).map((n) => ({
                 id: n.id,
                 channel: n.channel,

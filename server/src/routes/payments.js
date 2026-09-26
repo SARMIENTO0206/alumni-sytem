@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { db, findAlumniForUser, writeAudit, writeRequestHistory, getSetting } from '../db.js';
-import { dispatchNotification, dispatchStaffAudience } from '../notify.js';
-import { isAdmin, isAlumni, isStaff, ownsLinkedRow } from '../auth.js';
+import { db, findAlumniForUser, writeAudit, getSetting } from '../db.js';
+import { dispatchNotification } from '../notify.js';
+import { isAlumni, requireRole } from '../auth.js';
 import {
   createQrPhPayment,
-  documentFeeCentavos,
   localStatusFromIntent,
   paymongoConfig,
   pesosFromCentavos,
@@ -96,45 +95,15 @@ function hydratePayment(row, includeQr = false) {
 
 function canViewPayment(user, row) {
   if (!row) return false;
-  if (isAdmin(user) || isStaff(user)) return true;
-  return Number(row.user_id) === Number(user.id);
+  return isAlumni(user) &&
+    row.related_type === 'donation' &&
+    Number(row.user_id) === Number(user.id);
 }
 
 function applyPaidToRelated(payment) {
   const now = new Date().toISOString();
   const ref = payment.gateway_payment_id || payment.reference_id || payment.gateway_intent_id;
-  if (payment.related_type === 'transcript') {
-    db.prepare(
-      "UPDATE transcript_requests SET payment_status = 'paid', payment_ref = ?, status = CASE WHEN status IN ('Payment Required','Pending') THEN 'Pending' ELSE status END WHERE id = ?"
-    ).run(ref, payment.related_id);
-    writeRequestHistory({ id: 0, role: 'system' }, 'transcript', payment.related_id, 'Paid', `PayMongo ${ref}`);
-    const doc = db.prepare('SELECT * FROM transcript_requests WHERE id = ?').get(payment.related_id);
-    if (doc) {
-      dispatchNotification({
-        userId: doc.user_id,
-        alumniId: doc.alumni_id,
-        recipient: doc.email || doc.name,
-        channel: 'SYSTEM',
-        subject: 'Transcript request is pending Registrar review',
-        message: `Payment for transcript request #${doc.id} was confirmed. The Registrar will now review and validate your request.`,
-        relatedType: 'transcript',
-        relatedId: doc.id,
-        email: doc.email,
-        phone: doc.contact
-      }).catch(() => {});
-      dispatchStaffAudience(
-        `Transcript request #${doc.id} is Pending`,
-        `${doc.name} completed payment. The request is ready for Registrar review.`,
-        'transcript',
-        doc.id
-      ).catch(() => {});
-    }
-  } else if (payment.related_type === 'reprint') {
-    db.prepare(
-      "UPDATE reprints SET payment_status = 'paid', status = CASE WHEN status IN ('Payment Required','Pending') THEN 'Pending' ELSE status END WHERE id = ?"
-    ).run(payment.related_id);
-    writeRequestHistory({ id: 0, role: 'system' }, 'reprint', payment.related_id, 'Paid', `PayMongo ${ref}`);
-  } else if (payment.related_type === 'donation') {
+  if (payment.related_type === 'donation') {
     const exists = db.prepare('SELECT id FROM donations WHERE id = ?').get(payment.related_id);
     if (!exists) {
       let meta = {};
@@ -287,34 +256,7 @@ function resolveChargeable(req) {
   let alumniId = req.user.alumniId || 0;
   let code = '';
 
-  if (relatedType === 'transcript' || relatedType === 'reprint') {
-    const table = relatedType === 'reprint' ? 'reprints' : 'transcript_requests';
-    const record = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(related);
-    if (!record) {
-      const err = new Error('Document request not found.');
-      err.status = 404;
-      throw err;
-    }
-    if (isAlumni(req.user) && !ownsLinkedRow(req.user, record)) {
-      const err = new Error('You can only pay for your own request.');
-      err.status = 403;
-      throw err;
-    }
-    if (record.payment_status === 'paid') {
-      const err = new Error('This request is already paid.');
-      err.status = 400;
-      throw err;
-    }
-    if (!['Approved', 'Payment Required'].includes(record.status)) {
-      const err = new Error('Payment becomes available after the Registrar approves the request.');
-      err.status = 400;
-      throw err;
-    }
-    amount = record.fee_centavos || documentFeeCentavos(record.delivery);
-    description = `${relatedType === 'reprint' ? 'Certificate reprint' : 'Transcript request'} #${record.id}`;
-    alumniId = record.alumni_id || alumniId;
-    code = requestCode(relatedType, record.id);
-  } else if (relatedType === 'donation') {
+  if (relatedType === 'donation') {
     if (!isAlumni(req.user)) {
       const err = new Error('Only alumni accounts can contribute through the donation portal.');
       err.status = 403;
@@ -445,7 +387,7 @@ function receiptPdf(payment) {
   return Buffer.from(pdf);
 }
 
-router.get('/config', (req, res) => {
+router.get('/config', requireRole('alumni'), (req, res) => {
   const cfg = paymongoConfig();
   res.json({
     configured: cfg.configured,
@@ -455,28 +397,16 @@ router.get('/config', (req, res) => {
   });
 });
 
-router.get('/quote', (req, res) => {
+router.get('/quote', requireRole('alumni'), (req, res) => {
   const relatedType = String(req.query.relatedType || '');
   if (relatedType === 'donation') {
     return res.json({ currency: 'PHP', method: 'qrph', note: 'Donation amount is entered by the donor and validated at checkout.' });
   }
-  const amount = documentFeeCentavos(req.query.delivery);
-  res.json({
-    amountCentavos: amount,
-    amount: pesosFromCentavos(amount),
-    currency: 'PHP',
-    method: 'qrph',
-    relatedType: relatedType || 'transcript'
-  });
+  return res.status(400).json({ error: 'Document requests do not require online payment.' });
 });
 
 router.get('/', (req, res) => {
-  let rows = db.prepare('SELECT * FROM payments ORDER BY id DESC LIMIT 200').all();
-  if (isAlumni(req.user)) rows = rows.filter((r) => Number(r.user_id) === Number(req.user.id));
-  else if (!isAdmin(req.user) && !isStaff(req.user)) {
-    return res.status(403).json({ error: 'You do not have permission to view payments.' });
-  }
-  res.json({ payments: rows.map((r) => hydratePayment(r, false)) });
+  res.status(403).json({ error: 'Payment history is no longer available. Donation records are shown under Campaigns.' });
 });
 
 router.get('/:id/status', async (req, res) => {
@@ -605,7 +535,7 @@ router.post('/:id/sync', async (req, res) => {
   }
 });
 
-router.post('/checkout', async (req, res) => {
+router.post('/checkout', requireRole('alumni'), async (req, res) => {
   let charge;
   try {
     charge = resolveChargeable(req);

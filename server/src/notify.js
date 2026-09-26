@@ -27,8 +27,8 @@ export function notificationTarget(relatedType, relatedId, extras = {}) {
     return { view: 'feedback', url: id ? `/#/surveys/${id}` : '/#/surveys' };
   }
   if (type === 'payment') {
-    if (extras.paid) return { view: 'payment-receipt', url: id ? `/#/payment-receipt/${id}` : '/#/payments' };
-    return { view: 'payment', url: id ? `/#/payment/${id}` : '/#/payments' };
+    if (extras.paid) return { view: 'payment-receipt', url: id ? `/#/payment-receipt/${id}` : '/#/donor-campaigns' };
+    return { view: 'payment', url: id ? `/#/payment/${id}` : '/#/donor-campaigns' };
   }
   if (type === 'application') {
     return { view: 'applications', url: '/#/applications' };

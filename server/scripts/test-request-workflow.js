@@ -36,7 +36,8 @@ const created = await req(alumni.token, 'POST', '/api/transcripts', {
   delivery: 'Pick-up at Registrar Window'
 });
 assert(created.status === 201, `create failed ${created.status} ${created.data?.error}`);
-assert(created.data.request.status === 'Payment Required', 'new request must start Payment Required while a fee is due');
+assert(created.data.request.status === 'Pending', 'new document request must start Pending without requiring payment');
+assert(!('fee' in created.data.request) && !('paymentStatus' in created.data.request), 'document requests must not expose payment fees or status');
 const id = created.data.request.id;
 
 const alumniApprove = await req(alumni.token, 'PUT', `/api/transcripts/${id}/status`, { status: 'Approved' });
@@ -44,12 +45,6 @@ assert(alumniApprove.status === 403, `alumni must not approve, got ${alumniAppro
 
 const alumniDelete = await req(alumni.token, 'DELETE', `/api/transcripts/${id}`);
 assert(alumniDelete.status === 403, `alumni must not delete, got ${alumniDelete.status}`);
-
-const staffUnpaid = await req(staff.token, 'PUT', `/api/transcripts/${id}/status`, { status: 'Approved' });
-assert(staffUnpaid.status === 400, `registrar must not approve unpaid request, got ${staffUnpaid.status}`);
-
-const { db } = await import('../src/db.js');
-db.prepare("UPDATE transcript_requests SET payment_status = 'paid', status = 'Pending' WHERE id = ?").run(id);
 
 const staffRejectNoReason = await req(staff.token, 'PUT', `/api/transcripts/${id}/status`, { status: 'Rejected' });
 assert(staffRejectNoReason.status === 400, 'rejection without reason must fail');

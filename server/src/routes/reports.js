@@ -171,45 +171,4 @@ router.get('/tracer-study/download', adminOnly, (req, res) => {
   res.send(csv);
 });
 
-/** GET /api/reports/payments - staff/admin payment summary. */
-router.get('/payments', staffOrAdmin, (req, res) => {
-  const q = req.query || {};
-  let rows = db.prepare('SELECT * FROM payments ORDER BY id DESC').all();
-  if (q.status) rows = rows.filter((r) => r.status === q.status);
-  if (q.method) rows = rows.filter((r) => String(r.payment_method || '') === String(q.method));
-  if (q.relatedType) rows = rows.filter((r) => r.related_type === q.relatedType);
-  if (q.reference) {
-    const needle = String(q.reference).toLowerCase();
-    rows = rows.filter((r) => String(r.reference_id || r.gateway_payment_id || r.request_code || '').toLowerCase().includes(needle));
-  }
-  if (q.from) rows = rows.filter((r) => String(r.created_at || '') >= String(q.from));
-  if (q.to) rows = rows.filter((r) => String(r.created_at || '').slice(0, 10) <= String(q.to));
-  const sum = (status) => rows.filter((r) => r.status === status).length;
-  const paidAmount = rows.filter((r) => r.status === 'paid').reduce((n, r) => n + Number(r.amount_centavos || 0), 0);
-  res.json({
-    summary: {
-      total: rows.length,
-      paid: sum('paid'),
-      pending: sum('pending') + sum('awaiting_payment') + sum('processing'),
-      failed: sum('failed'),
-      cancelled: sum('cancelled'),
-      expired: sum('expired'),
-      totalPaidAmount: (paidAmount / 100).toFixed(2)
-    },
-    payments: rows.slice(0, 200).map((r) => ({
-      id: r.id,
-      requestCode: r.request_code,
-      relatedType: r.related_type,
-      relatedId: r.related_id,
-      amount: (Number(r.amount_centavos || 0) / 100).toFixed(2),
-      status: r.status,
-      method: r.payment_method,
-      referenceId: r.reference_id || r.gateway_payment_id,
-      paidAt: r.paid_at,
-      createdAt: r.created_at,
-      userId: r.user_id
-    }))
-  });
-});
-
 export default router;

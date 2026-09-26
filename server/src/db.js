@@ -335,6 +335,16 @@ export function initDb() {
   ensureColumn('reprints', 'released_at', "released_at TEXT DEFAULT ''");
   ensureColumn('reprints', 'cancelled_at', "cancelled_at TEXT DEFAULT ''");
   ensureColumn('reprints', 'correction_notes', "correction_notes TEXT DEFAULT ''");
+  db.exec(`
+    UPDATE transcript_requests
+    SET status = CASE WHEN status = 'Payment Required' THEN 'Pending' ELSE status END,
+        fee_centavos = 0,
+        payment_status = '';
+    UPDATE reprints
+    SET status = CASE WHEN status = 'Payment Required' THEN 'Pending' ELSE status END,
+        fee_centavos = 0,
+        payment_status = '';
+  `);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS request_history (
@@ -670,7 +680,7 @@ function targetUrlFor(relatedType, relatedId, paid) {
   if (type === 'job') return id ? `/#/jobs/${id}` : '/#/jobs';
   if (type === 'announcement') return id ? `/#/announcements/${id}` : '/#/announcements';
   if (type === 'survey' || type === 'feedback') return id ? `/#/surveys/${id}` : '/#/surveys';
-  if (type === 'payment') return paid ? (id ? `/#/payment-receipt/${id}` : '/#/payments') : (id ? `/#/payment/${id}` : '/#/payments');
+  if (type === 'payment') return paid ? (id ? `/#/payment-receipt/${id}` : '/#/donor-campaigns') : (id ? `/#/payment/${id}` : '/#/donor-campaigns');
   if (type === 'application') return '/#/applications';
   if (type === 'system') return '/#/settings';
   return '/#/notifications';

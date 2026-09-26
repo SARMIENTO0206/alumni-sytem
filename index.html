@@ -483,7 +483,6 @@
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('transcript')" id="nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Document Requests Overview</span></button>
                         <button type="button" onclick="switchView('reprint')" id="nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprint Overview</span></button>
-                        <button type="button" onclick="switchView('payment-history')" id="nav-payment-history" class="sidebar-link"><i class="fa-solid fa-qrcode"></i><span>Payments</span></button>
                     </div>
                 </div>
                 <button type="button" onclick="switchView('tracking')" id="nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
@@ -536,7 +535,6 @@
                         <button type="button" onclick="switchView('transcript')" id="alumni-nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-lines"></i><span>Transcript Requests</span></button>
                         <button type="button" onclick="switchView('reprint')" id="alumni-nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
                         <button type="button" onclick="switchView('request-status')" id="alumni-nav-request-status" class="sidebar-link"><i class="fa-solid fa-clipboard-list"></i><span>Request Status</span></button>
-                        <button type="button" onclick="switchView('payment-history')" id="alumni-nav-payment-history" class="sidebar-link"><i class="fa-solid fa-qrcode"></i><span>Payments & Receipts</span></button>
                     </div>
                 </div>
                 <div class="sidebar-group">
@@ -595,7 +593,6 @@
                         <button type="button" onclick="switchView('reprint')" id="registrar-nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
                         <button type="button" onclick="switchView('request-approval')" id="registrar-nav-request-approval" class="sidebar-link"><i class="fa-solid fa-check-double"></i><span>Approval Queue</span></button>
                         <button type="button" onclick="switchView('release-claiming')" id="registrar-nav-release-claiming" class="sidebar-link"><i class="fa-solid fa-box-open"></i><span>Release & Claiming</span></button>
-                        <button type="button" onclick="switchView('payment-history')" id="staff-nav-payment-history" class="sidebar-link"><i class="fa-solid fa-qrcode"></i><span>Payments</span></button>
                     </div>
                 </div>
                 <button type="button" onclick="switchView('tracking')" id="staff-nav-tracking" class="sidebar-link"><i class="fa-solid fa-chart-pie"></i><span>Graduate Tracking</span></button>
@@ -2662,11 +2659,11 @@
 
                 <div id="view-payment" class="hidden space-y-6 fade-in">
                     <div class="app-card p-6 sm:p-8 max-w-xl mx-auto">
-                        <p class="text-[11px] font-extrabold tracking-[0.2em] text-[#801235] text-center">PAYMENT REQUIRED</p>
-                        <h3 class="text-xl font-extrabold text-slate-800 text-center mt-1" id="qrPagePurpose">Document Request</h3>
-                        <p class="text-xs text-slate-500 text-center" id="qrPageSubtitle">Transcript Request</p>
+                        <p class="text-[11px] font-extrabold tracking-[0.2em] text-[#801235] text-center">DONATION CHECKOUT</p>
+                        <h3 class="text-xl font-extrabold text-slate-800 text-center mt-1" id="qrPagePurpose">Donation</h3>
+                        <p class="text-xs text-slate-500 text-center" id="qrPageSubtitle">Donation contribution</p>
                         <div class="mt-5 p-4 rounded-xl bg-[#f8f4ee] border border-amber-900/10 text-sm space-y-2">
-                            <div class="flex justify-between"><span class="text-slate-500">Document Request</span><span class="font-extrabold" id="qrPageRequestId">—</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Contribution</span><span class="font-extrabold" id="qrPageRequestId">—</span></div>
                             <div class="flex justify-between"><span class="text-slate-500">Amount Due</span><span class="font-extrabold text-[#801235]" id="qrPageAmount">₱0.00</span></div>
                             <div class="flex justify-between"><span class="text-slate-500">Supported payment method</span><span class="font-bold" id="qrPageMethod">QR Ph</span></div>
                         </div>
@@ -2692,28 +2689,6 @@
                     </div>
                 </div>
 
-                <div id="view-payment-history" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 class="text-lg font-extrabold text-slate-800">Payment History</h3>
-                                <p class="text-xs text-slate-400">Records come from verified PayMongo transactions.</p>
-                            </div>
-                        </div>
-                        <div id="paymentHistoryList" class="space-y-3"></div>
-                    </div>
-                    <div id="paymentReportPanel" class="app-card p-6 hidden">
-                        <h3 class="text-lg font-extrabold text-slate-800 mb-3">Payment Reports</h3>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="paymentReportSummary"></div>
-                        <div class="data-table-container mt-4">
-                            <table class="modern-table">
-                                <thead><tr><th>Request</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th>Date</th></tr></thead>
-                                <tbody id="paymentReportTable"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
                 <div id="view-payment-receipt" class="hidden space-y-6 fade-in">
                     <div class="app-card p-6 sm:p-8 max-w-xl mx-auto" id="paymentReceiptSheet">
                         <p class="text-[11px] font-extrabold tracking-[0.2em] text-slate-400 text-center">ALUMNI MANAGEMENT SYSTEM</p>
@@ -2724,12 +2699,10 @@
                         <div class="flex flex-col sm:flex-row gap-2 mt-6">
                             <button type="button" onclick="printServerReceipt()" class="btn btn-secondary text-xs py-2" id="receiptPrintOfficialBtn" disabled>Print Receipt</button>
                             <button type="button" onclick="downloadServerReceipt()" class="btn btn-secondary text-xs py-2" id="receiptDownloadBtn" disabled>Download PDF</button>
-                            <button type="button" onclick="switchView('payment-history')" class="btn btn-primary text-xs py-2">Back to Payment History</button>
+                            <button type="button" onclick="switchView('donor')" class="btn btn-primary text-xs py-2">Back to Donation Campaigns</button>
                         </div>
                     </div>
                 </div>
-
-                <div id="view-payment-return" class="hidden space-y-6 fade-in"></div>
 
                 <div id="view-unauthorized" class="hidden space-y-6 fade-in">
                     <div class="app-card p-8 max-w-xl mx-auto text-center">
@@ -3188,9 +3161,9 @@
                     </div>
                     <div id="docDeliveryField">
                         <label class="form-label" for="docDelivery">Claiming Method</label>
-                        <select id="docDelivery" class="form-select text-xs" onchange="updateDocumentFeePreview()">
+                        <select id="docDelivery" class="form-select text-xs">
                             <option>Pick-up at Registrar Window</option>
-                            <option>Courier Delivery (+₱150)</option>
+                            <option>Courier Delivery</option>
                             <option>Digital Copy (PDF via Email)</option>
                         </select>
                     </div>
@@ -3216,14 +3189,6 @@
                     <label class="form-label" for="docAttachments">Supporting documents (optional)</label>
                     <input type="file" id="docAttachments" accept=".pdf,.png,.jpg,.jpeg" multiple class="form-input text-xs">
                     <p class="text-[10px] text-slate-400 mt-1">PDF, JPG, or PNG. Maximum 3 files, 1 MB each. The Registrar reviews these with your request.</p>
-                </div>
-
-                <div class="p-3 rounded-xl bg-[#f8f4ee] border border-amber-900/10 flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Amount due</p>
-                        <p class="text-[11px] text-slate-500">The Registrar reviews your request first. If a fee applies, payment becomes available after approval.</p>
-                    </div>
-                    <p class="text-lg font-extrabold text-[#801235]" id="docFeePreview">₱150.00</p>
                 </div>
 
                 <div>

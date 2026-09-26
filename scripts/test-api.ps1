@@ -1,5 +1,6 @@
 # API smoke test: starts the server, exercises the key endpoints, then stops it.
 $ErrorActionPreference = 'Continue'
+$ProgressPreference = 'SilentlyContinue'   # hide Invoke-WebRequest progress noise
 $root = Split-Path -Parent $PSScriptRoot
 
 $job = Start-Job -ScriptBlock {
@@ -21,6 +22,10 @@ try {
     ShowResponse 'POST /api/auth/login (bcrypt, admin)' @{ tokenPresent = [bool]$login.token }
     $token = $login.token
     $headers = @{ Authorization = "Bearer $token" }
+    $alumniLogin = Invoke-RestMethod 'http://localhost:3000/api/auth/login' -Method Post -ContentType 'application/json' -Body '{"username":"alumni","password":"alumni123"}'
+    $alumniHeaders = @{ Authorization = "Bearer $($alumniLogin.token)" }
+    $registrarLogin = Invoke-RestMethod 'http://localhost:3000/api/auth/login' -Method Post -ContentType 'application/json' -Body '{"username":"registrar","password":"registrar123"}'
+    $registrarHeaders = @{ Authorization = "Bearer $($registrarLogin.token)" }
 
     ShowResponse 'GET /api/auth/me' (Invoke-RestMethod 'http://localhost:3000/api/auth/me' -Headers $headers)
 
@@ -57,17 +62,24 @@ try {
         total = (Invoke-RestMethod 'http://localhost:3000/api/notifications' -Headers $headers).notifications.Count
     }
 
-    ShowResponse 'POST /api/events/1/rsvp' (
-        Invoke-RestMethod 'http://localhost:3000/api/events/1/rsvp' -Method Post -Headers $headers
+    # Events start empty (no demo seed), so create one and RSVP against its real id.
+    $event = Invoke-RestMethod 'http://localhost:3000/api/events' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"title":"API Test Event","date":"2026-01-10","location":"SAA Gym"}'
+    $eventId = $event.event.id
+    ShowResponse "POST /api/events/$eventId/rsvp" (
+        Invoke-RestMethod "http://localhost:3000/api/events/$eventId/rsvp" -Method Post -Headers $headers
     )
 
     ShowResponse 'GET /api/transcripts (list count)' @{
         total = (Invoke-RestMethod 'http://localhost:3000/api/transcripts' -Headers $headers).requests.Count
     }
 
-    ShowResponse 'PUT /api/transcripts/1/status' (
-        Invoke-RestMethod 'http://localhost:3000/api/transcripts/1/status' -Method Put -Headers $headers -ContentType 'application/json' -Body '{"status":"Approved"}'
-    )
+    # Document requests are free: alumni submit and Registrar staff review them.
+    $transcript = Invoke-RestMethod 'http://localhost:3000/api/transcripts' -Method Post -Headers $alumniHeaders -ContentType 'application/json' -Body '{"purpose":"Employment","type":"Transcript of Records","delivery":"Pick-up at Registrar Window"}'
+    $transcriptId = $transcript.request.id
+    ShowResponse 'POST /api/transcripts (create)' @{ id = $transcriptId; status = $transcript.request.status }
+
+    $approved = Invoke-RestMethod "http://localhost:3000/api/transcripts/$transcriptId/status" -Method Put -Headers $registrarHeaders -ContentType 'application/json' -Body '{"status":"Approved"}'
+    ShowResponse 'PUT /api/transcripts/:id/status (Registrar review)' @{ id = $approved.request.id; status = $approved.request.status }
 
     ShowResponse 'GET /api/reprints (list count)' @{
         total = (Invoke-RestMethod 'http://localhost:3000/api/reprints' -Headers $headers).reprints.Count
@@ -111,13 +123,17 @@ try {
         Invoke-RestMethod 'http://localhost:3000/api/events' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"title":"API Test Event","date":"2026-01-10","location":"SAA Gym"}'
     )
 
-    ShowResponse 'POST /api/reprints' (
-        Invoke-RestMethod 'http://localhost:3000/api/reprints' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"Test Graduate","type":"Diploma Copy"}'
-    )
+    $reprint = Invoke-RestMethod 'http://localhost:3000/api/reprints' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"Test Graduate","type":"Diploma Copy"}'
+    $reprintId = $reprint.reprint.id
+    ShowResponse 'POST /api/reprints' @{ id = $reprintId; status = $reprint.reprint.status }
 
-    ShowResponse 'PUT /api/reprints/1/status' (
-        Invoke-RestMethod 'http://localhost:3000/api/reprints/1/status' -Method Put -Headers $headers -ContentType 'application/json' -Body '{"status":"Approved"}'
-    )
+    $reprintBlocked = 0
+    try {
+        Invoke-RestMethod "http://localhost:3000/api/reprints/$reprintId/status" -Method Put -Headers $headers -ContentType 'application/json' -Body '{"status":"Approved"}'
+    } catch {
+        if ($_.Exception.Response.StatusCode.value__) { $reprintBlocked = $_.Exception.Response.StatusCode.value__ } else { $reprintBlocked = $_.Exception.Response.StatusCode }
+    }
+    ShowResponse 'PUT /api/reprints/:id/status (unpaid, must be blocked)' @{ statusCode = $reprintBlocked }
 
     ShowResponse 'POST /api/placements (admin)' (
         Invoke-RestMethod 'http://localhost:3000/api/placements' -Method Post -Headers $headers -ContentType 'application/json' -Body '{"alumni":"Test Graduate","company":"ACME Corp","title":"HR Associate"}'

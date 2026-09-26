@@ -251,16 +251,6 @@ export function verifyPaymongoSignature(rawBody, signatureHeader) {
   return timingSafeEqual(a, b);
 }
 
-export const DOCUMENT_BASE_FEE_CENTAVOS = 15000;
-export const COURIER_FEE_CENTAVOS = 15000;
-
-export function documentFeeCentavos(delivery) {
-  const text = String(delivery || '').toLowerCase();
-  let amount = DOCUMENT_BASE_FEE_CENTAVOS;
-  if (text.includes('courier')) amount += COURIER_FEE_CENTAVOS;
-  return amount;
-}
-
 export function pesosFromCentavos(centavos) {
   return (Number(centavos || 0) / 100).toFixed(2);
 }

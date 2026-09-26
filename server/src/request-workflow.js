@@ -1,7 +1,6 @@
 import { isAdmin, isAlumni, isStaff } from './auth.js';
 
 export const DOCUMENT_STATUSES = [
-  'Payment Required',
   'Pending',
   'For Correction',
   'Approved',
@@ -13,7 +12,6 @@ export const DOCUMENT_STATUSES = [
 ];
 
 const PROCESSOR_TRANSITIONS = {
-  'Payment Required': ['Pending', 'Approved', 'Rejected', 'For Correction'],
   Pending: ['Approved', 'Rejected', 'For Correction'],
   'For Correction': ['Pending', 'Rejected'],
   Approved: ['Processing'],
@@ -21,21 +19,11 @@ const PROCESSOR_TRANSITIONS = {
   'Ready for Release': ['Released']
 };
 
-export const ALUMNI_CANCEL_FROM = ['Payment Required', 'Pending', 'For Correction'];
-export const ALUMNI_UPLOAD_FROM = ['Payment Required', 'Pending', 'For Correction'];
+export const ALUMNI_CANCEL_FROM = ['Pending', 'For Correction'];
+export const ALUMNI_UPLOAD_FROM = ['Pending', 'For Correction'];
 
 export function isDocumentProcessor(user) {
   return isStaff(user) || isAdmin(user);
-}
-
-export function paidRequiredFor(status) {
-  return ['Processing', 'Ready for Release', 'Released'].includes(status);
-}
-
-export function requestIsPaid(row) {
-  if (!row) return false;
-  if (!Number(row.fee_centavos || 0)) return true;
-  return String(row.payment_status || '') === 'paid';
 }
 
 export function assertProcessorTransition(fromStatus, toStatus, remarks) {

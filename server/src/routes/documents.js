@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { db, writeAudit, writeRequestHistory, linkAlumniAccount, findAlumniForUser } from '../db.js';
 import { isAlumni, ownsLinkedRow, requireRole } from '../auth.js';
 import { mirror, mirrorUpdate } from '../sync-supabase.js';
-import { documentFeeCentavos, pesosFromCentavos } from '../paymongo.js';
 import { dispatchNotification, dispatchStaffAudience } from '../notify.js';
 import {
   ALUMNI_CANCEL_FROM,
@@ -11,8 +10,6 @@ import {
   assertAlumniCannotProcess,
   assertProcessorTransition,
   mapAttachment,
-  paidRequiredFor,
-  requestIsPaid,
   stampForStatus,
   validateAttachment
 } from '../request-workflow.js';
@@ -27,9 +24,7 @@ const mapTranscript = (r) => ({
   strand: r.user_strand || r.alumni_strand || '',
   studentId: r.user_student_id || r.alumni_student_id || '',
   requestNotes: r.request_notes || '',
-  paymentRef: r.payment_ref, remarks: r.remarks || '', userId: r.user_id || 0, alumniId: r.alumni_id || 0,
-  feeCentavos: r.fee_centavos || 0, fee: pesosFromCentavos(r.fee_centavos || 0),
-  paymentStatus: r.payment_status || '',
+  remarks: r.remarks || '', userId: r.user_id || 0, alumniId: r.alumni_id || 0,
   copies: r.copies || 1,
   claimWindow: r.claim_window || '',
   claimNotes: r.claim_notes || '',
@@ -50,8 +45,6 @@ const mapReprint = (r) => ({
   studentId: r.user_student_id || r.alumni_student_id || '',
   reason: r.reason || '', requestNotes: r.request_notes || '',
   userId: r.user_id || 0, alumniId: r.alumni_id || 0,
-  feeCentavos: r.fee_centavos || 0, fee: pesosFromCentavos(r.fee_centavos || 0),
-  paymentStatus: r.payment_status || '',
   copies: r.copies || 1,
   claimWindow: r.claim_window || '',
   claimNotes: r.claim_notes || '',
@@ -235,11 +228,10 @@ router.post('/transcripts', requireRole('alumni'), (req, res) => {
     return res.status(400).json({ error: 'Additional notes must be 2,000 characters or fewer.' });
   }
 
-  const fee = documentFeeCentavos(delivery);
   const initialStatus = 'Pending';
   const info = db.prepare(
-    `INSERT INTO transcript_requests (name, email, contact, date, purpose, status, type, delivery, payment_ref, user_id, alumni_id, remarks, fee_centavos, payment_status, copies, request_notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, '', ?, ?, ?, ?)`
+    `INSERT INTO transcript_requests (name, email, contact, date, purpose, status, type, delivery, user_id, alumni_id, remarks, copies, request_notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)`
   ).run(
     name,
     email || req.user.email || '',
@@ -251,8 +243,6 @@ router.post('/transcripts', requireRole('alumni'), (req, res) => {
     delivery || 'Pick-up at Registrar Window',
     owner.userId,
     owner.alumniId,
-    fee,
-    fee > 0 ? 'pending' : '',
     copyCount,
     String(requestNotes || '').trim().slice(0, 2000)
   );
@@ -265,16 +255,13 @@ router.post('/transcripts', requireRole('alumni'), (req, res) => {
   }
   writeAudit(req.user, 'create', 'transcript', row.id, name);
   writeRequestHistory(req.user, 'transcript', row.id, 'Submitted', purpose);
-  const payNote = fee > 0
-    ? `Estimated payment of PHP ${pesosFromCentavos(row.fee_centavos)} may be required after Registrar review.`
-    : 'The Registrar will review this request.';
   dispatchNotification({
     userId: owner.userId,
     alumniId: owner.alumniId,
     recipient: email || req.user.email || name,
     channel: 'SYSTEM',
     subject: 'Transcript request received',
-    message: `Transcript request #${row.id} was submitted. Status is ${initialStatus}. ${payNote}`,
+    message: `Transcript request #${row.id} was submitted. Status is ${initialStatus}. The Registrar will review this request.`,
     relatedType: 'transcript',
     relatedId: row.id,
     email: email || req.user.email,
@@ -306,10 +293,6 @@ router.put('/transcripts/:id/status', requireRole('staff'), (req, res) => {
   } catch (err) {
     return res.status(err.status || 400).json({ error: err.message });
   }
-  if (paidRequiredFor(status) && !requestIsPaid(existing)) {
-    return res.status(400).json({ error: 'This request cannot be processed until GCash payment is confirmed by PayMongo.' });
-  }
-
   applyStatusStamp('transcript_requests', id, status, {
     remarks: remarks ?? existing.remarks ?? '',
     correction_notes: status === 'For Correction' ? (remarks || '') : existing.correction_notes,
@@ -452,11 +435,10 @@ router.post('/reprints', requireRole('alumni'), (req, res) => {
     return res.status(400).json({ error: 'Number of copies must be between 1 and 10.' });
   }
   if (requestNotes.length > 2000) return res.status(400).json({ error: 'Additional details must be 2,000 characters or fewer.' });
-  const fee = documentFeeCentavos('');
   const initialStatus = 'Pending';
   const info = db.prepare(
-    "INSERT INTO reprints (name, type, status, user_id, alumni_id, remarks, fee_centavos, payment_status, copies, reason, request_notes) VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?)"
-  ).run(name, type, initialStatus, owner.userId, owner.alumniId, fee, fee > 0 ? 'pending' : '', copyCount, reason, requestNotes);
+    "INSERT INTO reprints (name, type, status, user_id, alumni_id, remarks, copies, reason, request_notes) VALUES (?, ?, ?, ?, ?, '', ?, ?, ?)"
+  ).run(name, type, initialStatus, owner.userId, owner.alumniId, copyCount, reason, requestNotes);
   const row = db.prepare('SELECT * FROM reprints WHERE id = ?').get(info.lastInsertRowid);
   if (req.body?.attachments) {
     try { saveAttachments('reprint', row.id, req.user.id, req.body.attachments); } catch (err) {
@@ -499,9 +481,6 @@ router.put('/reprints/:id/status', requireRole('staff'), (req, res) => {
     assertProcessorTransition(existing.status, status, remarks);
   } catch (err) {
     return res.status(err.status || 400).json({ error: err.message });
-  }
-  if (paidRequiredFor(status) && !requestIsPaid(existing)) {
-    return res.status(400).json({ error: 'This reprint cannot be processed until GCash payment is confirmed by PayMongo.' });
   }
   applyStatusStamp('reprints', id, status, {
     remarks: remarks ?? existing.remarks ?? '',
