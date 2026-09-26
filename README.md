@@ -27,7 +27,7 @@ repo, delete any old `server/data/saa.db`, then run `npm start` in `server/`.
 | `index.html` | The single-page application — home, login, role dashboards, directory, events, QR verification, AI assistant chat |
 | `style.css`  | Design system / brand styling (maroon & gold, school typography) |
 | `logo.jpeg`  | School logo |
-| `js/`        | Front-end logic, split into 8 modules (see below) |
+| `js/`        | Front-end logic, split into 9 modules (see below) |
 | `server/`    | Node.js + Express + SQLite REST API, bcrypt hashing, OpenAI routes |
 | `scripts/`   | Verification scripts: `test-api.ps1`, `test-ai.ps1`, `test-ai-live.ps1` |
 
@@ -40,9 +40,41 @@ repo, delete any old `server/data/saa.db`, then run `npm start` in `server/`.
 | `utils.js`      | Toast notifications, localStorage sync |
 | `auth.js`       | Login/registration (bcrypt via API), roles, session handling |
 | `navigation.js` | View router, counters, digital ID, profile, page navigation |
+| `access.js`     | Role helpers, permissions, role-based dashboards, targeted announcements |
 | `records.js`    | Alumni database, transcripts, reprints, employment records, academic records |
 | `engagement.js` | Events, reunions, donations, resume, notifications engine, newsletter, feedback, AI assistant chat |
 | `reports.js`    | Graduate tracking, outcome charts, Registrar review, AI tool initialization |
+
+## 📊 Role-based dashboards
+
+Each role sees the same visual design (KPI cards → announcements/attention
+panel → role-specific work area) but with different content so the dashboard
+matches what that role actually does:
+
+| Section | Admin | Registrar | Alumni |
+| ------- | ----- | --------- | ------ |
+| KPI 1 | Total Alumni | Pending Requests | My Requests |
+| KPI 2 | Pending Requests | For Processing | Upcoming Events |
+| KPI 3 | Employed Alumni | Completed Requests | Job Opportunities |
+| KPI 4 | Upcoming Events | Records to Verify | Profile Completion |
+| Announcements | ✅ | ✅ | ✅ |
+| Requires Attention / Reminders | System issues & tasks | Processing tasks (clickable) | Personal reminders (profile, graduate status, corrections) |
+| Growth chart | ✅ Alumni Community Growth | ❌ | ❌ |
+| Recent Activities | System-wide | Registrar actions | — (replaced by Quick Services) |
+| Work area | Analytics + system-wide activity feed | Request Queue table | Quick Services (Request Transcript/Certificate, Update Graduate Status, Browse Jobs) |
+
+### Targeted announcements
+
+When Admin or Registrar composes an announcement, they choose a **Target
+Audience**: `All Users`, `Alumni Only`, `Specific Batch`, or `Admin & Registrar`.
+Choosing **Specific Batch** reveals a batch picker populated from real alumni
+batch years. The system then only notifies and displays the announcement to
+the matching audience:
+
+- **Admin** always sees every announcement (oversight view).
+- **Registrar/Staff** sees `All Users` and `Admin & Registrar` announcements.
+- **Alumni** sees `All Users`, `Alumni Only`, and `Specific Batch` announcements
+  that match their own batch year.
 
 ## 🧩 System modules
 
@@ -137,28 +169,57 @@ disk — there is no offline demo mode.
 Passwords are verified server-side with **bcrypt**. Clone
 **https://github.com/SARMIENTO0206/alumni-sytem** (not `SoloLevelings/nicose-sarmiento`).
 
-## Deploy on Render (so every device opens the same site)
+## Deploy (Railway — currently used for the live site)
 
-This app is Node.js + SQLite. Use **Render**, not PHP cPanel. One web service
-serves both the website and `/api`.
+This app is Node.js + SQLite. The production copy is deployed on
+**[Railway](https://railway.app)**, which auto-redeploys on every push to
+`main` on `SARMIENTO0206/alumni-sytem`.
 
-1. Open [https://dashboard.render.com](https://dashboard.render.com) and sign in with GitHub.
-2. **New** → **Blueprint** (or **Web Service**) → connect `SARMIENTO0206/alumni-sytem`.
-3. If asked for commands, leave **Root Directory empty** (do not set it to `server`):
-   - **Build:** `npm install --prefix server`
-   - **Start:** `node server/index.js`
-   - **Node version:** `22`
-4. Set `APP_PUBLIC_URL` to the Render URL after the first deploy
-   (example: `https://saa-alumni.onrender.com`).
-5. Wait until the service is **Live**, then open that `https://….onrender.com` URL
-   on any phone or laptop. Login should show **Live system · 20 Sep 2026 build**.
-6. Custom domain: Render → the service → **Settings** → **Custom Domains** → add
-   `alumni.yourschool.edu.ph` (or similar). At your domain DNS, add a **CNAME**
-   to the Render hostname they show you.
+1. Open the Railway project dashboard and confirm the service is linked to
+   `SARMIENTO0206/alumni-sytem` (branch `main`).
+2. Root directory can stay empty; Railway detects `server/package.json`.
+   - **Start command:** `node server/index.js` (already set in `server/package.json`)
+   - **Node version:** 22+ (uses built-in `node:sqlite`)
+3. Set environment variables in Railway → the service → **Variables**:
+   - `APP_PUBLIC_URL` — the Railway-provided domain (e.g. `https://saa-alumni-production.up.railway.app`)
+   - `OPENAI_API_KEY` (optional) — enables real OpenAI responses instead of the fallback engine
+   - SMTP variables (see **Email / OTP delivery** below) — required for password-reset OTP emails to actually send
+4. Every `git push` to `main` triggers a new Railway deploy automatically —
+   no manual redeploy step is needed.
+5. Check `GET /api/health` on the live URL after a push to confirm the new
+   build is serving (the `build` field changes when the API restarts).
 
-On the free instance, SQLite can reset when the service sleeps or redeploys.
-For a defense demo, keep the Render service awake and avoid frequent redeploys,
-or attach a persistent disk to `server/data`.
+> Render also works if you prefer it (Node.js + SQLite, same `npm install --prefix server`
+> build command and `node server/index.js` start command) — Railway is simply
+> what this project currently runs on.
+
+On a free/sleeping instance, SQLite can reset when the service sleeps or
+redeploys. For persistence, attach a Railway volume to `server/data`.
+
+### 📧 Email / OTP delivery (forgot-password codes)
+
+The **Email** health status (and the Forgot Password OTP flow) shows
+*"SMTP is not configured"* until these variables are set on Railway:
+
+```ini
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=yourgmail@gmail.com
+SMTP_PASS=your16digitapppassword
+SMTP_FROM=yourgmail@gmail.com
+```
+
+For Gmail specifically:
+
+1. Enable **2-Step Verification** on the sending Gmail account.
+2. Generate a **Google App Password** (Google Account → Security → App
+   Passwords) — never put your normal Gmail password here.
+3. Add the variables above in Railway → **Variables**, then redeploy/restart
+   the service so the running backend picks up the new SMTP config.
+4. Check `GET /api/health` — the `mail.configured` field should become `true`.
+5. If OTP emails still fail, check the Railway service logs right after
+   clicking **Send OTP** for errors like `535 Authentication failed` or
+   `Invalid login`, which point to the Gmail credentials rather than the code.
 
 ## 🔌 API
 
