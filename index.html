@@ -1873,7 +1873,7 @@
                      VIEW: ALUMNI NEWSLETTER
                      ================================================= -->
                 <div id="view-newsletter" class="hidden space-y-6 fade-in">
-                    <!-- Admin Composer / Alumni Archive Header -->
+                    <!-- Newsletter drafting, approval, and alumni archive -->
                     <div class="app-card p-6 sm:p-8 max-w-4xl mx-auto">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div class="text-left">
@@ -1882,18 +1882,17 @@
                                         <i class="fa-regular fa-envelope-open"></i>
                                     </div>
                                     <div>
-                                        <h3 class="text-xl font-extrabold text-slate-800">Alumni Newsletter</h3>
+                                        <h3 id="newsletterPageTitle" class="text-xl font-extrabold text-slate-800">Newsletter Management</h3>
                                         <p class="text-xs text-slate-400 font-medium mt-0.5">Quarterly announcements, alumni highlights, and school updates.</p>
                                     </div>
                                 </div>
                             </div>
-                            <span class="status-badge status-approved text-xs"><i class="fa-solid fa-arrow-trend-up"></i> SMS + Email Broadcast System</span>
+                            <span class="status-badge status-approved text-xs"><i class="fa-solid fa-users"></i> Alumni Communications</span>
                         </div>
 
-                        <!-- Admin: Create New Newsletter Composer -->
                         <div id="newsletterComposer" class="hidden">
                             <div class="mb-4 flex items-center justify-between">
-                                <h4 class="font-extrabold text-slate-800 text-sm"><i class="fa-solid fa-pen-nib text-[#801235] mr-1"></i> Compose New Newsletter</h4>
+                                <h4 id="newsletterComposerTitle" class="font-extrabold text-slate-800 text-sm"><i class="fa-solid fa-pen-nib text-[#801235] mr-1"></i> Create Newsletter</h4>
                                 <div class="flex items-center gap-2">
                                     <button type="button" id="aiComposeBtn" onclick="aiComposeNewsletter()" class="btn btn-secondary text-xs px-3 py-1.5" title="Let AI draft a professional announcement for this topic (OpenAI API when configured)">
                                         <i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> AI Compose
@@ -1901,53 +1900,79 @@
                                     <button type="button" onclick="closeNewsletterComposer()" class="text-xs text-slate-400 hover:text-slate-600 font-semibold"><i class="fa-solid fa-xmark mr-1"></i>Cancel</button>
                                 </div>
                             </div>
-                            <form onsubmit="sendNewsletter(event)" class="space-y-4">
+                            <form id="newsletterForm" onsubmit="sendNewsletter(event)" class="space-y-4">
                                 <div>
-                                    <label class="form-label" for="newsletterSubject">Subject Title</label>
-                                    <input type="text" id="newsletterSubject" required placeholder="e.g. Agnesian Chronicles - Q3 2024 Edition" class="form-input text-sm">
+                                    <label class="form-label" for="newsletterTitle">Newsletter Title</label>
+                                    <input type="text" id="newsletterTitle" required maxlength="160" placeholder="e.g. September 2026 Alumni Newsletter" class="form-input text-sm">
                                 </div>
-
+                                <div>
+                                    <label class="form-label" for="newsletterSubject">Email Subject</label>
+                                    <input type="text" id="newsletterSubject" required maxlength="200" placeholder="e.g. School & Alumni Updates" class="form-input text-sm">
+                                </div>
                                 <div>
                                     <label class="form-label" for="newsletterBody">Newsletter Content</label>
-                                    <textarea id="newsletterBody" required rows="6" placeholder="Write your newsletter announcement, upcoming events, and alumni highlights..." class="form-textarea text-sm"></textarea>
+                                    <textarea id="newsletterBody" required maxlength="20000" rows="8" placeholder="Write school updates, alumni highlights, and announcements..." class="form-textarea text-sm"></textarea>
                                 </div>
-
-                                <!-- Announcement Channel Preference -->
                                 <div class="p-3.5 rounded-lg bg-[#f8f4ee] border border-amber-900/10">
                                     <p class="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2">
-                                        <i class="fa-solid fa-paper-plane text-amber-600 mr-1"></i> Auto Announcement Channels
+                                        <i class="fa-solid fa-paper-plane text-amber-600 mr-1"></i> Notify all alumni when published
                                     </p>
                                     <div class="flex flex-wrap gap-3 text-xs">
                                         <label class="flex items-center gap-1.5 cursor-pointer">
-                                            <input type="checkbox" id="sendNewsletterSMS" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
-                                            <span class="text-slate-700 font-semibold"><i class="fa-solid fa-comment-sms text-emerald-500 mr-0.5"></i> SMS Announcement</span>
+                                            <input type="checkbox" id="sendNewsletterInApp" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
+                                            <span class="text-slate-700 font-semibold">In-app notification</span>
                                         </label>
                                         <label class="flex items-center gap-1.5 cursor-pointer">
                                             <input type="checkbox" id="sendNewsletterEmail" checked class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
-                                            <span class="text-slate-700 font-semibold"><i class="fa-regular fa-envelope text-indigo-500 mr-0.5"></i> Email Broadcast</span>
+                                            <span class="text-slate-700 font-semibold">Email</span>
+                                        </label>
+                                        <label class="flex items-center gap-1.5 cursor-pointer">
+                                            <input type="checkbox" id="sendNewsletterSMS" class="h-4 w-4 text-[#801235] rounded border-slate-300 cursor-pointer">
+                                            <span class="text-slate-700 font-semibold">SMS notification</span>
                                         </label>
                                     </div>
+                                    <p class="text-[11px] text-slate-500 mt-2">SMS sends a short notice and portal reminder, not the full newsletter.</p>
                                 </div>
-
-                                <button type="submit" class="btn btn-primary w-full py-2.5 text-xs font-bold">
-                                    <i class="fa-solid fa-bullhorn mr-1"></i> Publish Newsletter & Send Announcements
-                                </button>
+                                <div class="flex flex-col sm:flex-row gap-2">
+                                    <button type="submit" name="action" value="draft" class="btn btn-secondary flex-1 py-2.5 text-xs font-bold">
+                                        <i class="fa-regular fa-floppy-disk mr-1"></i> Save Draft
+                                    </button>
+                                    <button type="submit" name="action" value="submit" class="btn btn-primary flex-1 py-2.5 text-xs font-bold">
+                                        <i class="fa-solid fa-paper-plane mr-1"></i> Submit for Approval
+                                    </button>
+                                </div>
                             </form>
                         </div>
 
-                        <!-- Admin New Button / Alumni Header -->
                         <div id="newsletterListHeader" class="flex items-center justify-between mb-3">
-                            <h4 class="font-extrabold text-slate-800 text-sm">
-                                <i class="fa-solid fa-layer-group text-[#801235] mr-1"></i> Published Editions
+                            <h4 id="newsletterListTitle" class="font-extrabold text-slate-800 text-sm">
+                                <i class="fa-solid fa-layer-group text-[#801235] mr-1"></i> Newsletters
                             </h4>
                             <button id="adminNewsletterBtn" onclick="openNewsletterComposer()" class="btn btn-primary text-xs hidden">
                                 <i class="fa-solid fa-pen-nib mr-1"></i> Create Newsletter
                             </button>
                         </div>
+                        <div id="newsletterStatusTabs" class="flex flex-wrap gap-2 mb-4 hidden" role="tablist" aria-label="Newsletter status">
+                            <button type="button" onclick="setNewsletterFilter('All')" class="btn btn-secondary text-xs" data-newsletter-filter="All">All</button>
+                            <button type="button" onclick="setNewsletterFilter('Draft')" class="btn btn-secondary text-xs" data-newsletter-filter="Draft">Drafts</button>
+                            <button type="button" onclick="setNewsletterFilter('For Approval')" class="btn btn-secondary text-xs" data-newsletter-filter="For Approval">For Approval</button>
+                            <button type="button" onclick="setNewsletterFilter('Published')" class="btn btn-secondary text-xs" data-newsletter-filter="Published">Published</button>
+                        </div>
 
-                        <!-- Published Newsletters List -->
                         <div id="newsletterArchiveList" class="space-y-3">
-                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div id="newsletterReadModal" class="hidden fixed inset-0 z-[100] bg-slate-950/60 p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="newsletterReadTitle">
+                        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6">
+                            <div class="flex items-start justify-between gap-4 mb-4">
+                                <div>
+                                    <span id="newsletterReadDate" class="status-badge status-approved text-[10px]"></span>
+                                    <h3 id="newsletterReadTitle" class="text-xl font-extrabold text-slate-800 mt-2"></h3>
+                                    <p id="newsletterReadSubject" class="text-sm text-slate-500 mt-1"></p>
+                                </div>
+                                <button type="button" onclick="closeNewsletterRead()" class="text-slate-400 hover:text-slate-700" aria-label="Close newsletter"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <div id="newsletterReadBody" class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-y-auto"></div>
                         </div>
                     </div>
                 </div>

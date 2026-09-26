@@ -197,13 +197,42 @@ ALTER TABLE public.donations ADD COLUMN IF NOT EXISTS user_id BIGINT DEFAULT 0;
 ALTER TABLE public.donations ADD COLUMN IF NOT EXISTS alumni_id BIGINT DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.newsletters (
-  id         BIGSERIAL PRIMARY KEY,
-  subject    TEXT DEFAULT '',
-  body       TEXT DEFAULT '',
-  status     TEXT DEFAULT 'Draft',
-  sent_at    TEXT DEFAULT '',
-  created_at TIMESTAMPTZ DEFAULT now()
+  id                BIGSERIAL PRIMARY KEY,
+  title             TEXT DEFAULT '',
+  subject           TEXT DEFAULT '',
+  body              TEXT DEFAULT '',
+  status            TEXT DEFAULT 'Published',
+  sent_at           TEXT DEFAULT '',
+  created_by        BIGINT DEFAULT 0,
+  created_by_name   TEXT DEFAULT '',
+  created_by_role   TEXT DEFAULT '',
+  submitted_at      TEXT DEFAULT '',
+  reviewed_by       TEXT DEFAULT '',
+  review_note       TEXT DEFAULT '',
+  send_in_app       INTEGER DEFAULT 1,
+  send_email        INTEGER DEFAULT 1,
+  send_sms          INTEGER DEFAULT 0,
+  in_app_delivered  INTEGER DEFAULT 0,
+  email_sent        INTEGER DEFAULT 0,
+  sms_sent          INTEGER DEFAULT 0,
+  delivery_failed   INTEGER DEFAULT 0,
+  created_at        TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS title TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS created_by BIGINT DEFAULT 0;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS created_by_name TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS created_by_role TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS submitted_at TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS reviewed_by TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS review_note TEXT DEFAULT '';
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS send_in_app INTEGER DEFAULT 1;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS send_email INTEGER DEFAULT 1;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS send_sms INTEGER DEFAULT 0;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS in_app_delivered INTEGER DEFAULT 0;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS email_sent INTEGER DEFAULT 0;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS sms_sent INTEGER DEFAULT 0;
+ALTER TABLE public.newsletters ADD COLUMN IF NOT EXISTS delivery_failed INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.feedback (
   id         BIGSERIAL PRIMARY KEY,

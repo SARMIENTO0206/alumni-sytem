@@ -59,7 +59,7 @@ automated communication flows and AI features:
 | 6 | Batch Reunions Manager | *Batch Reunions* |
 | 7 | Donor Campaign Tool | *Donor Campaigns* |
 | 8 | Certificate Reprint Request | Alumni submit; Registrar reviews and processes; Admin monitors |
-| 9 | Alumni Newsletter | *Alumni Newsletter* (+ AI Compose) |
+| 9 | Alumni Newsletter | Registrar drafts and submits; Admin reviews and publishes; Alumni read published editions |
 | 10 | Alumni Feedback & Survey | *Surveys & Feedback* |
 | 11 | **AI Chat Support** (OpenAI) | Chat bubble (bottom-right) |
 | + | **Profile Update Reminders** | Admin configures the reminder period and confirms each send from Graduate Tracking |
@@ -75,6 +75,8 @@ automated communication flows and AI features:
 | **Alumni** | Own profile and graduate status, digital ID, transcript/certificate requests, job board, events, reunions, newsletter, surveys |
 
 Document requests are free and no longer use online checkout. The Payments history page is removed for all roles. Alumni donation checkout remains available in Donation Campaigns.
+
+Newsletters are general to all Alumni. Registrar staff can save drafts, edit their own drafts, and submit them for approval; Admin can approve and publish or return a draft with an editing note. In-app, email, and short SMS notifications are sent to the selected active Alumni audience only when Admin publishes. Newsletter delivery counts are recorded for staff review.
 
 Graduate tracking is designed for JHS and SHS alumni. It reports employed, self-employed, seeking-employment, further-study/training, not-currently-seeking, and no-status-data outcomes without treating missing information as unemployment. SHS pathways are shown separately from JHS records, and strand filters are available only for SHS. Industry charts use alumni-reported categories; the Registrar verifies submitted tracking records, while only Alumni can update their own status. Reminder timing is configurable by Admin, and every reminder send requires confirmation.
 

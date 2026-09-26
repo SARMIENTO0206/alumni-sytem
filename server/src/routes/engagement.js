@@ -747,24 +747,218 @@ router.post('/donations', requireRole('admin'), (req, res) => {
 
 /* ------------------------------- Newsletters ------------------------------ */
 
-/** GET /api/newsletters - list the newsletter archive. */
+function mapNewsletter(row) {
+  return {
+    id: row.id,
+    title: row.title || row.subject,
+    subject: row.subject,
+    body: row.body,
+    status: row.status || 'Published',
+    sentAt: row.sent_at,
+    createdBy: row.created_by,
+    createdByName: row.created_by_name || '',
+    createdByRole: row.created_by_role || '',
+    submittedAt: row.submitted_at || '',
+    reviewedBy: row.reviewed_by || '',
+    reviewNote: row.review_note || '',
+    sendInApp: Boolean(row.send_in_app),
+    sendEmail: Boolean(row.send_email),
+    sendSms: Boolean(row.send_sms),
+    inAppDelivered: Number(row.in_app_delivered || 0),
+    emailSent: Number(row.email_sent || 0),
+    smsSent: Number(row.sms_sent || 0),
+    deliveryFailed: Number(row.delivery_failed || 0)
+  };
+}
+
+function validateNewsletter(input, existing = {}) {
+  const field = (key) => String(input[key] ?? existing[key] ?? '').trim();
+  const title = field('title');
+  const subject = field('subject');
+  const body = field('body');
+  if (!title) return { error: 'Newsletter title is required.' };
+  if (!subject) return { error: 'Email subject is required.' };
+  if (!body) return { error: 'Newsletter content is required.' };
+  if (title.length > 160 || subject.length > 200 || body.length > 20000) {
+    return { error: 'A newsletter field exceeds its maximum length.' };
+  }
+  const result = {
+    title,
+    subject,
+    body,
+    sendInApp: input.sendInApp === undefined ? Boolean(existing.send_in_app ?? 1) : input.sendInApp === true,
+    sendEmail: input.sendEmail === undefined ? Boolean(existing.send_email ?? 1) : input.sendEmail === true,
+    sendSms: input.sendSms === undefined ? Boolean(existing.send_sms ?? 0) : input.sendSms === true
+  };
+  if (!result.sendInApp && !result.sendEmail && !result.sendSms) {
+    return { error: 'Select at least one notification channel.' };
+  }
+  return result;
+}
+
+function newsletterDeliverySummary(results) {
+  return results.reduce((summary, result) => {
+    if (['sent', 'accepted', 'delivered'].includes(result.email_status)) summary.emailSent++;
+    if (['sent', 'accepted', 'delivered'].includes(result.sms_status)) summary.smsSent++;
+    if (['failed', 'not_configured'].includes(result.email_status) || ['failed', 'not_configured'].includes(result.sms_status)) {
+      summary.failed++;
+    }
+    return summary;
+  }, { emailSent: 0, smsSent: 0, failed: 0 });
+}
+
+async function publishNewsletter(row) {
+  const audience = db.prepare(
+    "SELECT COUNT(*) AS count FROM users WHERE role = 'alumni' AND (status IS NULL OR status = 'Active')"
+  ).get().count;
+  const shortMessage = `The ${row.title || row.subject} is now available. Log in to the Alumni Portal to read the latest school and alumni updates.`;
+  let results = [];
+  let deliveryError = '';
+  try {
+    results = await dispatchAlumniAudience(
+      `New alumni newsletter: ${row.title || row.subject}`,
+      shortMessage,
+      'newsletter',
+      row.id,
+      {
+        inApp: Boolean(row.send_in_app),
+        sendEmail: Boolean(row.send_email),
+        sendSms: Boolean(row.send_sms),
+        forceChannels: true,
+        emailSubject: row.subject,
+        emailMessage: `${row.body}\n\nLog in to the Alumni Portal to view the newsletter archive.`,
+        smsMessage: `St. Agnes Alumni: ${row.title || row.subject} is now available. Log in to the Alumni Portal to read the latest school and alumni updates.`
+      }
+    );
+  } catch (error) {
+    deliveryError = 'Newsletter published, but one or more delivery channels failed.';
+    console.error(`Unable to deliver newsletter ${row.id}:`, error);
+  }
+  const delivery = newsletterDeliverySummary(results);
+  const inAppDelivered = row.send_in_app
+    ? Number(db.prepare(
+        "SELECT COUNT(DISTINCT user_id) AS count FROM notifications WHERE related_type = 'newsletter' AND related_id = ?"
+      ).get(String(row.id)).count)
+    : 0;
+  if (row.send_in_app) delivery.failed += Math.max(0, audience - inAppDelivered);
+  db.prepare(
+    'UPDATE newsletters SET in_app_delivered = ?, email_sent = ?, sms_sent = ?, delivery_failed = ? WHERE id = ?'
+  ).run(inAppDelivered, delivery.emailSent, delivery.smsSent, delivery.failed, row.id);
+  const updated = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(row.id);
+  mirrorUpdate('newsletters', updated);
+  return {
+    newsletter: mapNewsletter(updated),
+    delivery: { audience, inAppDelivered, ...delivery, error: deliveryError }
+  };
+}
+
+/** Admin/staff see workflow items; Alumni only see published editions. */
 router.get('/newsletters', (req, res) => {
-  const rows = db.prepare('SELECT * FROM newsletters ORDER BY id DESC').all();
-  res.json({ newsletters: rows.map(n => ({ id: n.id, subject: n.subject, body: n.body, sentAt: n.sent_at })) });
+  const rows = (isAdmin(req.user) || isStaff(req.user))
+    ? db.prepare('SELECT * FROM newsletters ORDER BY id DESC').all()
+    : db.prepare("SELECT * FROM newsletters WHERE status = 'Published' ORDER BY id DESC").all();
+  res.json({ newsletters: rows.map(mapNewsletter) });
 });
 
-/** POST /api/newsletters - publish a newsletter (admin / registrar). */
+/** Admin and Registrar can create drafts; publishing requires a separate Admin approval action. */
 router.post('/newsletters', requireRole('admin', 'staff'), (req, res) => {
-  const { subject, body } = req.body || {};
-  if (!subject) return res.status(400).json({ error: 'Subject is required.' });
-
-  const info = db.prepare(
-    'INSERT INTO newsletters (subject, body, sent_at) VALUES (?, ?, ?)'
-  ).run(subject, body || '', new Date().toISOString().split('T')[0]);
-
+  const input = validateNewsletter(req.body || {});
+  if (input.error) return res.status(400).json({ error: input.error });
+  const info = db.prepare(`
+    INSERT INTO newsletters (
+      title, subject, body, status, created_by, created_by_name, created_by_role,
+      send_in_app, send_email, send_sms
+    ) VALUES (?, ?, ?, 'Draft', ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.title, input.subject, input.body, req.user.id, req.user.name || '',
+    req.user.role, input.sendInApp ? 1 : 0, input.sendEmail ? 1 : 0, input.sendSms ? 1 : 0
+  );
   const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(info.lastInsertRowid);
   mirror('newsletters', row);
-  res.status(201).json({ newsletter: { id: row.id, subject: row.subject, body: row.body, sentAt: row.sent_at } });
+  writeAudit(req.user, 'create', 'newsletter', row.id, `Draft: ${row.title}`);
+  res.status(201).json({ newsletter: mapNewsletter(row) });
+});
+
+/** Update only drafts or returned editions; staff may only edit their own. */
+router.put('/newsletters/:id', requireRole('admin', 'staff'), (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Newsletter not found.' });
+  if (existing.status !== 'Draft' && existing.status !== 'Changes Requested') {
+    return res.status(409).json({ error: 'Only drafts and returned newsletters can be edited.' });
+  }
+  if (isStaff(req.user) && Number(existing.created_by) !== Number(req.user.id)) {
+    return res.status(403).json({ error: 'You can only edit newsletters you created.' });
+  }
+  const input = validateNewsletter(req.body || {}, existing);
+  if (input.error) return res.status(400).json({ error: input.error });
+  db.prepare(`
+    UPDATE newsletters
+    SET title = ?, subject = ?, body = ?, send_in_app = ?, send_email = ?, send_sms = ?, review_note = ''
+    WHERE id = ?
+  `).run(input.title, input.subject, input.body, input.sendInApp ? 1 : 0, input.sendEmail ? 1 : 0, input.sendSms ? 1 : 0, id);
+  const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
+  mirrorUpdate('newsletters', row);
+  writeAudit(req.user, 'update', 'newsletter', row.id, `Draft: ${row.title}`);
+  res.json({ newsletter: mapNewsletter(row) });
+});
+
+router.post('/newsletters/:id/submit', requireRole('admin', 'staff'), (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Newsletter not found.' });
+  if (isStaff(req.user) && Number(row.created_by) !== Number(req.user.id)) {
+    return res.status(403).json({ error: 'You can only submit newsletters you created.' });
+  }
+  if (row.status !== 'Draft' && row.status !== 'Changes Requested') {
+    return res.status(409).json({ error: 'Only drafts or returned newsletters can be submitted for approval.' });
+  }
+  db.prepare("UPDATE newsletters SET status = 'For Approval', submitted_at = ?, review_note = '' WHERE id = ?")
+    .run(new Date().toISOString(), id);
+  const submitted = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
+  mirrorUpdate('newsletters', submitted);
+  writeAudit(req.user, 'submit', 'newsletter', id, submitted.title);
+  res.json({ newsletter: mapNewsletter(submitted) });
+});
+
+router.post('/newsletters/:id/return', requireRole('admin'), (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Newsletter not found.' });
+  if (row.status !== 'For Approval') return res.status(409).json({ error: 'Only newsletters awaiting approval can be returned.' });
+  const note = String(req.body?.note || '').trim();
+  if (!note || note.length > 1000) return res.status(400).json({ error: 'Provide an editing note of up to 1,000 characters.' });
+  db.prepare("UPDATE newsletters SET status = 'Changes Requested', reviewed_by = ?, review_note = ? WHERE id = ?")
+    .run(req.user.name || '', note, id);
+  const returned = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
+  mirrorUpdate('newsletters', returned);
+  writeAudit(req.user, 'return', 'newsletter', id, note);
+  res.json({ newsletter: mapNewsletter(returned) });
+});
+
+router.post('/newsletters/:id/approve', requireRole('admin'), async (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Newsletter not found.' });
+  if (row.status !== 'For Approval') return res.status(409).json({ error: 'Only newsletters awaiting approval can be published.' });
+  db.prepare("UPDATE newsletters SET status = 'Published', sent_at = ?, reviewed_by = ?, review_note = '' WHERE id = ?")
+    .run(new Date().toISOString(), req.user.name || '', id);
+  writeAudit(req.user, 'publish', 'newsletter', id, row.title || row.subject);
+  const published = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
+  const result = await publishNewsletter(published);
+  res.json(result);
+});
+
+router.post('/newsletters/:id/archive', requireRole('admin'), (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Newsletter not found.' });
+  if (row.status !== 'Published') return res.status(409).json({ error: 'Only published newsletters can be archived.' });
+  db.prepare("UPDATE newsletters SET status = 'Archived' WHERE id = ?").run(id);
+  const archived = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
+  mirrorUpdate('newsletters', archived);
+  writeAudit(req.user, 'archive', 'newsletter', id, archived.title || archived.subject);
+  res.json({ newsletter: mapNewsletter(archived) });
 });
 
 /* -------------------------------- Feedback -------------------------------- */

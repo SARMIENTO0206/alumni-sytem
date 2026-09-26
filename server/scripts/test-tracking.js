@@ -116,6 +116,51 @@ const adminSendsAlumniStatus = await req(alumni.token, 'POST', '/api/tracking/re
 const registrarSendsReminders = await req(registrar.token, 'POST', '/api/tracking/reminders/sweep');
 assert(adminSendsAlumniStatus.status === 403 && registrarSendsReminders.status === 403, 'only Admin may dispatch profile reminders');
 
+const newsletter = await req(registrar.token, 'POST', '/api/newsletters', {
+  title: `Newsletter Test ${Date.now()}`,
+  subject: 'School and alumni updates',
+  body: 'A newsletter draft for approval-flow testing.',
+  sendInApp: true,
+  sendEmail: false,
+  sendSms: false
+});
+assert(newsletter.status === 201 && newsletter.data.newsletter.status === 'Draft', 'Registrar creates a newsletter draft');
+const alumniNewslettersBeforeApproval = await req(alumni.token, 'GET', '/api/newsletters');
+assert(!alumniNewslettersBeforeApproval.data.newsletters.some((item) => item.id === newsletter.data.newsletter.id), 'Alumni cannot view an unpublished newsletter');
+const registrarApprovesNewsletter = await req(registrar.token, 'POST', `/api/newsletters/${newsletter.data.newsletter.id}/approve`);
+assert(registrarApprovesNewsletter.status === 403, 'Registrar cannot approve or publish a newsletter');
+const newsletterSubmitted = await req(registrar.token, 'POST', `/api/newsletters/${newsletter.data.newsletter.id}/submit`);
+assert(newsletterSubmitted.status === 200 && newsletterSubmitted.data.newsletter.status === 'For Approval', 'Registrar can submit a draft for Admin approval');
+const newsletterWithoutReturnNote = await req(admin.token, 'POST', `/api/newsletters/${newsletter.data.newsletter.id}/return`, {});
+assert(newsletterWithoutReturnNote.status === 400, 'Admin must provide a return-for-editing note');
+const newsletterReturned = await req(admin.token, 'POST', `/api/newsletters/${newsletter.data.newsletter.id}/return`, {
+  note: 'Please add a short alumni highlight.'
+});
+assert(newsletterReturned.status === 200 && newsletterReturned.data.newsletter.status === 'Changes Requested', 'Admin can return a newsletter with guidance');
+const newsletterEdited = await req(registrar.token, 'PUT', `/api/newsletters/${newsletter.data.newsletter.id}`, {
+  title: newsletter.data.newsletter.title,
+  subject: 'School, alumni, and community updates',
+  body: 'Updated newsletter content with an alumni highlight.',
+  sendInApp: true,
+  sendEmail: false,
+  sendSms: false
+});
+assert(newsletterEdited.status === 200 && newsletterEdited.data.newsletter.reviewNote === '', 'author can update returned newsletter content');
+const newsletterResubmitted = await req(registrar.token, 'POST', `/api/newsletters/${newsletter.data.newsletter.id}/submit`);
+assert(newsletterResubmitted.status === 200, 'author can resubmit returned newsletter');
+const publishedNewsletter = await req(admin.token, 'POST', `/api/newsletters/${newsletter.data.newsletter.id}/approve`);
+assert(publishedNewsletter.status === 200 && publishedNewsletter.data.newsletter.status === 'Published', 'Admin approval publishes a newsletter');
+assert(publishedNewsletter.data.delivery.inAppDelivered >= 1, 'selected in-app notifications are sent to the active alumni audience');
+const publishedAlumniNewsletters = await req(alumni.token, 'GET', '/api/newsletters');
+assert(publishedAlumniNewsletters.data.newsletters.some((item) => item.id === newsletter.data.newsletter.id), 'Alumni can read published newsletters');
+const newsletterNotifications = await req(alumni.token, 'GET', '/api/notifications');
+const newsletterNotification = newsletterNotifications.data.notifications.find((item) => Number(item.relatedId) === Number(newsletter.data.newsletter.id));
+assert(newsletterNotification && newsletterNotification.targetUrl === '/#/newsletter', 'published newsletter notifications link to the newsletter page');
+const registrarArchivesNewsletter = await req(registrar.token, 'POST', `/api/newsletters/${newsletter.data.newsletter.id}/archive`);
+assert(registrarArchivesNewsletter.status === 403, 'Registrar cannot archive published newsletters');
+const archivedNewsletter = await req(admin.token, 'POST', `/api/newsletters/${newsletter.data.newsletter.id}/archive`);
+assert(archivedNewsletter.status === 200 && archivedNewsletter.data.newsletter.status === 'Archived', 'Admin can archive published newsletters');
+
 const job = await req(registrar.token, 'POST', '/api/jobs', {
   title: `Career Test ${Date.now()}`,
   company: 'Test Employer',
@@ -160,4 +205,4 @@ assert(registrarDelete.status === 403, 'Registrar can archive but cannot delete 
 const adminDelete = await req(admin.token, 'DELETE', `/api/jobs/${job.data.job.id}`);
 assert(adminDelete.status === 204, `Admin can delete job listings (received ${adminDelete.status}: ${JSON.stringify(adminDelete.data)})`);
 
-console.log('Graduate tracking and Career Management role, status, review, and listing checks passed.');
+console.log('Graduate tracking, Career Management, and Newsletter approval and role checks passed.');

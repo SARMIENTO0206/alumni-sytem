@@ -23,6 +23,9 @@ export function notificationTarget(relatedType, relatedId, extras = {}) {
   if (type === 'announcement') {
     return { view: 'announcements', url: id ? `/#/announcements/${id}` : '/#/announcements' };
   }
+  if (type === 'newsletter') {
+    return { view: 'newsletter', url: '/#/newsletter' };
+  }
   if (type === 'survey' || type === 'feedback') {
     return { view: 'feedback', url: id ? `/#/surveys/${id}` : '/#/surveys' };
   }
@@ -101,8 +104,8 @@ export async function deliverChannels(notification, opts = {}) {
   if (emailEnabled && emailTo) {
     const result = await sendMail({
       to: emailTo,
-      subject: notification.subject,
-      text: notification.message,
+      subject: opts.emailSubject || notification.subject,
+      text: opts.emailMessage || notification.message,
       notificationId: notification.id,
       userId: notification.user_id
     });
@@ -114,7 +117,7 @@ export async function deliverChannels(notification, opts = {}) {
   if (smsEnabled && phoneTo) {
     const result = await sendSms({
       to: phoneTo,
-      message: `${notification.subject}: ${notification.message}`.slice(0, 160),
+      message: (opts.smsMessage || `${notification.subject}: ${notification.message}`).slice(0, 160),
       notificationId: notification.id,
       userId: notification.user_id
     });
@@ -154,15 +157,42 @@ export async function dispatchAlumniAudience(subject, message, relatedType, rela
         phone: user.contact,
         sendSms: extras.sendSms,
         sendEmail: extras.sendEmail,
-        forceChannels: extras.forceChannels
+        forceChannels: extras.forceChannels,
+        emailSubject: extras.emailSubject,
+        emailMessage: extras.emailMessage,
+        smsMessage: extras.smsMessage
       }));
     } else if (extras.sendEmail === true) {
-      results.push(await sendMail({
-        to: user.email,
-        subject,
-        text: message,
-        userId: user.id
-      }));
+      results.push({
+        userId: user.id,
+        email_status: user.email
+          ? (await sendMail({
+              to: user.email,
+              subject: extras.emailSubject || subject,
+              text: extras.emailMessage || message,
+              userId: user.id
+            })).status
+          : 'skipped',
+        sms_status: extras.sendSms === true && user.contact
+          ? (await sendSms({
+              to: user.contact,
+              message: (extras.smsMessage || `${subject}: ${message}`).slice(0, 160),
+              userId: user.id
+            })).status
+          : ''
+      });
+    } else if (extras.sendSms === true) {
+      results.push({
+        userId: user.id,
+        email_status: '',
+        sms_status: user.contact
+          ? (await sendSms({
+              to: user.contact,
+              message: (extras.smsMessage || `${subject}: ${message}`).slice(0, 160),
+              userId: user.id
+            })).status
+          : 'skipped'
+      });
     }
   }
   return results;
