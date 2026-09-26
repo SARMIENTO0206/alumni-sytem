@@ -467,13 +467,13 @@
             document.getElementById("reunionDescription").value = reunion.description || "";
             document.getElementById("reunionCoordinatorName").value = reunion.coordinatorName || "";
             document.getElementById("reunionCoordinatorContact").value = reunion.coordinatorContact || "";
-            document.getElementById("reunionRsvpEnabled").checked = reunion.rsvpEnabled;
-            document.getElementById("reunionRsvpDeadline").value = reunion.rsvpDeadline || "";
+            
+            
             document.getElementById("sendReunionEmail").checked = reunion.sendEmail;
             document.getElementById("sendReunionSms").checked = reunion.sendSms;
         }
         document.getElementById("addReunionModal").classList.add("active");
-        updateReunionRsvpFields();
+        
         await updateReunionTargetOptions(reunion?.batchYear || "", reunion?.strand || "");
     }
 
@@ -550,10 +550,6 @@
         }
     }
 
-    function updateReunionRsvpFields() {
-        const enabled = document.getElementById("reunionRsvpEnabled").checked;
-        document.getElementById("reunionRsvpDeadlineField").hidden = !enabled;
-    }
 
     function validateReunionTimes() {
         const startTime = document.getElementById("reunionStartTime");
@@ -614,8 +610,8 @@
                     reunionId: editingReunionId,
                     coordinatorName: document.getElementById("reunionCoordinatorName").value.trim(),
                     coordinatorContact: document.getElementById("reunionCoordinatorContact").value.trim(),
-                    rsvpEnabled: document.getElementById("reunionRsvpEnabled").checked,
-                    rsvpDeadline: document.getElementById("reunionRsvpDeadline").value,
+                    
+                    
                     sendInvitations: action === "send",
                     sendEmail: document.getElementById("sendReunionEmail").checked,
                     sendSms: document.getElementById("sendReunionSms").checked
@@ -625,7 +621,7 @@
             renderReunionsGrid();
             closeAddReunionModal();
             form.reset();
-            updateReunionRsvpFields();
+            
             reunionTargetCounts = { eligible: 0, withEmail: 0, withMobile: 0 };
             updateReunionSummaryText();
             const invitations = data.invitations;
