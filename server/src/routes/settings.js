@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getSetting, setSetting, db, writeAudit } from '../db.js';
+import { getSetting, setSetting, writeAudit } from '../db.js';
 import { requireRole, isAdmin } from '../auth.js';
 
 const router = Router();
@@ -26,15 +26,6 @@ const DEFAULTS = {
     surveys: true,
     announcements: true
   },
-  documents: {
-    transcriptEnabled: true,
-    reprintEnabled: true,
-    releaseMethods: 'Pick-up at Registrar Window, Authorized Representative, Delivery'
-  },
-  alumni: {
-    allowSelfRegistration: true,
-    requiredFields: 'name, batch, program'
-  },
   tracking: {
     reminderMonths: 6
   },
@@ -49,8 +40,6 @@ router.get('/', (req, res) => {
   const merged = {
     general: { ...DEFAULTS.general, ...(stored.general || {}) },
     notifications: { ...DEFAULTS.notifications, ...(stored.notifications || {}) },
-    documents: { ...DEFAULTS.documents, ...(stored.documents || {}) },
-    alumni: { ...DEFAULTS.alumni, ...(stored.alumni || {}) },
     tracking: { ...DEFAULTS.tracking, ...(stored.tracking || {}) },
     security: { ...DEFAULTS.security, ...(stored.security || {}) }
   };
@@ -72,29 +61,12 @@ router.put('/', requireRole('admin'), (req, res) => {
   const next = {
     general: { ...DEFAULTS.general, ...(current.general || {}), ...(req.body?.general || {}) },
     notifications: { ...DEFAULTS.notifications, ...(current.notifications || {}), ...(req.body?.notifications || {}) },
-    documents: { ...DEFAULTS.documents, ...(current.documents || {}), ...(req.body?.documents || {}) },
-    alumni: { ...DEFAULTS.alumni, ...(current.alumni || {}), ...(req.body?.alumni || {}) },
     tracking: { ...DEFAULTS.tracking, ...(current.tracking || {}), ...(req.body?.tracking || {}), reminderMonths },
     security: { ...DEFAULTS.security, ...(current.security || {}), ...(req.body?.security || {}) }
   };
   setSetting('system_settings', next);
   writeAudit(req.user, 'update', 'settings', 'system_settings', req.user.username);
   res.json({ settings: next });
-});
-
-router.get('/history', requireRole('admin'), (req, res) => {
-  const rows = db.prepare(
-    "SELECT * FROM audit_logs WHERE entity = 'settings' ORDER BY id DESC LIMIT 50"
-  ).all();
-  res.json({
-    history: rows.map((r) => ({
-      id: r.id,
-      action: r.action,
-      detail: r.detail,
-      actorRole: r.actor_role,
-      createdAt: r.created_at
-    }))
-  });
 });
 
 export default router;

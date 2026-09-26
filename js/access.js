@@ -197,7 +197,7 @@ async function loadLoginActivity() {
 function settingsSectionsForRole(role) {
     const r = normalizeRole(role);
     if (r === "admin") {
-        return ["general", "documents", "communications", "notifications", "ai", "security", "history", "alumni"];
+        return ["general", "communications", "notifications", "ai", "security"];
     }
     if (r === "staff") return ["notifications", "security"];
     return ["notifications", "privacy", "security"];
@@ -254,21 +254,6 @@ async function loadSettingsView() {
         setVal("setDateFormat", s.general && s.general.dateFormat);
         setVal("setTimeFormat", s.general && s.general.timeFormat);
         setVal("setTimeZone", s.general && s.general.timeZone);
-        setVal("setReleaseMethods", s.documents && s.documents.releaseMethods);
-        setVal("setRequiredFields", s.alumni && s.alumni.requiredFields);
-        const hist = await SAA_API.request("/api/settings/history").catch(() => ({ history: [] }));
-        const box = document.getElementById("settingsHistoryList");
-        if (box) {
-            const rows = hist.history || [];
-            box.innerHTML = rows.length ? rows.map((r) => `
-                <tr>
-                    <td>${escapeHtml(r.action)}</td>
-                    <td>${escapeHtml(r.detail)}</td>
-                    <td>${escapeHtml(r.actorRole)}</td>
-                    <td>${escapeHtml(r.createdAt)}</td>
-                </tr>
-            `).join("") : `<tr><td colspan="4" class="text-center text-slate-400">No setting changes recorded yet.</td></tr>`;
-        }
     } catch (err) {
         showToast(err.message || "Unable to load system settings.", "error");
     }
@@ -304,12 +289,6 @@ async function saveSystemSettings(event) {
                     dateFormat: document.getElementById("setDateFormat").value,
                     timeFormat: document.getElementById("setTimeFormat").value,
                     timeZone: document.getElementById("setTimeZone").value
-                },
-                documents: {
-                    releaseMethods: document.getElementById("setReleaseMethods").value
-                },
-                alumni: {
-                    requiredFields: document.getElementById("setRequiredFields").value
                 }
             })
         });

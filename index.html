@@ -2547,13 +2547,10 @@
                         <h3 class="text-lg font-extrabold text-slate-800 mb-4">Settings</h3>
                         <div class="flex flex-wrap gap-2 mb-6">
                             <button type="button" data-settings-tab="general" class="btn btn-primary text-xs" onclick="showSettingsTab('general')">General</button>
-                            <button type="button" data-settings-tab="documents" class="btn btn-secondary text-xs" onclick="showSettingsTab('documents')">Documents</button>
-                            <button type="button" data-settings-tab="alumni" class="btn btn-secondary text-xs" onclick="showSettingsTab('alumni')">Alumni</button>
                             <button type="button" data-settings-tab="communications" class="btn btn-secondary text-xs" onclick="showSettingsTab('communications')">Communications</button>
                             <button type="button" data-settings-tab="notifications" class="btn btn-secondary text-xs" onclick="showSettingsTab('notifications')">Notifications</button>
                             <button type="button" data-settings-tab="ai" class="btn btn-secondary text-xs" onclick="showSettingsTab('ai')">AI Integration</button>
                             <button type="button" data-settings-tab="security" class="btn btn-secondary text-xs" onclick="showSettingsTab('security')">Security</button>
-                            <button type="button" data-settings-tab="history" class="btn btn-secondary text-xs" onclick="showSettingsTab('history')">Audit Logs</button>
                         </div>
 
                         <div data-settings-panel="notifications" class="hidden space-y-3 max-w-xl">
@@ -2607,18 +2604,6 @@
                             <button type="submit" class="btn btn-primary text-xs">Save General Settings</button>
                         </form>
 
-                        <form data-settings-panel="documents" onsubmit="saveSystemSettings(event)" class="hidden space-y-3 max-w-xl">
-                            <label class="form-label">Release methods</label>
-                            <textarea id="setReleaseMethods" class="form-textarea text-sm" rows="3"></textarea>
-                            <button type="submit" class="btn btn-primary text-xs">Save Document Settings</button>
-                        </form>
-
-                        <form data-settings-panel="alumni" onsubmit="saveSystemSettings(event)" class="hidden space-y-3 max-w-xl">
-                            <label class="form-label">Required alumni information</label>
-                            <input id="setRequiredFields" class="form-input text-sm">
-                            <button type="submit" class="btn btn-primary text-xs">Save Alumni Settings</button>
-                        </form>
-
                         <div data-settings-panel="communications" class="hidden text-sm text-slate-600 max-w-2xl space-y-2">
                             <p>SMS and Gmail pages store messages in the system notification log.</p>
                             <p>External SMS delivery and Gmail sending are not active until a provider key is added to server/.env.</p>
@@ -2627,15 +2612,6 @@
                         <div data-settings-panel="ai" class="hidden text-sm text-slate-600 max-w-2xl space-y-2">
                             <p>AI Chat Support answers from the built-in knowledge base unless OPENAI_API_KEY is configured on the server.</p>
                             <p>Open AI Chat Support from the sidebar to start a conversation.</p>
-                        </div>
-
-                        <div data-settings-panel="history" class="hidden">
-                            <div class="data-table-container">
-                                <table class="modern-table">
-                                    <thead><tr><th>Changed setting</th><th>Detail</th><th>Changed by</th><th>Date/time</th></tr></thead>
-                                    <tbody id="settingsHistoryList"></tbody>
-                                </table>
-                            </div>
                         </div>
                     </div>
                 </div>
