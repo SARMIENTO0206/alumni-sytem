@@ -281,9 +281,11 @@ router.post('/logout', requireAuth, (req, res) => {
 });
 
 router.put('/profile', requireAuth, (req, res) => {
-  const { name, email, contact, title, photoUrl, address, batch, program, employment, company, jobTitle } = req.body || {};
+  const { name, email, contact, title, photoUrl, address } = req.body || {};
   const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   if (!existing) return res.status(404).json({ error: 'Account not found.' });
+  const profileName = isAlumni(req.user) ? existing.name : (name ?? existing.name);
+  const profileTitle = isAlumni(req.user) ? existing.title : (title ?? existing.title);
   let mobile = existing.contact;
   try {
     mobile = contact === undefined ? existing.contact : normalizePhMobile(contact);
@@ -291,34 +293,25 @@ router.put('/profile', requireAuth, (req, res) => {
     return res.status(400).json({ error: err.message });
   }
   db.prepare(
-    'UPDATE users SET name = ?, email = ?, contact = ?, title = ?, photo_url = ?, address = ?, batch = ?, program = ? WHERE id = ?'
+    'UPDATE users SET name = ?, email = ?, contact = ?, title = ?, photo_url = ?, address = ? WHERE id = ?'
   ).run(
-    name ?? existing.name,
+    profileName,
     email ?? existing.email,
     mobile,
-    title ?? existing.title,
+    profileTitle,
     photoUrl ?? existing.photo_url,
     address ?? existing.address ?? '',
-    batch ?? existing.batch,
-    program ?? existing.program,
     req.user.id
   );
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   if (isAlumni(req.user) && row.alumni_id) {
-    const alumni = db.prepare('SELECT * FROM alumni WHERE id = ?').get(row.alumni_id);
     db.prepare(
-      `UPDATE alumni SET name = ?, contact = ?, email = ?, address = ?, batch = ?, program = ?,
-       status = ?, company = ?, job_title = ?, last_updated = ? WHERE id = ?`
+      `UPDATE alumni SET name = ?, contact = ?, email = ?, address = ?, last_updated = ? WHERE id = ?`
     ).run(
-      row.name,
+      existing.name,
       row.contact,
       row.email,
       row.address || '',
-      batch ?? alumni?.batch ?? row.batch,
-      program ?? alumni?.program ?? row.program,
-      employment ?? alumni?.status ?? 'Employed',
-      company ?? alumni?.company ?? '',
-      jobTitle ?? alumni?.job_title ?? '',
       new Date().toISOString().split('T')[0],
       row.alumni_id
     );

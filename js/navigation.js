@@ -640,12 +640,14 @@
         setVal("profileContact", user.contact || alumni.contact || "");
         setVal("profileAddress", user.address || alumni.address || "");
         setVal("profileAlumniId", user.studentId || alumni.studentId || "");
-        setVal("profileStaffId", user.studentId || "");
+        setVal("profileStaffId", user.staffId || user.employeeId || user.studentId || "");
         setVal("profileBatch", user.batch || alumni.batch || "");
         setVal("profileProgram", user.program || alumni.program || "");
-        setVal("profileEmployment", alumni.status || "Employed");
-        setVal("profileCompany", alumni.company || "");
-        setVal("profileJobTitle", alumni.title || alumni.jobTitle || "");
+        setVal("profileTrack", user.strand || user.track || alumni.strand || alumni.track || "");
+        ["profileEmployment", "profileCompany", "profileJobTitle"].forEach((id, index) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = [alumni.status, alumni.company, alumni.title || alumni.jobTitle][index] || "—";
+        });
 
         const avatarEl = document.getElementById("alumniProfileAvatar");
         const removeBtn = document.getElementById("removePhotoBtn");
@@ -662,21 +664,12 @@
 
     async function saveAlumniProfile() {
         const profile = {
-            name: document.getElementById("profileName").value.trim() || currentUser.name,
             email: document.getElementById("profileEmail").value.trim(),
             contact: document.getElementById("profileContact").value.trim(),
             address: (document.getElementById("profileAddress") || {}).value || "",
             photoUrl: currentUser.photoUrl || ""
         };
-        if (isAlumniRole()) {
-            Object.assign(profile, {
-                batch: document.getElementById("profileBatch").value,
-                program: document.getElementById("profileProgram").value.trim(),
-                employment: document.getElementById("profileEmployment").value,
-                company: document.getElementById("profileCompany").value.trim(),
-                jobTitle: document.getElementById("profileJobTitle").value.trim()
-            });
-        }
+        if (!isAlumniRole()) profile.name = document.getElementById("profileName").value.trim() || currentUser.name;
 
         try {
             if (typeof SAA_API === "undefined") throw new Error("The server is offline.");
@@ -691,6 +684,7 @@
             const welcome = document.getElementById("welcomeName");
             if (welcome) welcome.textContent = currentUser.name;
             document.getElementById("profileHeadingName").textContent = currentUser.name;
+            if (typeof applyRoleChrome === "function") applyRoleChrome();
             showToast("Profile details saved to the database.", "success");
             loadAlumniProfile();
         } catch (err) {

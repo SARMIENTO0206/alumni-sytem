@@ -75,7 +75,7 @@ automated communication flows and AI features:
 | **Registrar** | Alumni records, graduate-status review, document-request review and processing, release/claiming, announcements, manual SMS/email, request history, registrar reports |
 | **Alumni** | Own profile and graduate status, digital ID, transcript/certificate requests, job board, announcements, notifications, events, reunions, newsletter, surveys |
 
-Profile and password updates are managed from **My Profile** using the header name or avatar; Profile is not a sidebar item. Settings contains system and notification preferences rather than a duplicate account editor. Staff accounts display a Staff/System ID; Alumni ID and graduate details are shown only for Alumni accounts. The Admin sidebar separates **AI Services** from **Reports** and places user/access management, system settings, and the request audit trail under **Administration**. Registrar navigation focuses on operational work; Alumni use the header bell for Notifications and the header profile controls for My Profile.
+Profiles are opened from the header name or avatar. Alumni can edit their contact details, while name and academic records are read-only and verified by the Registrar; career details are updated through **My Graduate Status**. Admin and Registrar profiles contain staff account information only. All roles change passwords under **Settings → Security**; Settings does not duplicate the profile editor.
 
 Alumni records are never permanently deleted from the Alumni Database. Registrar is responsible for creating, editing, and verifying school information; new manual records remain **Pending Verification** and do not create or activate an account. Admin has oversight access to view, search, export, archive, and restore records; archiving keeps related history and deactivates a linked account. Account invitations are a separate later workflow.
 
@@ -257,8 +257,8 @@ powershell -ExecutionPolicy Bypass -File scripts/test-ai-live.ps1   # proves the
 
 ## 📊 Graduate Tracking validation
 
-Run the role, status, review, and reminder-setting integration checks while the
-API is running:
+Run the role, profile-integrity, status, review, and reminder-setting
+integration checks while the API is running:
 
 ```bash
 cd server

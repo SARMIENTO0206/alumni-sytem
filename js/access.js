@@ -67,20 +67,28 @@ function applyRoleChrome() {
         el.classList.toggle("hidden", !staffOps);
     });
 
-    const alumniOnly = ["profileBatch", "profileProgram", "profileEmployment", "profileCompany", "profileJobTitle"];
-    alumniOnly.forEach((id) => {
+    const alumni = isAlumniRole();
+    ["profileAcademicSection", "profileCareerSection", "profileResumeSection", "profileAlumniIdentity"].forEach((id) => {
         const el = document.getElementById(id);
-        const wrap = el && el.closest("div");
-        if (wrap) wrap.classList.toggle("hidden", !isAlumniRole());
+        if (el) el.classList.toggle("hidden", !alumni);
     });
-    const alumniIdentity = document.getElementById("profileAlumniIdentity");
-    if (alumniIdentity) alumniIdentity.classList.toggle("hidden", !isAlumniRole());
-    const staffIdentity = document.getElementById("profileStaffIdentity");
-    if (staffIdentity) staffIdentity.classList.toggle("hidden", isAlumniRole());
-    const resumeBlock = document.getElementById("resumeEmptyState");
-    if (resumeBlock && resumeBlock.parentElement) {
-        resumeBlock.parentElement.classList.toggle("hidden", !isAlumniRole());
+    const staffSection = document.getElementById("profileStaffSection");
+    if (staffSection) staffSection.classList.toggle("hidden", alumni);
+    ["profileAlumniId", "profileBatch", "profileProgram", "profileTrack"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.readOnly = true;
+    });
+    const nameInput = document.getElementById("profileName");
+    if (nameInput) {
+        nameInput.readOnly = alumni;
+        nameInput.classList.toggle("bg-slate-50", alumni);
     }
+    const nameLock = document.getElementById("profileNameLock");
+    if (nameLock) nameLock.classList.toggle("hidden", !alumni);
+    const nameHelp = document.getElementById("profileNameHelp");
+    if (nameHelp) nameHelp.classList.toggle("hidden", !alumni);
+    const department = document.getElementById("profileStaffDepartment");
+    if (department) department.textContent = isStaffRole() ? "Registrar's Office" : "System Administration";
 
     const badge = document.querySelector("#view-profile .status-badge");
     if (badge) badge.textContent = isAlumniRole() ? "Alumni Account" : roleLabel(role);
@@ -97,9 +105,6 @@ function applyRoleChrome() {
     const viewTitle = document.getElementById("currentViewTitle");
     const profileView = document.getElementById("view-profile");
     if (viewTitle && profileView && !profileView.classList.contains("hidden")) viewTitle.textContent = "My Profile";
-
-    const pwBox = document.getElementById("profilePasswordBox");
-    if (pwBox) pwBox.classList.remove("hidden");
 
     const alumniDash = document.getElementById("alumniDashboardPanel");
     if (alumniDash) alumniDash.classList.toggle("hidden", !isAlumniRole());
@@ -206,6 +211,11 @@ function showSettingsTab(tab) {
         btn.classList.toggle("btn-primary", btn.getAttribute("data-settings-tab") === tab);
         btn.classList.toggle("btn-secondary", btn.getAttribute("data-settings-tab") !== tab);
     });
+}
+
+function openSecuritySettings() {
+    switchView("settings");
+    showSettingsTab("security");
 }
 
 async function loadSettingsView() {

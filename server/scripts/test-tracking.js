@@ -116,6 +116,25 @@ const ownRecord = alumniRecords.data.alumni.find((record) =>
   Number(record.id) === Number(alumni.user.alumniId)
 );
 assert(ownRecord, 'alumni should only receive their linked tracking record');
+const profileBeforeTampering = await req(alumni.token, 'GET', '/api/auth/me');
+const protectedProfileAttempt = await req(alumni.token, 'PUT', '/api/auth/profile', {
+  name: 'Unauthorized Name Change',
+  title: 'Unauthorized Role Change',
+  batch: '2099',
+  program: 'Unauthorized Program Change',
+  employment: 'Employed',
+  company: 'Unauthorized Company Change',
+  jobTitle: 'Unauthorized Job Change'
+});
+assert(protectedProfileAttempt.status === 200, 'Alumni can save allowed personal profile fields');
+assert(protectedProfileAttempt.data.user.name === profileBeforeTampering.data.user.name, 'Alumni cannot change their official name from My Profile');
+assert(protectedProfileAttempt.data.user.title === profileBeforeTampering.data.user.title, 'Alumni cannot change their account role title from My Profile');
+assert(protectedProfileAttempt.data.user.batch === profileBeforeTampering.data.user.batch, 'Alumni cannot change their batch from My Profile');
+assert(protectedProfileAttempt.data.user.program === profileBeforeTampering.data.user.program, 'Alumni cannot change their program from My Profile');
+if (profileBeforeTampering.data.alumni) {
+  assert(protectedProfileAttempt.data.alumni.status === profileBeforeTampering.data.alumni.status, 'Career status must be updated through My Graduate Status');
+  assert(protectedProfileAttempt.data.alumni.company === profileBeforeTampering.data.alumni.company, 'Career information must not be updated from My Profile');
+}
 
 const adminRecords = await req(admin.token, 'GET', '/api/tracking');
 assert(adminRecords.status === 200 && adminRecords.data.alumni.length >= 1, 'Admin can monitor all tracking records');
