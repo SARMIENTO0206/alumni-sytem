@@ -387,7 +387,7 @@
             "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
             "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback", "reports",
             "verification", "academic-records", "request-history", "registrar-reports", "users", "settings",
-            "announcements", "notifications", "sms", "gmail", "ai-tools", "ai-chat", "applications", "unauthorized"
+            "announcements", "notifications", "sms", "gmail", "ai-chat", "applications", "unauthorized"
         ],
         staff: [
             "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",

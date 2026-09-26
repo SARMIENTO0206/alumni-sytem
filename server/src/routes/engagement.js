@@ -11,66 +11,6 @@ const parseJson = (str, fallback) => {
   try { return JSON.parse(str || '[]'); } catch (e) { return fallback; }
 };
 
-function validateJobInput(input, existing = {}) {
-  const field = (key) => String(input[key] ?? existing[key] ?? '').trim();
-  const title = field('title');
-  if (!title) return { error: 'Job title is required.' };
-  if (!field('company')) return { error: 'Company or employer is required.' };
-  if (!field('location')) return { error: 'Job location is required.' };
-  if (!field('industry')) return { error: 'Job industry is required.' };
-  if (!field('employment_type')) return { error: 'Employment type is required.' };
-  if (!field('description')) return { error: 'Job description is required.' };
-  const status = field('status') || 'Published';
-  if (!['Draft', 'Published', 'Archived'].includes(status)) {
-    return { error: 'Choose Draft, Published, or Archived for the job status.' };
-  }
-  const applicationMethod = field('application_method') || 'Portal';
-  if (!['Portal', 'Link', 'Email', 'Contact Information'].includes(applicationMethod)) {
-    return { error: 'Choose a valid application method.' };
-  }
-  if (applicationMethod !== 'Portal' && !field('application_details')) {
-    return { error: 'Application details are required for the selected method.' };
-  }
-  if (applicationMethod === 'Email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field('application_details'))) {
-    return { error: 'Enter a valid employer email address.' };
-  }
-  const deadline = field('deadline');
-  if (deadline && !isValidIsoDate(deadline)) return { error: 'Enter a valid application deadline.' };
-  const applicationDetails = field('application_details');
-  if (applicationMethod === 'Link' && applicationDetails) {
-    try {
-      if (new URL(applicationDetails).protocol !== 'https:') throw new Error();
-    } catch {
-      return { error: 'Application links must use a valid HTTPS URL.' };
-    }
-  }
-  if (applicationDetails.length > 1000) return { error: 'Application details must be 1,000 characters or fewer.' };
-  const notification = (key, fallback) => input[key] === undefined
-    ? Boolean(Number(existing[key] ?? Number(fallback)))
-    : input[key] === true;
-  return {
-    notifyInApp: notification('notify_in_app', true),
-    notifyEmail: notification('notify_email', false),
-    values: [
-      title,
-      field('company'),
-      field('location'),
-      field('description'),
-      status,
-      field('industry'),
-      field('employment_type'),
-      field('qualifications'),
-      applicationMethod,
-      applicationDetails,
-      deadline
-    ]
-  };
-}
-
-function jobIsExpired(job) {
-  return Boolean(job.deadline && job.deadline < new Date().toISOString().slice(0, 10));
-}
-
 function isValidIsoDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
@@ -747,218 +687,24 @@ router.post('/donations', requireRole('admin'), (req, res) => {
 
 /* ------------------------------- Newsletters ------------------------------ */
 
-function mapNewsletter(row) {
-  return {
-    id: row.id,
-    title: row.title || row.subject,
-    subject: row.subject,
-    body: row.body,
-    status: row.status || 'Published',
-    sentAt: row.sent_at,
-    createdBy: row.created_by,
-    createdByName: row.created_by_name || '',
-    createdByRole: row.created_by_role || '',
-    submittedAt: row.submitted_at || '',
-    reviewedBy: row.reviewed_by || '',
-    reviewNote: row.review_note || '',
-    sendInApp: Boolean(row.send_in_app),
-    sendEmail: Boolean(row.send_email),
-    sendSms: Boolean(row.send_sms),
-    inAppDelivered: Number(row.in_app_delivered || 0),
-    emailSent: Number(row.email_sent || 0),
-    smsSent: Number(row.sms_sent || 0),
-    deliveryFailed: Number(row.delivery_failed || 0)
-  };
-}
-
-function validateNewsletter(input, existing = {}) {
-  const field = (key) => String(input[key] ?? existing[key] ?? '').trim();
-  const title = field('title');
-  const subject = field('subject');
-  const body = field('body');
-  if (!title) return { error: 'Newsletter title is required.' };
-  if (!subject) return { error: 'Email subject is required.' };
-  if (!body) return { error: 'Newsletter content is required.' };
-  if (title.length > 160 || subject.length > 200 || body.length > 20000) {
-    return { error: 'A newsletter field exceeds its maximum length.' };
-  }
-  const result = {
-    title,
-    subject,
-    body,
-    sendInApp: input.sendInApp === undefined ? Boolean(existing.send_in_app ?? 1) : input.sendInApp === true,
-    sendEmail: input.sendEmail === undefined ? Boolean(existing.send_email ?? 1) : input.sendEmail === true,
-    sendSms: input.sendSms === undefined ? Boolean(existing.send_sms ?? 0) : input.sendSms === true
-  };
-  if (!result.sendInApp && !result.sendEmail && !result.sendSms) {
-    return { error: 'Select at least one notification channel.' };
-  }
-  return result;
-}
-
-function newsletterDeliverySummary(results) {
-  return results.reduce((summary, result) => {
-    if (['sent', 'accepted', 'delivered'].includes(result.email_status)) summary.emailSent++;
-    if (['sent', 'accepted', 'delivered'].includes(result.sms_status)) summary.smsSent++;
-    if (['failed', 'not_configured'].includes(result.email_status) || ['failed', 'not_configured'].includes(result.sms_status)) {
-      summary.failed++;
-    }
-    return summary;
-  }, { emailSent: 0, smsSent: 0, failed: 0 });
-}
-
-async function publishNewsletter(row) {
-  const audience = db.prepare(
-    "SELECT COUNT(*) AS count FROM users WHERE role = 'alumni' AND (status IS NULL OR status = 'Active')"
-  ).get().count;
-  const shortMessage = `The ${row.title || row.subject} is now available. Log in to the Alumni Portal to read the latest school and alumni updates.`;
-  let results = [];
-  let deliveryError = '';
-  try {
-    results = await dispatchAlumniAudience(
-      `New alumni newsletter: ${row.title || row.subject}`,
-      shortMessage,
-      'newsletter',
-      row.id,
-      {
-        inApp: Boolean(row.send_in_app),
-        sendEmail: Boolean(row.send_email),
-        sendSms: Boolean(row.send_sms),
-        forceChannels: true,
-        emailSubject: row.subject,
-        emailMessage: `${row.body}\n\nLog in to the Alumni Portal to view the newsletter archive.`,
-        smsMessage: `St. Agnes Alumni: ${row.title || row.subject} is now available. Log in to the Alumni Portal to read the latest school and alumni updates.`
-      }
-    );
-  } catch (error) {
-    deliveryError = 'Newsletter published, but one or more delivery channels failed.';
-    console.error(`Unable to deliver newsletter ${row.id}:`, error);
-  }
-  const delivery = newsletterDeliverySummary(results);
-  const inAppDelivered = row.send_in_app
-    ? Number(db.prepare(
-        "SELECT COUNT(DISTINCT user_id) AS count FROM notifications WHERE related_type = 'newsletter' AND related_id = ?"
-      ).get(String(row.id)).count)
-    : 0;
-  if (row.send_in_app) delivery.failed += Math.max(0, audience - inAppDelivered);
-  db.prepare(
-    'UPDATE newsletters SET in_app_delivered = ?, email_sent = ?, sms_sent = ?, delivery_failed = ? WHERE id = ?'
-  ).run(inAppDelivered, delivery.emailSent, delivery.smsSent, delivery.failed, row.id);
-  const updated = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(row.id);
-  mirrorUpdate('newsletters', updated);
-  return {
-    newsletter: mapNewsletter(updated),
-    delivery: { audience, inAppDelivered, ...delivery, error: deliveryError }
-  };
-}
-
-/** Admin/staff see workflow items; Alumni only see published editions. */
+/** GET /api/newsletters - list the newsletter archive. */
 router.get('/newsletters', (req, res) => {
-  const rows = (isAdmin(req.user) || isStaff(req.user))
-    ? db.prepare('SELECT * FROM newsletters ORDER BY id DESC').all()
-    : db.prepare("SELECT * FROM newsletters WHERE status = 'Published' ORDER BY id DESC").all();
-  res.json({ newsletters: rows.map(mapNewsletter) });
+  const rows = db.prepare('SELECT * FROM newsletters ORDER BY id DESC').all();
+  res.json({ newsletters: rows.map(n => ({ id: n.id, subject: n.subject, body: n.body, sentAt: n.sent_at })) });
 });
 
-/** Admin and Registrar can create drafts; publishing requires a separate Admin approval action. */
+/** POST /api/newsletters - publish a newsletter (admin / registrar). */
 router.post('/newsletters', requireRole('admin', 'staff'), (req, res) => {
-  const input = validateNewsletter(req.body || {});
-  if (input.error) return res.status(400).json({ error: input.error });
-  const info = db.prepare(`
-    INSERT INTO newsletters (
-      title, subject, body, status, created_by, created_by_name, created_by_role,
-      send_in_app, send_email, send_sms
-    ) VALUES (?, ?, ?, 'Draft', ?, ?, ?, ?, ?, ?)
-  `).run(
-    input.title, input.subject, input.body, req.user.id, req.user.name || '',
-    req.user.role, input.sendInApp ? 1 : 0, input.sendEmail ? 1 : 0, input.sendSms ? 1 : 0
-  );
+  const { subject, body } = req.body || {};
+  if (!subject) return res.status(400).json({ error: 'Subject is required.' });
+
+  const info = db.prepare(
+    'INSERT INTO newsletters (subject, body, sent_at) VALUES (?, ?, ?)'
+  ).run(subject, body || '', new Date().toISOString().split('T')[0]);
+
   const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(info.lastInsertRowid);
   mirror('newsletters', row);
-  writeAudit(req.user, 'create', 'newsletter', row.id, `Draft: ${row.title}`);
-  res.status(201).json({ newsletter: mapNewsletter(row) });
-});
-
-/** Update only drafts or returned editions; staff may only edit their own. */
-router.put('/newsletters/:id', requireRole('admin', 'staff'), (req, res) => {
-  const id = Number(req.params.id);
-  const existing = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
-  if (!existing) return res.status(404).json({ error: 'Newsletter not found.' });
-  if (existing.status !== 'Draft' && existing.status !== 'Changes Requested') {
-    return res.status(409).json({ error: 'Only drafts and returned newsletters can be edited.' });
-  }
-  if (isStaff(req.user) && Number(existing.created_by) !== Number(req.user.id)) {
-    return res.status(403).json({ error: 'You can only edit newsletters you created.' });
-  }
-  const input = validateNewsletter(req.body || {}, existing);
-  if (input.error) return res.status(400).json({ error: input.error });
-  db.prepare(`
-    UPDATE newsletters
-    SET title = ?, subject = ?, body = ?, send_in_app = ?, send_email = ?, send_sms = ?, review_note = ''
-    WHERE id = ?
-  `).run(input.title, input.subject, input.body, input.sendInApp ? 1 : 0, input.sendEmail ? 1 : 0, input.sendSms ? 1 : 0, id);
-  const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
-  mirrorUpdate('newsletters', row);
-  writeAudit(req.user, 'update', 'newsletter', row.id, `Draft: ${row.title}`);
-  res.json({ newsletter: mapNewsletter(row) });
-});
-
-router.post('/newsletters/:id/submit', requireRole('admin', 'staff'), (req, res) => {
-  const id = Number(req.params.id);
-  const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
-  if (!row) return res.status(404).json({ error: 'Newsletter not found.' });
-  if (isStaff(req.user) && Number(row.created_by) !== Number(req.user.id)) {
-    return res.status(403).json({ error: 'You can only submit newsletters you created.' });
-  }
-  if (row.status !== 'Draft' && row.status !== 'Changes Requested') {
-    return res.status(409).json({ error: 'Only drafts or returned newsletters can be submitted for approval.' });
-  }
-  db.prepare("UPDATE newsletters SET status = 'For Approval', submitted_at = ?, review_note = '' WHERE id = ?")
-    .run(new Date().toISOString(), id);
-  const submitted = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
-  mirrorUpdate('newsletters', submitted);
-  writeAudit(req.user, 'submit', 'newsletter', id, submitted.title);
-  res.json({ newsletter: mapNewsletter(submitted) });
-});
-
-router.post('/newsletters/:id/return', requireRole('admin'), (req, res) => {
-  const id = Number(req.params.id);
-  const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
-  if (!row) return res.status(404).json({ error: 'Newsletter not found.' });
-  if (row.status !== 'For Approval') return res.status(409).json({ error: 'Only newsletters awaiting approval can be returned.' });
-  const note = String(req.body?.note || '').trim();
-  if (!note || note.length > 1000) return res.status(400).json({ error: 'Provide an editing note of up to 1,000 characters.' });
-  db.prepare("UPDATE newsletters SET status = 'Changes Requested', reviewed_by = ?, review_note = ? WHERE id = ?")
-    .run(req.user.name || '', note, id);
-  const returned = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
-  mirrorUpdate('newsletters', returned);
-  writeAudit(req.user, 'return', 'newsletter', id, note);
-  res.json({ newsletter: mapNewsletter(returned) });
-});
-
-router.post('/newsletters/:id/approve', requireRole('admin'), async (req, res) => {
-  const id = Number(req.params.id);
-  const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
-  if (!row) return res.status(404).json({ error: 'Newsletter not found.' });
-  if (row.status !== 'For Approval') return res.status(409).json({ error: 'Only newsletters awaiting approval can be published.' });
-  db.prepare("UPDATE newsletters SET status = 'Published', sent_at = ?, reviewed_by = ?, review_note = '' WHERE id = ?")
-    .run(new Date().toISOString(), req.user.name || '', id);
-  writeAudit(req.user, 'publish', 'newsletter', id, row.title || row.subject);
-  const published = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
-  const result = await publishNewsletter(published);
-  res.json(result);
-});
-
-router.post('/newsletters/:id/archive', requireRole('admin'), (req, res) => {
-  const id = Number(req.params.id);
-  const row = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
-  if (!row) return res.status(404).json({ error: 'Newsletter not found.' });
-  if (row.status !== 'Published') return res.status(409).json({ error: 'Only published newsletters can be archived.' });
-  db.prepare("UPDATE newsletters SET status = 'Archived' WHERE id = ?").run(id);
-  const archived = db.prepare('SELECT * FROM newsletters WHERE id = ?').get(id);
-  mirrorUpdate('newsletters', archived);
-  writeAudit(req.user, 'archive', 'newsletter', id, archived.title || archived.subject);
-  res.json({ newsletter: mapNewsletter(archived) });
+  res.status(201).json({ newsletter: { id: row.id, subject: row.subject, body: row.body, sentAt: row.sent_at } });
 });
 
 /* -------------------------------- Feedback -------------------------------- */
@@ -1105,68 +851,29 @@ router.put('/feedback/:id', requireRole('admin', 'staff'), (req, res) => {
 /* --------------------------- Job opportunities ---------------------------- */
 
 router.get('/jobs', (req, res) => {
-  const rows = db.prepare(`
-    SELECT j.*, COALESCE(u.name, j.created_by_name, 'Legacy posting') AS posted_by,
-      COALESCE(u.role, j.created_by_role, '') AS posted_by_role
-    FROM job_opportunities j
-    LEFT JOIN users u ON u.id = j.created_by
-    ORDER BY j.id DESC
-  `).all();
-  const visible = (isAdmin(req.user) || isStaff(req.user))
-    ? rows
-    : rows.filter((job) => job.status === 'Published' && !jobIsExpired(job));
+  const rows = db.prepare('SELECT * FROM job_opportunities ORDER BY id DESC').all();
+  const visible = (isAdmin(req.user) || isStaff(req.user)) ? rows : rows.filter((j) => j.status === 'Published');
   res.json({ jobs: visible });
 });
 
-router.post('/jobs', requireRole('admin', 'staff'), async (req, res) => {
-  const validated = validateJobInput(req.body || {});
-  if (validated.error) return res.status(400).json({ error: validated.error });
+router.post('/jobs', requireRole('admin', 'staff'), (req, res) => {
+  const { title, company, location, description, status } = req.body || {};
+  if (!title) return res.status(400).json({ error: 'Job title is required.' });
   const info = db.prepare(
-    `INSERT INTO job_opportunities
-      (title, company, location, description, status, industry, employment_type, qualifications,
-       application_method, application_details, deadline, created_by, created_by_name, created_by_role,
-       notify_in_app, notify_email)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    ...validated.values,
-    Number(req.user.id),
-    String(req.user.name || req.user.username || 'Staff'),
-    isAdmin(req.user) ? 'admin' : 'staff',
-    validated.notifyInApp ? 1 : 0,
-    validated.notifyEmail ? 1 : 0
-  );
-  const created = db.prepare(`
-    SELECT j.*, ? AS posted_by, ? AS posted_by_role FROM job_opportunities j WHERE j.id = ?
-  `).get(String(req.user.name || req.user.username || 'Staff'), isAdmin(req.user) ? 'admin' : 'staff', info.lastInsertRowid);
-  writeAudit(req.user, 'create', 'job_opportunity', created.id, `${created.status}: ${created.title}`);
-  let notificationResult = null;
-  let notificationError = '';
-  if (created.status === 'Published' && (validated.notifyInApp || validated.notifyEmail)) {
-    try {
-      notificationResult = await dispatchAlumniAudience(
-        `New job opportunity: ${created.title}`,
-        `${created.title} at ${created.company} is now open. View the Job Opportunities page for application details.`,
-        'job',
-        created.id,
-        { inApp: validated.notifyInApp, sendEmail: validated.notifyEmail, forceChannels: true, sendSms: false }
-      );
-    } catch (error) {
-      console.error('Unable to notify alumni about a job opportunity:', error);
-      notificationError = error.message || 'Unable to dispatch alumni notifications.';
-    }
+    "INSERT INTO job_opportunities (title, company, location, description, status) VALUES (?, ?, ?, ?, ?)"
+  ).run(title, company || '', location || '', description || '', status || 'Published');
+  const job = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(info.lastInsertRowid);
+  if ((status || 'Published') === 'Published') {
+    dispatchAlumniAudience(`New job opportunity: ${title}`, `${title} at ${company || 'an employer'} is now open.`, 'job', job.id).catch(() => {});
   }
-  mirror('job_opportunities', created);
-  res.status(201).json({ job: created, notificationRequested: Boolean(created.status === 'Published' && (validated.notifyInApp || validated.notifyEmail)), notificationResult, notificationError });
+  mirror('job_opportunities', job);
+  res.status(201).json({ job });
 });
 
 router.get('/jobs/:id', (req, res) => {
-  const job = db.prepare(`
-    SELECT j.*, COALESCE(u.name, j.created_by_name, 'Legacy posting') AS posted_by,
-      COALESCE(u.role, j.created_by_role, '') AS posted_by_role
-    FROM job_opportunities j LEFT JOIN users u ON u.id = j.created_by WHERE j.id = ?
-  `).get(Number(req.params.id));
+  const job = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(Number(req.params.id));
   if (!job) return res.status(404).json({ error: 'Job opportunity not found.' });
-  if ((job.status !== 'Published' || jobIsExpired(job)) && !isAdmin(req.user) && !isStaff(req.user)) {
+  if (job.status !== 'Published' && !isAdmin(req.user) && !isStaff(req.user)) {
     return res.status(403).json({ error: 'This job opportunity is not available.' });
   }
   res.json({ job });
@@ -1185,12 +892,6 @@ router.get('/applications', (req, res) => {
 router.post('/jobs/:id/apply', (req, res) => {
   const jobId = Number(req.params.id) || 0;
   const job = jobId ? db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(jobId) : null;
-  if (!job || job.status !== 'Published' || jobIsExpired(job)) {
-    return res.status(404).json({ error: 'This job opportunity is no longer available.' });
-  }
-  if (job.application_method && job.application_method !== 'Portal') {
-    return res.status(400).json({ error: 'Apply directly using the employer application details on the job listing.' });
-  }
   const { name, email, resumeName, title, company } = req.body || {};
   const applicant = String(name || req.user?.name || '').trim();
   if (!applicant) return res.status(400).json({ error: 'Applicant name is required.' });
@@ -1230,185 +931,58 @@ router.post('/jobs/:id/apply', (req, res) => {
   res.status(201).json({ application: row });
 });
 
-router.put('/jobs/:id', requireRole('admin', 'staff'), async (req, res) => {
+router.put('/jobs/:id', requireRole('admin', 'staff'), (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'Job opportunity not found.' });
-  const validated = validateJobInput(req.body || {}, existing);
-  if (validated.error) return res.status(400).json({ error: validated.error });
+  const { title, company, location, description, status } = req.body || {};
   db.prepare(
-    `UPDATE job_opportunities SET title = ?, company = ?, location = ?, description = ?, status = ?,
-       industry = ?, employment_type = ?, qualifications = ?, application_method = ?,
-       application_details = ?, deadline = ?, notify_in_app = ?, notify_email = ?
-     WHERE id = ?`
-  ).run(...validated.values, validated.notifyInApp ? 1 : 0, validated.notifyEmail ? 1 : 0, id);
-  const job = db.prepare(`
-    SELECT j.*, COALESCE(u.name, j.created_by_name, 'Legacy posting') AS posted_by,
-      COALESCE(u.role, j.created_by_role, '') AS posted_by_role
-    FROM job_opportunities j LEFT JOIN users u ON u.id = j.created_by WHERE j.id = ?
-  `).get(id);
-  writeAudit(req.user, 'update', 'job_opportunity', id, `${job.status}: ${job.title}`);
-  let notificationResult = null;
-  let notificationError = '';
-  if (job.status === 'Published' && existing.status !== 'Published' && (validated.notifyInApp || validated.notifyEmail)) {
-    try {
-      notificationResult = await dispatchAlumniAudience(
-        `New job opportunity: ${job.title}`,
-        `${job.title} at ${job.company} is now open. View the Job Opportunities page for application details.`,
-        'job',
-        job.id,
-        { inApp: validated.notifyInApp, sendEmail: validated.notifyEmail, forceChannels: true, sendSms: false }
-      );
-    } catch (error) {
-      console.error('Unable to notify alumni about a job opportunity:', error);
-      notificationError = error.message || 'Unable to dispatch alumni notifications.';
-    }
-  }
+    'UPDATE job_opportunities SET title = ?, company = ?, location = ?, description = ?, status = ? WHERE id = ?'
+  ).run(
+    title ?? existing.title,
+    company ?? existing.company,
+    location ?? existing.location,
+    description ?? existing.description,
+    status ?? existing.status,
+    id
+  );
+  const job = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(id);
   mirrorUpdate('job_opportunities', job);
-  res.json({ job, notificationRequested: Boolean(job.status === 'Published' && existing.status !== 'Published' && (validated.notifyInApp || validated.notifyEmail)), notificationResult, notificationError });
+  res.json({ job });
 });
 
-router.delete('/jobs/:id', requireRole('admin'), (req, res) => {
+router.delete('/jobs/:id', requireRole('admin', 'staff'), (req, res) => {
   const id = Number(req.params.id);
-  const job = db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(id);
-  if (!job) return res.status(404).json({ error: 'Job opportunity not found.' });
-  const applications = db.prepare('SELECT id FROM job_applications WHERE job_id = ?').all(id);
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    db.prepare('DELETE FROM job_applications WHERE job_id = ?').run(id);
-    db.prepare('DELETE FROM job_opportunities WHERE id = ?').run(id);
-    db.exec('COMMIT');
-  } catch (error) {
-    db.exec('ROLLBACK');
-    throw error;
-  }
-  for (const application of applications) mirrorDelete('job_applications', application.id);
-  writeAudit(req.user, 'delete', 'job_opportunity', id, job.title);
+  const info = db.prepare('DELETE FROM job_opportunities WHERE id = ?').run(id);
+  if (info.changes === 0) return res.status(404).json({ error: 'Job opportunity not found.' });
   mirrorDelete('job_opportunities', id);
   res.status(204).end();
 });
 
 /* ----------------------------- Announcements ------------------------------ */
 
-function announcementDateError(value, field) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return `${field} must be a valid date.`;
-  return '';
-}
-
-async function notifyAnnouncement(announcement) {
-  const shortMessage = `${announcement.title} has been published by St. Agnes Academy. View Announcements in the Alumni Portal.`;
-  const results = await dispatchAlumniAudience(
-    `New announcement: ${announcement.title}`,
-    shortMessage,
-    'announcement',
-    announcement.id,
-    {
-      inApp: Boolean(announcement.send_in_app),
-      sendEmail: Boolean(announcement.send_email),
-      sendSms: Boolean(announcement.send_sms),
-      forceChannels: true,
-      emailSubject: announcement.title,
-      emailMessage: `${announcement.body || ''}\n\nView Announcements in the Alumni Portal.`,
-      smsMessage: `St. Agnes Alumni: ${announcement.title} is now available. Log in to the Alumni Portal for details.`
-    }
-  );
-  return { attempted: results.length };
-}
-
-async function activateDueAnnouncements() {
-  const due = db.prepare(`
-    SELECT * FROM announcements
-    WHERE status = 'Scheduled' AND publish_at != '' AND publish_at <= ?
-    ORDER BY id
-  `).all(new Date().toISOString());
-  for (const row of due) {
-    const updated = db.prepare(
-      "UPDATE announcements SET status = 'Published' WHERE id = ? AND status = 'Scheduled'"
-    ).run(row.id);
-    if (!updated.changes) continue;
-    const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(row.id);
-    try {
-      await notifyAnnouncement(announcement);
-    } catch (error) {
-      console.error(`Unable to notify Alumni about scheduled announcement ${row.id}:`, error);
-    }
-  }
-}
-
-const announcementScheduler = setInterval(() => {
-  activateDueAnnouncements().catch((error) => {
-    console.error('Unable to activate scheduled announcements:', error);
-  });
-}, 30000);
-announcementScheduler.unref?.();
-
-router.get('/announcements', async (req, res) => {
-  await activateDueAnnouncements();
-  const rows = db.prepare(`
-    SELECT * FROM announcements
-    WHERE (expires_at = '' OR expires_at IS NULL OR expires_at >= date('now'))
-    ORDER BY id DESC
-  `).all();
-  const visible = (isAdmin(req.user) || isStaff(req.user))
-    ? rows
-    : rows.filter((announcement) => announcement.status === 'Published');
+router.get('/announcements', (req, res) => {
+  const rows = db.prepare('SELECT * FROM announcements ORDER BY id DESC').all();
+  const visible = (isAdmin(req.user) || isStaff(req.user)) ? rows : rows.filter((a) => a.status === 'Published');
   res.json({ announcements: visible });
 });
 
-router.post('/announcements', requireRole('admin', 'staff'), async (req, res) => {
-  const title = String(req.body?.title || '').trim();
-  const body = String(req.body?.body || '').trim();
-  const status = String(req.body?.status || 'Draft');
-  const publishDateError = announcementDateError(req.body?.publishAt, 'Publish date');
-  const expirationDateError = announcementDateError(req.body?.expiresAt, 'Expiration date');
+router.post('/announcements', requireRole('admin', 'staff'), (req, res) => {
+  const { title, body, status, audience } = req.body || {};
   if (!title) return res.status(400).json({ error: 'Announcement title is required.' });
-  if (!body) return res.status(400).json({ error: 'Announcement message is required.' });
-  if (title.length > 160 || body.length > 10000) return res.status(400).json({ error: 'Announcement title or message exceeds the allowed length.' });
-  if (publishDateError) return res.status(400).json({ error: publishDateError });
-  if (expirationDateError) return res.status(400).json({ error: expirationDateError });
-  if (!['Draft', 'Scheduled', 'Published'].includes(status)) return res.status(400).json({ error: 'Choose Draft, Scheduled, or Published.' });
-  const publishDate = req.body?.publishAt ? new Date(req.body.publishAt).toISOString() : '';
-  const expirationDate = req.body?.expiresAt ? new Date(req.body.expiresAt).toISOString().slice(0, 10) : '';
-  if (status === 'Scheduled' && (!publishDate || new Date(publishDate) <= new Date())) {
-    return res.status(400).json({ error: 'Choose a future publish date and time.' });
-  }
-  if (expirationDate && publishDate && expirationDate < publishDate.slice(0, 10)) {
-    return res.status(400).json({ error: 'Expiration date must be after the publish date.' });
-  }
-  if (expirationDate && status === 'Published' && expirationDate < new Date().toISOString().slice(0, 10)) {
-    return res.status(400).json({ error: 'Expiration date cannot be in the past.' });
-  }
-  const sendInApp = req.body?.sendInApp !== false;
-  const sendEmail = req.body?.sendEmail === true;
-  const sendSms = req.body?.sendSms === true;
-  if (!sendInApp && !sendEmail && !sendSms && status !== 'Draft') {
-    return res.status(400).json({ error: 'Select at least one notification channel before publishing.' });
-  }
-  const info = db.prepare(`
-    INSERT INTO announcements
-      (title, body, status, audience, publish_at, expires_at, send_in_app, send_email, send_sms, created_by)
-    VALUES (?, ?, ?, 'alumni', ?, ?, ?, ?, ?, ?)
-  `).run(
-    title, body, status, publishDate, expirationDate,
-    sendInApp ? 1 : 0, sendEmail ? 1 : 0, sendSms ? 1 : 0, req.user.id
+  const info = db.prepare('INSERT INTO announcements (title, body, status, audience) VALUES (?, ?, ?, ?)').run(
+    title, body || '', status || 'Published', audience || 'alumni'
   );
-  let announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(info.lastInsertRowid);
-  let notification = null;
-  if (status === 'Published') {
-    notification = await notifyAnnouncement(announcement);
+  const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(info.lastInsertRowid);
+  if ((status || 'Published') === 'Published') {
+    dispatchAlumniAudience(title, body || 'A new announcement was published.', 'announcement', announcement.id).catch(() => {});
   }
-  writeAudit(req.user, status === 'Published' ? 'publish' : 'create', 'announcement', announcement.id, `${status}: ${title}`);
-  res.status(201).json({ announcement, notification });
+  res.status(201).json({ announcement });
 });
 
 router.get('/announcements/:id', (req, res) => {
   const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(Number(req.params.id));
   if (!announcement) return res.status(404).json({ error: 'Announcement not found.' });
-  if (announcement.expires_at && announcement.expires_at < new Date().toISOString().slice(0, 10)) {
-    return res.status(404).json({ error: 'Announcement not found.' });
-  }
   if (announcement.status !== 'Published' && !isAdmin(req.user) && !isStaff(req.user)) {
     return res.status(403).json({ error: 'This announcement is not available.' });
   }

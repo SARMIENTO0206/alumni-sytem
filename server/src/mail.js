@@ -21,7 +21,7 @@ function writeMailLog({ notificationId, userId, recipient, subject, status, reas
   } catch { /* logging must not break sending */ }
 }
 
-export async function sendMail({ to, subject, text, html, notificationId, userId, attachments }) {
+export async function sendMail({ to, subject, text, html, notificationId, userId }) {
   if (!to) {
     const result = { sent: false, accepted: false, status: 'failed', reason: 'No recipient email on the account.' };
     writeMailLog({ notificationId, userId, recipient: to, subject, ...result });
@@ -33,7 +33,7 @@ export async function sendMail({ to, subject, text, html, notificationId, userId
       sent: false,
       accepted: false,
       status: 'not_configured',
-      reason: 'Email service is currently unavailable. Please contact the system administrator.'
+      reason: 'SMTP is not configured. Add SMTP_HOST, SMTP_USER, and SMTP_PASS to server/.env.'
     };
     writeMailLog({ notificationId, userId, recipient: to, subject, ...result });
     return result;
@@ -51,8 +51,7 @@ export async function sendMail({ to, subject, text, html, notificationId, userId
       to,
       subject,
       text,
-      html: html || undefined,
-      attachments: attachments || undefined
+      html: html || undefined
     });
     const accepted = Array.isArray(info.accepted) ? info.accepted.length > 0 : Boolean(info.messageId);
     const result = accepted

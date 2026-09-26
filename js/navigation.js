@@ -11,7 +11,7 @@
         "tracking", "placement", "events", "reunions", "donor", "newsletter", "feedback",
         "reports", "verification", "request-approval", "document-processing", "release-claiming",
         "request-history", "registrar-reports", "academic-records", "users", "settings",
-        "announcements", "notifications", "sms", "gmail", "ai-tools", "ai-chat", "request-status",
+        "announcements", "notifications", "sms", "gmail", "ai-chat", "request-status",
         "applications", "unauthorized", "payment", "payment-receipt"
     ];
 
@@ -28,7 +28,6 @@
         feedback: "/surveys",
         "job-opportunities": "/jobs",
         reports: "/reports",
-        "ai-tools": "/ai-tools",
         profile: "/profile",
         idcard: "/idcard",
         placement: "/placement",
@@ -78,7 +77,6 @@
         jobs: "job-opportunities",
         "job-opportunities": "job-opportunities",
         reports: "reports",
-        "ai-tools": "ai-tools",
         profile: "profile",
         idcard: "idcard",
         placement: "placement",
@@ -260,8 +258,8 @@
         if (viewId === "academic-records" && typeof renderAcademicRecords === "function") renderAcademicRecords();
         if (viewId === "reports") {
             if (typeof updateReports === "function") updateReports();
+            if (typeof refreshAiStatus === "function") refreshAiStatus();
         }
-        if (viewId === "ai-tools" && typeof refreshAiStatus === "function") refreshAiStatus();
         if (viewId === "request-approval" && typeof renderRequestApproval === "function") renderRequestApproval();
         if (viewId === "document-processing" && typeof renderDocumentPreparation === "function") renderDocumentPreparation();
         if (viewId === "release-claiming" && typeof renderReleaseClaiming === "function") renderReleaseClaiming();
@@ -408,13 +406,12 @@
             dashboard: "Dashboard Overview",
             idcard: "Digital Alumni Identification",
             database: "Alumni Records Database",
-            profile: "My Profile",
-            "ai-tools": "AI Assistant Tools",
+            profile: "My Alumni Profile",
             "job-opportunities": "Job Opportunities Board",
             transcript: "Transcript Request Portal",
             reprint: "Certificate Reprint Requests",
             tracking: "Graduate Tracking Analytics",
-            placement: "Alumni Employment Records",
+            placement: "Job Placement Logs",
             events: "Alumni Events Registration",
             reunions: "Batch Reunions Manager",
             donor: "Donor Campaign Portal",
@@ -473,8 +470,7 @@
         const items = [];
         if (alumniList[0]) items.push({ title: "Latest alumni record", detail: alumniList[0].name + (alumniList[0].batch ? ` (Batch ${alumniList[0].batch})` : "") });
         if (transcriptRequests[0]) items.push({ title: "Latest transcript request", detail: transcriptRequests[0].name + " • " + (transcriptRequests[0].status || "") });
-        const latestEmployment = alumniList.find((alumnus) => ["Employed", "Self-employed"].includes(alumnus.status));
-        if (latestEmployment) items.push({ title: "Latest alumni employment update", detail: latestEmployment.name + " • " + (latestEmployment.company || latestEmployment.status) });
+        if (placementLogs[0]) items.push({ title: "Latest placement", detail: placementLogs[0].alumni + " • " + (placementLogs[0].company || "") });
         if (eventsList[0]) items.push({ title: "Latest event", detail: eventsList[0].title });
 
         if (!items.length) {
@@ -640,9 +636,9 @@
         setVal("profileContact", user.contact || alumni.contact || "");
         setVal("profileAddress", user.address || alumni.address || "");
         setVal("profileAlumniId", user.studentId || alumni.studentId || "");
-        setVal("profileStaffId", user.staffId || user.employeeId || user.studentId || "");
         setVal("profileBatch", user.batch || alumni.batch || "");
         setVal("profileProgram", user.program || alumni.program || "");
+        setVal("profileStaffId", user.staffId || user.employeeId || user.studentId || "");
         setVal("profileTrack", user.strand || user.track || alumni.strand || alumni.track || "");
         ["profileEmployment", "profileCompany", "profileJobTitle"].forEach((id, index) => {
             const el = document.getElementById(id);

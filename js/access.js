@@ -102,9 +102,6 @@ function applyRoleChrome() {
             <p><span class="font-bold text-slate-600">Account status:</span> ${escapeHtml(currentUser.status || "Active")}</p>
         `;
     }
-    const viewTitle = document.getElementById("currentViewTitle");
-    const profileView = document.getElementById("view-profile");
-    if (viewTitle && profileView && !profileView.classList.contains("hidden")) viewTitle.textContent = "My Profile";
 
     const alumniDash = document.getElementById("alumniDashboardPanel");
     if (alumniDash) alumniDash.classList.toggle("hidden", !isAlumniRole());
@@ -147,9 +144,12 @@ function escapeHtml(value) {
 
 async function changeOwnPassword(event) {
     if (event) event.preventDefault();
-    const currentPassword = (document.getElementById("ownCurrentPassword") || {}).value;
-    const newPassword = (document.getElementById("ownNewPassword") || {}).value;
-    const confirm = (document.getElementById("ownConfirmPassword") || {}).value;
+    const currentPassword = (document.getElementById("ownCurrentPassword") || {}).value
+        || (document.getElementById("settingsCurrentPassword") || {}).value;
+    const newPassword = (document.getElementById("ownNewPassword") || {}).value
+        || (document.getElementById("settingsNewPassword") || {}).value;
+    const confirm = (document.getElementById("ownConfirmPassword") || {}).value
+        || (document.getElementById("settingsConfirmPassword") || {}).value;
     if (!currentPassword || !newPassword) {
         showToast("Enter your current password and a new password.", "error");
         return;
@@ -163,13 +163,35 @@ async function changeOwnPassword(event) {
             method: "PUT",
             body: JSON.stringify({ currentPassword, newPassword })
         });
-        ["ownCurrentPassword", "ownNewPassword", "ownConfirmPassword"].forEach((id) => {
+        ["ownCurrentPassword", "ownNewPassword", "ownConfirmPassword", "settingsCurrentPassword", "settingsNewPassword", "settingsConfirmPassword"].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.value = "";
         });
         showToast("Password updated.", "success");
     } catch (err) {
         showToast(err.message || "Unable to update password.", "error");
+    }
+}
+
+async function saveOwnProfileFromSettings(event) {
+    if (event) event.preventDefault();
+    const name = (document.getElementById("settingsAccountName") || {}).value;
+    const email = (document.getElementById("settingsAccountEmail") || {}).value;
+    const contact = (document.getElementById("settingsAccountContact") || {}).value;
+    try {
+        const data = await SAA_API.request("/api/auth/profile", {
+            method: "PUT",
+            body: JSON.stringify({ name, email, contact })
+        });
+        currentUser = Object.assign({}, currentUser, data.user);
+        sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
+        if (typeof applyUserRole === "function") {
+            document.getElementById("headerUserName").textContent = currentUser.name;
+            document.getElementById("sidebarRoleName").textContent = currentUser.title || roleLabel(currentUser.role);
+        }
+        showToast("Account details saved.", "success");
+    } catch (err) {
+        showToast(err.message || "Unable to save account details.", "error");
     }
 }
 
@@ -197,7 +219,7 @@ async function loadLoginActivity() {
 function settingsSectionsForRole(role) {
     const r = normalizeRole(role);
     if (r === "admin") {
-        return ["general", "documents", "communications", "notifications", "ai", "security", "history", "alumni"];
+        return ["notifications", "general", "documents", "alumni", "security", "communications", "ai", "history"];
     }
     if (r === "staff") return ["notifications", "security"];
     return ["notifications", "privacy", "security"];
@@ -228,6 +250,13 @@ async function loadSettingsView() {
         el.classList.toggle("hidden", !allowed.includes(key) || key !== allowed[0]);
     });
     showSettingsTab(allowed[0]);
+
+    if (document.getElementById("settingsAccountName")) {
+        document.getElementById("settingsAccountName").value = currentUser.name || "";
+        document.getElementById("settingsAccountEmail").value = currentUser.email || "";
+        document.getElementById("settingsAccountContact").value = currentUser.contact || "";
+        document.getElementById("settingsAccountUsername").value = currentUser.username || "";
+    }
 
     const prefs = JSON.parse(localStorage.getItem("saaNotifyPrefs") || "{}");
     ["prefSystem", "prefEmail", "prefSms", "prefDocs", "prefEvents", "prefJobs", "prefSurveys", "prefAnnounce"].forEach((id) => {
@@ -436,7 +465,7 @@ function renderAnnouncementsView() {
     if (form) form.classList.toggle("hidden", !(isAdminRole() || isStaffRole()));
     if (!list) return;
     if (!announcementsList.length) {
-        list.innerHTML = `<p class="text-sm text-slate-400 py-8 text-center">No announcements are available.</p>`;
+        list.innerHTML = `<p class="text-sm text-slate-400 py-8 text-center">No announcements have been published yet.</p>`;
         return;
     }
     list.innerHTML = announcementsList.map((a) => `
@@ -444,7 +473,7 @@ function renderAnnouncementsView() {
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h4 class="font-extrabold text-slate-800">${escapeHtml(a.title)}</h4>
-                    <p class="text-xs text-slate-400 mt-1">${escapeHtml(a.status || "Published")}${a.status === "Scheduled" && a.publish_at ? ` • Publishes ${escapeHtml(a.publish_at)}` : ""}${a.expires_at ? ` • Expires ${escapeHtml(a.expires_at)}` : ""}</p>
+                    <p class="text-xs text-slate-400 mt-1">${escapeHtml(a.status || "Published")} • ${escapeHtml(a.created_at || a.createdAt || "")}</p>
                 </div>
             </div>
             <p class="text-sm text-slate-600 mt-3 whitespace-pre-wrap">${escapeHtml(a.body || "")}</p>
@@ -452,56 +481,23 @@ function renderAnnouncementsView() {
     `).join("");
 }
 
-function toggleAnnouncementSchedule() {
-    const scheduleField = document.getElementById("announcementScheduleField");
-    const publishAt = document.getElementById("announcePublishAt");
-    const scheduled = document.querySelector('input[name="announcementTiming"]:checked')?.value === "schedule";
-    if (scheduleField) scheduleField.classList.toggle("hidden", !scheduled);
-    if (publishAt) publishAt.required = scheduled;
-}
-
 async function publishAnnouncement(event) {
     event.preventDefault();
     const title = document.getElementById("announceTitle").value.trim();
     const body = document.getElementById("announceBody").value.trim();
-    const action = event.submitter?.value || "publish";
-    const timing = document.querySelector('input[name="announcementTiming"]:checked')?.value || "now";
-    const localPublishAt = document.getElementById("announcePublishAt").value;
-    const expiresAt = document.getElementById("announceExpiresAt").value;
-    const status = action === "draft" ? "Draft" : (timing === "schedule" ? "Scheduled" : "Published");
-    if (!title || !body) {
-        showToast("Title and message are required.", "error");
-        return;
-    }
-    if (status === "Scheduled" && !localPublishAt) {
-        showToast("Choose a publish date and time.", "error");
-        return;
-    }
+    if (!title) return;
     try {
-        const result = await SAA_API.request("/api/announcements", {
+        await SAA_API.request("/api/announcements", {
             method: "POST",
-            body: JSON.stringify({
-                title,
-                body,
-                status,
-                publishAt: status === "Scheduled" ? new Date(localPublishAt).toISOString() : "",
-                expiresAt,
-                sendInApp: document.getElementById("announceInApp").checked,
-                sendEmail: document.getElementById("announceEmail").checked,
-                sendSms: document.getElementById("announceSms").checked
-            })
+            body: JSON.stringify({ title, body, status: "Published" })
         });
-        event.target.reset();
-        toggleAnnouncementSchedule();
-        const outcome = result.notification;
-        if (status === "Draft") showToast("Announcement saved as a draft.", "success");
-        else if (status === "Scheduled") showToast("Announcement scheduled.", "success");
-        else if (outcome && outcome.attempted) showToast(`Announcement published. Notifications attempted for ${outcome.attempted} alumni.`, "success");
-        else showToast("Announcement published.", "success");
+        document.getElementById("announceTitle").value = "";
+        document.getElementById("announceBody").value = "";
+        showToast("Announcement published in the system.", "success");
         if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
         renderAnnouncementsView();
     } catch (err) {
-        showToast(err.message || "Unable to save the announcement.", "error");
+        showToast(err.message || "Unable to publish announcement.", "error");
     }
 }
 
@@ -750,151 +746,28 @@ async function loadApplicationsView() {
     }
 }
 
-const communicationRecipients = { SMS: [], EMAIL: [] };
-const communicationSelectedRecipients = { SMS: new Set(), EMAIL: new Set() };
-
-function updateCommunicationRecipientUI(channel) {
-    const kind = String(channel).toUpperCase();
-    const mode = document.querySelector(`input[name="${kind.toLowerCase()}RecipientMode"]:checked`)?.value || "individual";
-    const picker = document.getElementById(`${kind.toLowerCase()}RecipientPicker`);
-    const select = document.getElementById(`${kind.toLowerCase()}Recipients`);
-    if (!picker || !select) return;
-    const allRecipients = mode === "all";
-    picker.classList.toggle("hidden", allRecipients);
-    select.multiple = mode === "selected";
-    select.required = !allRecipients;
-    select.size = mode === "individual" ? 1 : 5;
-    if (mode !== "selected" && communicationSelectedRecipients[kind].size > 1) {
-        communicationSelectedRecipients[kind] = new Set();
-    }
-    filterCommunicationRecipients(kind);
-}
-
-function rememberCommunicationRecipients(channel) {
-    const kind = String(channel).toUpperCase();
-    const select = document.getElementById(`${kind.toLowerCase()}Recipients`);
-    if (!select) return;
-    communicationSelectedRecipients[kind] = new Set(Array.from(select.selectedOptions).map((option) => String(option.value)));
-}
-
-function filterCommunicationRecipients(channel) {
-    const kind = String(channel).toUpperCase();
-    const search = String(document.getElementById(`${kind.toLowerCase()}RecipientSearch`)?.value || "").toLowerCase().trim();
-    const select = document.getElementById(`${kind.toLowerCase()}Recipients`);
-    if (!select) return;
-    const selected = communicationSelectedRecipients[kind];
-    const rows = communicationRecipients[kind] || [];
-    select.innerHTML = rows.filter((recipient) => {
-        const text = `${recipient.name || ""} ${recipient.batch || ""} ${recipient.email || ""}`.toLowerCase();
-        return !search || text.includes(search);
-    }).map((recipient) => `<option value="${escapeHtml(recipient.id)}" ${selected.has(String(recipient.id)) ? "selected" : ""}>${escapeHtml(recipient.name)}${recipient.batch ? ` • ${escapeHtml(recipient.batch)}` : ""}${recipient.email ? ` — ${escapeHtml(recipient.email)}` : ""}</option>`).join("");
-}
-
-function applyCommunicationTemplate(channel) {
-    const kind = String(channel).toUpperCase();
-    const template = document.getElementById("smsTemplate")?.value;
-    const messages = {
-        announcement: "St. Agnes Alumni: A new announcement is available. Log in to the Alumni Portal for details.",
-        event: "St. Agnes Alumni: A new school event is available. Log in to the Alumni Portal for details.",
-        profile: "St. Agnes Alumni: Please log in to the Alumni Portal to update your alumni profile."
-    };
-    const message = messages[template];
-    if (kind === "SMS" && message) {
-        document.getElementById("smsMessage").value = message.slice(0, 160);
-        updateSmsCharacterCount();
-    }
-}
-
-function updateSmsCharacterCount() {
-    const message = document.getElementById("smsMessage");
-    const counter = document.getElementById("smsCharacterCount");
-    if (!message || !counter) return;
-    const length = message.value.length;
-    counter.textContent = `Characters: ${length} / 160 • Estimated SMS: ${length ? Math.ceil(length / 160) : 0}`;
-}
-
-async function loadCommunicationRecipients() {
-    const data = await SAA_API.request("/api/notifications/communications/recipients");
-    communicationRecipients.SMS = data.recipients || [];
-    communicationRecipients.EMAIL = communicationRecipients.SMS;
-    filterCommunicationRecipients("SMS");
-    filterCommunicationRecipients("EMAIL");
-    updateCommunicationRecipientUI("SMS");
-    updateCommunicationRecipientUI("EMAIL");
-}
-
-function renderCommunicationHistory(channel, messages) {
-    const kind = String(channel).toUpperCase();
-    const tbody = document.getElementById(kind === "SMS" ? "smsHistoryList" : "emailHistoryList");
-    if (!tbody) return;
-    const rows = (messages || []).filter((row) => row.channel === kind);
-    tbody.innerHTML = rows.length ? rows.map((row) => `
-        <tr>
-            <td>${escapeHtml(row.recipient || "—")}</td>
-            <td>${escapeHtml(row.title || "—")}</td>
-            <td>${escapeHtml(row.createdAt || "—")}</td>
-            <td>${escapeHtml(row.status || "Unknown")}</td>
-        </tr>
-    `).join("") : `<tr><td colspan="4" class="text-center text-slate-400">No delivery history yet.</td></tr>`;
-}
-
-async function loadCommunicationHistory() {
-    const data = await SAA_API.request("/api/notifications/communications/history");
-    renderCommunicationHistory("SMS", data.messages || []);
-    renderCommunicationHistory("EMAIL", data.messages || []);
-}
-
 async function logInternalMessage(event, channel) {
     event.preventDefault();
-    const kind = String(channel).toUpperCase();
-    const prefix = kind.toLowerCase();
-    const recipientMode = document.querySelector(`input[name="${prefix}RecipientMode"]:checked`)?.value || "individual";
-    rememberCommunicationRecipients(kind);
-    const userIds = recipientMode === "all" ? [] : Array.from(communicationSelectedRecipients[kind]).map(Number);
-    const subject = kind === "EMAIL" ? document.getElementById("emailSubject").value.trim() : "";
-    const message = document.getElementById(kind === "SMS" ? "smsMessage" : "emailBody").value.trim();
-    if (recipientMode !== "all" && !userIds.length) {
-        showToast("Select at least one Alumni recipient.", "error");
+    const recipient = document.getElementById(channel === "SMS" ? "smsRecipient" : "emailRecipient").value.trim();
+    const subject = document.getElementById(channel === "SMS" ? "smsSubject" : "emailSubject").value.trim();
+    const message = document.getElementById(channel === "SMS" ? "smsMessage" : "emailBody").value.trim();
+    if (!recipient || !subject) {
+        showToast("Recipient and subject are required.", "error");
         return;
     }
-    if (!message || (kind === "EMAIL" && !subject)) {
-        showToast(kind === "EMAIL" ? "Subject and message are required." : "Message is required.", "error");
-        return;
-    }
-    const recipientCount = recipientMode === "all"
-        ? communicationRecipients[kind].length
-        : userIds.length;
-    if (!recipientCount) {
-        showToast("There are no active Alumni recipients available.", "error");
-        return;
-    }
-    if (!confirm(`Send ${kind} to ${recipientCount} Alumni recipient${recipientCount === 1 ? "" : "s"}?`)) return;
     try {
-        let attachment;
-        if (kind === "EMAIL") {
-            const file = document.getElementById("emailAttachment").files?.[0];
-            if (file) {
-                if (file.type !== "application/pdf" || file.size > 1048576) {
-                    showToast("Choose a PDF attachment no larger than 1 MB.", "error");
-                    return;
-                }
-                const bytes = new Uint8Array(await file.arrayBuffer());
-                let binary = "";
-                for (let i = 0; i < bytes.length; i += 0x8000) {
-                    binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + 0x8000, bytes.length)));
-                }
-                attachment = { filename: file.name, contentType: file.type, contentBase64: btoa(binary) };
-            }
-        }
-        const data = await SAA_API.request("/api/notifications/communications/send", {
+        const data = await SAA_API.request("/api/notifications", {
             method: "POST",
-            body: JSON.stringify({ channel: kind, recipientMode, userIds, subject, message, attachment })
+            body: JSON.stringify({ channel, recipient, subject, message })
         });
-        showToast(`${kind}: ${data.accepted} accepted, ${data.failed} failed or unavailable, ${data.attempted} attempted.`, data.failed ? "info" : "success");
-        await Promise.all([loadCommunicationRecipients(), loadCommunicationHistory()]);
+        const status = data.deliveryStatus || "";
+        if (status === "accepted") showToast(`${channel} accepted by the provider.`, "success");
+        else if (status === "not_configured") showToast(channel === "SMS" ? "SMS provider is not configured." : "SMTP is not configured. The message was recorded but not sent.", "error");
+        else if (status === "failed") showToast(`${channel} failed: ${(data.notification && (data.notification.emailStatus === "failed" ? data.notification.emailStatus : data.notification.smsStatus)) || "provider rejected the message."}`, "error");
+        else showToast(`${channel} recorded with status: ${status || "unknown"}.`, "info");
+        if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
+        renderNotificationsPage();
         event.target.reset();
-        updateCommunicationRecipientUI(kind);
-        updateSmsCharacterCount();
     } catch (err) {
         showToast(err.message || "Unable to send the message.", "error");
     }
@@ -907,22 +780,16 @@ async function loadMessageConfigStatus() {
         const email = document.getElementById("emailConfigStatus");
         if (sms) sms.textContent = health.sms && health.sms.configured
             ? `SMS provider (${health.sms.provider}) is configured. Status will show Accepted or Failed after send.`
-            : "SMS service is currently unavailable. Please contact the system administrator.";
+            : "SMS provider is not configured.";
         if (email) email.textContent = health.mail && health.mail.configured
-            ? "Email service is available. Delivery status will show whether the provider accepted the message."
-            : "Email service is currently unavailable. Please contact the system administrator.";
+            ? "SMTP is configured. Status will show Accepted only if the provider accepts the message."
+            : "SMTP is not configured. Add SMTP_HOST, SMTP_USER, and SMTP_PASS to server/.env.";
     } catch (e) {
         const sms = document.getElementById("smsConfigStatus");
         const email = document.getElementById("emailConfigStatus");
-        if (sms) sms.textContent = "Unable to check SMS service availability.";
-        if (email) email.textContent = "Unable to check email service availability.";
+        if (sms) sms.textContent = "Unable to read SMS configuration.";
+        if (email) email.textContent = "Unable to read SMTP configuration.";
     }
-    try {
-        await Promise.all([loadCommunicationRecipients(), loadCommunicationHistory()]);
-    } catch (err) {
-        showToast(err.message || "Unable to load communication recipients or delivery history.", "error");
-    }
-    updateSmsCharacterCount();
 }
 
 async function loadAiChatView() {

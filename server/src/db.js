@@ -287,11 +287,6 @@ export function initDb() {
   ensureColumn('alumni', 'tracking_review_note', "tracking_review_note TEXT DEFAULT ''");
   ensureColumn('alumni', 'tracking_reviewed_by', "tracking_reviewed_by TEXT DEFAULT ''");
   ensureColumn('alumni', 'tracking_reviewed_at', "tracking_reviewed_at TEXT DEFAULT ''");
-  ensureColumn('alumni', 'verification_status', "verification_status TEXT DEFAULT 'Verified'");
-  ensureColumn('alumni', 'verified_by', "verified_by TEXT DEFAULT ''");
-  ensureColumn('alumni', 'verified_at', "verified_at TEXT DEFAULT ''");
-  ensureColumn('alumni', 'archived_at', "archived_at TEXT DEFAULT ''");
-  ensureColumn('alumni', 'archived_user_status', "archived_user_status TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'remarks', "remarks TEXT DEFAULT ''");
@@ -318,32 +313,6 @@ export function initDb() {
   ensureColumn('feedback', 'internal_note', "internal_note TEXT DEFAULT ''");
   ensureColumn('job_applications', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('job_applications', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
-  ensureColumn('job_opportunities', 'industry', "industry TEXT DEFAULT ''");
-  ensureColumn('job_opportunities', 'employment_type', "employment_type TEXT DEFAULT ''");
-  ensureColumn('job_opportunities', 'qualifications', "qualifications TEXT DEFAULT ''");
-  ensureColumn('job_opportunities', 'application_method', "application_method TEXT DEFAULT 'Portal'");
-  ensureColumn('job_opportunities', 'application_details', "application_details TEXT DEFAULT ''");
-  ensureColumn('job_opportunities', 'deadline', "deadline TEXT DEFAULT ''");
-  ensureColumn('job_opportunities', 'created_by', 'created_by INTEGER DEFAULT 0');
-  ensureColumn('job_opportunities', 'created_by_name', "created_by_name TEXT DEFAULT ''");
-  ensureColumn('job_opportunities', 'created_by_role', "created_by_role TEXT DEFAULT ''");
-  ensureColumn('job_opportunities', 'notify_in_app', 'notify_in_app INTEGER DEFAULT 1');
-  ensureColumn('job_opportunities', 'notify_email', 'notify_email INTEGER DEFAULT 0');
-  ensureColumn('newsletters', 'title', "title TEXT DEFAULT ''");
-  ensureColumn('newsletters', 'status', "status TEXT DEFAULT 'Published'");
-  ensureColumn('newsletters', 'created_by', 'created_by INTEGER DEFAULT 0');
-  ensureColumn('newsletters', 'created_by_name', "created_by_name TEXT DEFAULT ''");
-  ensureColumn('newsletters', 'created_by_role', "created_by_role TEXT DEFAULT ''");
-  ensureColumn('newsletters', 'submitted_at', "submitted_at TEXT DEFAULT ''");
-  ensureColumn('newsletters', 'reviewed_by', "reviewed_by TEXT DEFAULT ''");
-  ensureColumn('newsletters', 'review_note', "review_note TEXT DEFAULT ''");
-  ensureColumn('newsletters', 'send_in_app', 'send_in_app INTEGER DEFAULT 1');
-  ensureColumn('newsletters', 'send_email', 'send_email INTEGER DEFAULT 1');
-  ensureColumn('newsletters', 'send_sms', 'send_sms INTEGER DEFAULT 0');
-  ensureColumn('newsletters', 'in_app_delivered', 'in_app_delivered INTEGER DEFAULT 0');
-  ensureColumn('newsletters', 'email_sent', 'email_sent INTEGER DEFAULT 0');
-  ensureColumn('newsletters', 'sms_sent', 'sms_sent INTEGER DEFAULT 0');
-  ensureColumn('newsletters', 'delivery_failed', 'delivery_failed INTEGER DEFAULT 0');
   ensureColumn('notifications', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('notifications', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('notifications', 'related_type', "related_type TEXT DEFAULT ''");
@@ -358,12 +327,6 @@ export function initDb() {
   ensureColumn('alumni', 'email', "email TEXT DEFAULT ''");
   ensureColumn('alumni', 'address', "address TEXT DEFAULT ''");
   ensureColumn('announcements', 'audience', "audience TEXT DEFAULT 'alumni'");
-  ensureColumn('announcements', 'publish_at', "publish_at TEXT DEFAULT ''");
-  ensureColumn('announcements', 'expires_at', "expires_at TEXT DEFAULT ''");
-  ensureColumn('announcements', 'send_in_app', 'send_in_app INTEGER DEFAULT 1');
-  ensureColumn('announcements', 'send_email', 'send_email INTEGER DEFAULT 0');
-  ensureColumn('announcements', 'send_sms', 'send_sms INTEGER DEFAULT 0');
-  ensureColumn('announcements', 'created_by', 'created_by INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'fee_centavos', 'fee_centavos INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'payment_status', "payment_status TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'copies', 'copies INTEGER DEFAULT 1');
@@ -576,10 +539,6 @@ export function mapAlumni(row) {
     trackingReviewNote: row.tracking_review_note || '',
     trackingReviewedBy: row.tracking_reviewed_by || '',
     trackingReviewedAt: row.tracking_reviewed_at || '',
-    verificationStatus: row.archived_at ? 'Archived' : (row.verification_status || 'Verified'),
-    verifiedBy: row.verified_by || '',
-    verifiedAt: row.verified_at || '',
-    archivedAt: row.archived_at || '',
     timeToFirst: row.time_to_first,
     location: row.location,
     studentId: row.student_id,
@@ -741,7 +700,6 @@ function targetUrlFor(relatedType, relatedId, paid) {
   if (type === 'event') return id ? `/#/events/${id}` : '/#/events';
   if (type === 'job') return id ? `/#/jobs/${id}` : '/#/jobs';
   if (type === 'announcement') return id ? `/#/announcements/${id}` : '/#/announcements';
-  if (type === 'newsletter') return '/#/newsletter';
   if (type === 'survey' || type === 'feedback') return id ? `/#/surveys/${id}` : '/#/surveys';
   if (type === 'payment') return paid ? (id ? `/#/payment-receipt/${id}` : '/#/donor-campaigns') : (id ? `/#/payment/${id}` : '/#/donor-campaigns');
   if (type === 'application') return '/#/applications';
@@ -782,19 +740,17 @@ export function notifyUser({
 export function notifyAlumniAudience(subject, message, relatedType, relatedId, extras = {}) {
   const alumniUsers = db.prepare("SELECT * FROM users WHERE role = 'alumni' AND (status IS NULL OR status = 'Active')").all();
   for (const row of alumniUsers) {
-    if (extras.inApp !== false) {
-      notifyUser({
-        userId: row.id,
-        alumniId: row.alumni_id || 0,
-        recipient: row.email || row.name,
-        channel: extras.channel || 'SYSTEM',
-        subject,
-        message,
-        relatedType,
-        relatedId,
-        notificationType: extras.notificationType || relatedType
-      });
-    }
+    notifyUser({
+      userId: row.id,
+      alumniId: row.alumni_id || 0,
+      recipient: row.email || row.name,
+      channel: extras.channel || 'SYSTEM',
+      subject,
+      message,
+      relatedType,
+      relatedId,
+      notificationType: extras.notificationType || relatedType
+    });
   }
   return alumniUsers;
 }
