@@ -48,6 +48,23 @@ see `All Users`/`Alumni Only`/their own matching `Specific Batch`. An optional
 photo (JPG/PNG/WebP, up to 1 MB) can be attached and is shown on the
 Featured/Others cards and the full Announcements page.
 
+## 🧭 Sidebar navigation
+
+The sidebar is grouped by workflow: click a group header to collapse or expand
+it. Single-item groups are flattened into plain links, so nothing is hidden
+behind a menu with only one entry. Profile and the notifications inbox live in
+the header, not the sidebar.
+
+- **Admin (*Modules*)** — Dashboard · Alumni Database · Document Services ·
+  Career & Tracking · Alumni Engagement · Communications ·
+  Reports & Administration
+- **Registrar (*Registrar Operations*)** — Dashboard · Alumni Database ·
+  Document Services · Career & Tracking · Alumni Engagement · Communications ·
+  Reports
+- **Alumni (*Alumni Portal*)** — Dashboard · My Graduate Status ·
+  Document Requests · Career Management · Alumni Engagement · Announcements ·
+  Settings
+
 ## 🧩 System modules & roles
 
 | # | Module | How to reach it |
@@ -60,12 +77,12 @@ Featured/Others cards and the full Announcements page.
 | 8 | Certificate Reprints | Same flow as transcript requests |
 | 9 | Alumni Newsletter | Registrar drafts → Admin approves/publishes → Alumni read |
 | 10 | Feedback & Surveys | *Surveys & Feedback* — Alumni submit → Registrar processes → Admin monitors (Feedback Overview) |
-| 11 | Communications | Admin/Registrar send announcements/SMS/email via Message Center; Notifications inbox is the header bell |
+| 11 | Communications | Admin/Registrar send announcements/SMS/email under the *Communications* group; the Notifications inbox is the header bell |
 | 12 | AI Chat Support | Chat bubble, bottom-right, all roles; role-aware responses |
 | + | AI features (embedded in their workflows, no standalone "AI Tools" page) | **Summarize Feedback** in Admin's Feedback & Survey Analytics; **Generate Insights** in Admin's System Reports; **Generate Message** in the SMS composer; **AI Draft Reply to Inquiry** in the Email composer; **AI Compose** in the Newsletter composer |
 
 **Roles:** **Admin** — full oversight, analytics, user/access management (sidebar
-→ Administration → User & Access Management), AI integrations; does not
+→ Reports & Administration → User & Access Management), AI integrations; does not
 submit/process requests. **Registrar** — alumni
 records, request review/processing, announcements, SMS/email, reports.
 **Alumni** — own profile/status, digital ID, requests, jobs, events, surveys.

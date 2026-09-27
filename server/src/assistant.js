@@ -149,34 +149,41 @@ function pathFor(topic, role) {
     transcript: 'Document Requests > Transcript Requests',
     reprint: 'Document Requests > Certificate Reprints',
     documents: 'Document Requests > Request Status',
-    tracking: 'Graduate Tracking > My Employment Information',
+    tracking: 'My Graduate Status',
     jobs: 'Career Management > Job Opportunities',
     events: 'Alumni Engagement > Alumni Events',
     reunions: 'Alumni Engagement > Batch Reunions',
-    donations: 'Alumni Engagement > Donor Campaigns',
+    donations: 'Alumni Engagement > Donation Campaigns',
     newsletter: 'Alumni Engagement > Alumni Newsletter',
     survey: 'Alumni Engagement > Surveys & Feedback',
-    announcements: 'Communications > Announcements',
-    notifications: 'Communications > Notifications',
+    announcements: 'Announcements',
+    notifications: 'the notification bell in the header',
     profile: 'My Profile',
     settings: 'Settings',
     idcard: 'My Profile / Digital Alumni ID'
   };
   const staff = {
     ...alumni,
-    transcript: 'Document Requests > Transcript Requests',
-    tracking: 'Graduate Tracking',
-    jobs: 'Career Management > Job Opportunities',
+    transcript: 'Document Services > Academic Record Requests',
+    reprint: 'Document Services > Certificate Reprints',
+    documents: 'Document Services > Approval Queue',
+    tracking: 'Career & Tracking > Graduate Tracking',
+    jobs: 'Career & Tracking > Job Opportunities',
+    donations: 'Alumni Engagement > Donation Records',
+    survey: 'Alumni Engagement > Feedback Management',
+    announcements: 'Communications > Announcements',
     reports: 'Reports',
-    users: 'User & Access Management is not available to Staff',
-    profile: 'Profile',
-    settings: 'Settings'
+    users: 'User & Access Management is not available to Staff'
   };
   const admin = {
     ...staff,
-    reports: 'System Reports',
-    users: 'User & Access Management',
-    settings: 'Settings'
+    reprint: 'Document Services > Certificate Reprint Overview',
+    documents: 'Document Services > Document Requests Overview',
+    donations: 'Alumni Engagement > Campaign Management',
+    survey: 'Alumni Engagement > Feedback Analytics',
+    reports: 'Reports & Administration > System Reports',
+    users: 'Reports & Administration > User & Access Management',
+    settings: 'Reports & Administration > Settings'
   };
   const table = role === 'admin' ? admin : role === 'alumni' ? alumni : staff;
   return table[topic] || 'the matching module in the sidebar';
@@ -211,36 +218,53 @@ function ownRequestLine(context, topic, lang) {
     : `May nakita akong ${topicLabel(topic, lang)} mo na Request ID #${latest.id}. Current status: ${latest.status}${latest.remarks ? `. Remarks: ${latest.remarks}` : ''}.`;
 }
 
-function steps(topic, lang) {
+function steps(topic, lang, role) {
+  const where = (t) => pathFor(t, role);
+  const forAlumni = normalizeRole(role) === 'alumni';
   if (topic === 'transcript') {
+    if (!forAlumni) {
+      return lang === 'en'
+        ? [`Open ${where('transcript')}.`, 'Open the Pending or Processing request from the queue.', 'Update the status and add remarks if you reject it.']
+        : [`Pumunta sa ${where('transcript')}.`, 'Buksan ang Pending o Processing na request sa queue.', 'I-update ang status at maglagay ng remarks kung ire-reject.'];
+    }
     return lang === 'en'
-      ? ['Open Document Requests.', 'Select Transcript Requests.', 'Click Request New Transcript.', 'Enter the required information, including the purpose.', 'Submit the request.', 'Return to Transcript Requests to see the status.']
-      : ['Pumunta sa Document Requests.', 'Piliin ang Transcript Requests.', 'I-click ang Request New Transcript.', 'Ilahad ang required information, kasama ang purpose.', 'I-submit ang request.', 'Bumalik sa Transcript Requests para makita ang status.'];
+      ? [`Open ${where('transcript')}.`, 'Click Request New Transcript.', 'Enter the required information, including the purpose.', 'Submit the request.', 'Return to the same page to see the status.']
+      : [`Pumunta sa ${where('transcript')}.`, 'I-click ang Request New Transcript.', 'Ilahad ang required information, kasama ang purpose.', 'I-submit ang request.', 'Bumalik sa parehong page para makita ang status.'];
   }
   if (topic === 'reprint') {
+    if (!forAlumni) {
+      return lang === 'en'
+        ? [`Open ${where('reprint')}.`, 'Open the Pending or Processing reprint request.', 'Update the status and add remarks if you reject it.']
+        : [`Pumunta sa ${where('reprint')}.`, 'Buksan ang Pending o Processing na reprint request.', 'I-update ang status at maglagay ng remarks kung ire-reject.'];
+    }
     return lang === 'en'
-      ? ['Open Document Requests.', 'Select Certificate Reprints.', 'Submit a reprint request and choose the certificate type.', 'Complete the required information.', 'Submit the request.', 'Check the same page for the status.']
-      : ['Pumunta sa Document Requests.', 'Piliin ang Certificate Reprints.', 'Mag-submit ng reprint request at piliin ang certificate type.', 'Kumpletuhin ang required information.', 'I-submit ang request.', 'Sa parehong page makikita ang status.'];
+      ? [`Open ${where('reprint')}.`, 'Submit a reprint request and choose the certificate type.', 'Complete the required information.', 'Submit the request.', 'Check the same page for the status.']
+      : [`Pumunta sa ${where('reprint')}.`, 'Mag-submit ng reprint request at piliin ang certificate type.', 'Kumpletuhin ang required information.', 'I-submit ang request.', 'Sa parehong page makikita ang status.'];
   }
   if (topic === 'tracking') {
+    if (!forAlumni) {
+      return lang === 'en'
+        ? [`Open ${where('tracking')}.`, 'Review the submitted employment or education information.', 'Verify the record, or send it back for correction with notes.']
+        : [`Pumunta sa ${where('tracking')}.`, 'I-review ang naisumiteng employment o education information.', 'I-verify ang record, o ibalik ito para sa correction na may notes.'];
+    }
     return lang === 'en'
-      ? ['Open Graduate Tracking.', 'Click Update My Status.', 'Enter employment or further-education information.', 'Save the record.']
-      : ['Pumunta sa Graduate Tracking.', 'I-click ang Update My Status.', 'Ilahad ang employment o further-education information.', 'I-save ang record.'];
+      ? [`Open ${where('tracking')}.`, 'Click Update My Status.', 'Enter employment or further-education information.', 'Save the record.']
+      : [`Pumunta sa ${where('tracking')}.`, 'I-click ang Update My Status.', 'Ilahad ang employment o further-education information.', 'I-save ang record.'];
   }
   if (topic === 'jobs') {
     return lang === 'en'
-      ? ['Open Career Management > Job Opportunities.', 'Open a published job.', 'Use Apply if you want to submit an application.']
-      : ['Pumunta sa Career Management > Job Opportunities.', 'Buksan ang published job.', 'I-click ang Apply kung mag-a-apply ka.'];
+      ? [`Open ${where('jobs')}.`, 'Open a published job.', 'Use Apply if you want to submit an application.']
+      : [`Pumunta sa ${where('jobs')}.`, 'Buksan ang published job.', 'I-click ang Apply kung mag-a-apply ka.'];
   }
   if (topic === 'events') {
     return lang === 'en'
-      ? ['Open Alumni Engagement > Alumni Events.', 'Open the event.', 'Register or RSVP from that page.']
-      : ['Pumunta sa Alumni Engagement > Alumni Events.', 'Buksan ang event.', 'Mag-register o mag-RSVP doon.'];
+      ? [`Open ${where('events')}.`, 'Open the event.', 'Register or RSVP from that page.']
+      : [`Pumunta sa ${where('events')}.`, 'Buksan ang event.', 'Mag-register o mag-RSVP doon.'];
   }
   if (topic === 'survey') {
     return lang === 'en'
-      ? ['Open Alumni Engagement > Surveys & Feedback.', 'Complete the form.', 'Submit your response.']
-      : ['Pumunta sa Alumni Engagement > Surveys & Feedback.', 'Sagutan ang form.', 'I-submit ang sagot.'];
+      ? [`Open ${where('survey')}.`, 'Complete the form.', 'Submit your response.']
+      : [`Pumunta sa ${where('survey')}.`, 'Sagutan ang form.', 'I-submit ang sagot.'];
   }
   if (topic === 'profile') {
     return lang === 'en'
@@ -277,7 +301,7 @@ export function generateConversationalReply({ user, text, language, topic, inten
     const mentioned = String(text).match(/pending|processing|approved|rejected|released|ready for release|submitted|under review/i);
     if (mentioned) return statusMeaning(mentioned[0], lang);
     if (topic === 'transcript' || topic === 'reprint' || topic === 'documents') {
-      const simple = steps(topic === 'documents' ? 'transcript' : topic, lang);
+      const simple = steps(topic === 'documents' ? 'transcript' : topic, lang, role);
       return lang === 'en'
         ? `I'll keep this simple.\n\n${formatSteps(simple, lang)}\n\nAfter you submit, the status on that same page tells you what staff is doing.`
         : `Okay, simple lang.\n\n${formatSteps(simple, lang)}\n\nPag na-submit mo na, sa parehong page makikita ang status.`;
@@ -318,25 +342,25 @@ export function generateConversationalReply({ user, text, language, topic, inten
         : `Kung ang tinutukoy mo ay yung ${topicLabel(topic, lang)}, pumunta sa ${pathFor(topic, role)}. Doon mo makikita ang record at current status.`;
     }
     return lang === 'en'
-      ? 'If you mean a transcript request, open Document Requests > Transcript Requests. If you mean a certificate reprint, open Document Requests > Certificate Reprints.'
-      : 'Kung transcript request, pumunta sa Document Requests > Transcript Requests. Kung certificate reprint, pumunta sa Document Requests > Certificate Reprints.';
+      ? `If you mean a transcript request, open ${pathFor('transcript', role)}. If you mean a certificate reprint, open ${pathFor('reprint', role)}.`
+      : `Kung transcript request, pumunta sa ${pathFor('transcript', role)}. Kung certificate reprint, pumunta sa ${pathFor('reprint', role)}.`;
   }
 
   if (intent === 'howto' || (!topic && /request|update|register|apply/.test(String(text).toLowerCase()))) {
     const useTopic = topic || ( /reprint|certificate/.test(String(text).toLowerCase()) ? 'reprint' : /transcript/.test(String(text).toLowerCase()) ? 'transcript' : '');
-    const list = steps(useTopic, lang);
+    const list = steps(useTopic, lang, role);
     if (list.length) return formatSteps(list, lang);
   }
 
   if (topic === 'jobs') {
     if (isAlumni(user)) {
       return lang === 'en'
-        ? `Published jobs are in Career Management > Job Opportunities. There are currently ${context.own.jobs} published listing(s). You can open a job and apply from that page. Your applications are in Career Management > My Applications / Referrals.`
-        : `Nasa Career Management > Job Opportunities ang published jobs. May ${context.own.jobs} published listing ngayon. Pwede kang mag-apply doon. Ang applications mo ay nasa Career Management > My Applications / Referrals.`;
+        ? `Published jobs are in ${pathFor('jobs', role)}. There are currently ${context.own.jobs} published listing(s). You can open a job and apply from that page. Your applications are in Career Management > My Applications / Referrals.`
+        : `Nasa ${pathFor('jobs', role)} ang published jobs. May ${context.own.jobs} published listing ngayon. Pwede kang mag-apply doon. Ang applications mo ay nasa Career Management > My Applications / Referrals.`;
     }
     return lang === 'en'
-      ? `Staff and administrators manage job listings in Career Management > Job Opportunities. Published jobs are the ones alumni can see.`
-      : `Sa Career Management > Job Opportunities naka-manage ang job listings. Ang Published jobs ang nakikita ng alumni.`;
+      ? `Staff and administrators manage job listings in ${pathFor('jobs', role)}. Published jobs are the ones alumni can see.`
+      : `Sa ${pathFor('jobs', role)} naka-manage ang job listings. Ang Published jobs ang nakikita ng alumni.`;
   }
 
   if (topic === 'events' || topic === 'reunions') {
@@ -349,8 +373,8 @@ export function generateConversationalReply({ user, text, language, topic, inten
     if (isAlumni(user) && context.own.alumni) {
       const a = context.own.alumni;
       return lang === 'en'
-        ? `Your graduate tracking record shows employment status: ${a.status || 'not set'}${a.company ? `, company: ${a.company}` : ''}. Update it in Graduate Tracking > My Employment Information.`
-        : `Sa graduate tracking record mo, employment status: ${a.status || 'hindi pa naka-set'}${a.company ? `, company: ${a.company}` : ''}. Ma-update ito sa Graduate Tracking > My Employment Information.`;
+        ? `Your graduate tracking record shows employment status: ${a.status || 'not set'}${a.company ? `, company: ${a.company}` : ''}. Update it in ${pathFor('tracking', role)}.`
+        : `Sa graduate tracking record mo, employment status: ${a.status || 'hindi pa naka-set'}${a.company ? `, company: ${a.company}` : ''}. Ma-update ito sa ${pathFor('tracking', role)}.`;
     }
     return lang === 'en'
       ? `Graduate Tracking is in the sidebar. Alumni update their own employment and education information. Staff and administrators can review the linked records.`
@@ -397,7 +421,7 @@ export function buildAssistantSystemPrompt(user, context, language) {
     'AI Chat uses OpenAI only when OPENAI_API_KEY is configured; otherwise use this knowledge.',
     'Never reveal another person\'s records. Alumni may only hear about their own linked records.',
     'Staff cannot manage users, roles, or system-wide settings. Admin can.',
-    'Navigation uses the real sidebar: Dashboard, Alumni Management, Document Requests, Graduate Tracking, Career Management, Alumni Engagement, Communications, AI Services, Reports or System Reports, User & Access Management (admin), Profile, Settings.',
+    'Navigation follows the real sidebar. Admin: Dashboard, Alumni Database, Document Services, Career & Tracking, Alumni Engagement, Communications, Reports & Administration. Registrar: Dashboard, Alumni Database, Document Services, Career & Tracking, Alumni Engagement, Communications, Reports. Alumni: Dashboard, My Graduate Status, Document Requests, Career Management, Alumni Engagement, Announcements, Settings. Single-item groups are shown as plain links, and Profile plus Notifications live in the header. AI Chat Support is the chat bubble and the header AI Assistant button - there is no AI Services menu.',
     language !== 'en' ? 'Answer in natural Filipino or Taglish.' : 'Answer in clear English.',
     'If you cannot resolve a personal case from the data, say so and tell the user to contact staff. Do not pretend a ticket was sent.'
   ];

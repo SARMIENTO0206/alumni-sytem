@@ -979,16 +979,6 @@ button.stat-card {
   padding: 0.5rem 0.75rem;
 }
 
-.sidebar-group-items > .sidebar-group {
-  margin-left: 0.35rem;
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.sidebar-group-items > .sidebar-group > .sidebar-group-toggle {
-  padding: 0.45rem 0.65rem;
-  font-size: 0.7rem;
-}
-
 /* =========================================================
    FORM INPUTS & CONTROLS
    ========================================================= */

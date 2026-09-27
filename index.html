@@ -473,12 +473,7 @@
                 <button type="button" onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link active">
                     <i class="fa-solid fa-chart-line"></i><span>Dashboard</span>
                 </button>
-                <div class="sidebar-group open">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Alumni Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                    <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('database')" id="nav-database" class="sidebar-link"><i class="fa-solid fa-users-viewfinder"></i><span>Alumni Database</span></button>
-                    </div>
-                </div>
+                <button type="button" onclick="switchView('database')" id="nav-database" class="sidebar-link"><i class="fa-solid fa-users-viewfinder"></i><span>Alumni Database</span></button>
                 <div class="sidebar-group">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
@@ -508,24 +503,14 @@
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('announcements')" id="nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
-                        <div class="sidebar-group">
-                            <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Message Center</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                            <div class="sidebar-group-items">
-                                <button type="button" onclick="switchView('sms')" id="nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
-                                <button type="button" onclick="switchView('gmail')" id="nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Email</span></button>
-                            </div>
-                        </div>
+                        <button type="button" onclick="switchView('sms')" id="nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
+                        <button type="button" onclick="switchView('gmail')" id="nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Email</span></button>
                     </div>
                 </div>
                 <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Reports</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Reports & Administration</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('reports')" id="nav-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>System Reports</span></button>
-                    </div>
-                </div>
-                <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Administration</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                    <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('users')" id="nav-users" class="sidebar-link"><i class="fa-solid fa-user-shield"></i><span>User &amp; Access Management</span></button>
                         <button type="button" onclick="switchView('settings')" id="nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
                     </div>
@@ -536,18 +521,13 @@
             <div id="alumniSidebar" class="hidden flex-grow overflow-y-auto p-3 space-y-1">
                 <p class="text-[10px] font-extrabold tracking-widest text-gold-accent uppercase px-3 py-2">Alumni Portal</p>
                 <button type="button" onclick="switchView('dashboard')" id="alumni-nav-dashboard" class="sidebar-link active"><i class="fa-solid fa-chart-line"></i><span>Dashboard</span></button>
+                <button type="button" onclick="switchView('tracking')" id="alumni-nav-tracking" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>My Graduate Status</span></button>
                 <div class="sidebar-group open">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Requests</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('transcript')" id="alumni-nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-lines"></i><span>Transcript Requests</span></button>
                         <button type="button" onclick="switchView('reprint')" id="alumni-nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
                         <button type="button" onclick="switchView('request-status')" id="alumni-nav-request-status" class="sidebar-link"><i class="fa-solid fa-clipboard-list"></i><span>Request Status</span></button>
-                    </div>
-                </div>
-                <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Graduate Tracking</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                    <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('tracking')" id="alumni-nav-tracking" class="sidebar-link"><i class="fa-solid fa-briefcase"></i><span>My Graduate Status</span></button>
                     </div>
                 </div>
                 <div class="sidebar-group">
@@ -567,12 +547,7 @@
                         <button type="button" onclick="switchView('feedback')" id="alumni-nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Surveys & Feedback</span></button>
                     </div>
                 </div>
-                <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                    <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('announcements')" id="alumni-nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
-                    </div>
-                </div>
+                <button type="button" onclick="switchView('announcements')" id="alumni-nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
                 <button type="button" onclick="switchView('settings')" id="alumni-nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
             </div>
 
@@ -580,12 +555,7 @@
             <div id="registrarSidebar" class="hidden flex-grow overflow-y-auto p-3 space-y-1">
                 <p class="text-[10px] font-extrabold tracking-widest text-gold-accent uppercase px-3 py-2">Registrar Operations</p>
                 <button type="button" onclick="switchView('dashboard')" id="registrar-nav-dashboard" class="sidebar-link active"><i class="fa-solid fa-chart-line"></i><span>Dashboard</span></button>
-                <div class="sidebar-group open">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Alumni Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                    <div class="sidebar-group-items">
-                        <button type="button" onclick="switchView('database')" id="staff-nav-database" class="sidebar-link"><i class="fa-solid fa-users-viewfinder"></i><span>Alumni Database</span></button>
-                    </div>
-                </div>
+                <button type="button" onclick="switchView('database')" id="staff-nav-database" class="sidebar-link"><i class="fa-solid fa-users-viewfinder"></i><span>Alumni Database</span></button>
                 <div class="sidebar-group">
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Document Services</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
@@ -617,13 +587,8 @@
                     <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Communications</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('announcements')" id="staff-nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
-                        <div class="sidebar-group">
-                            <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Message Center</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
-                            <div class="sidebar-group-items">
-                                <button type="button" onclick="switchView('sms')" id="staff-nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
-                                <button type="button" onclick="switchView('gmail')" id="staff-nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Email</span></button>
-                            </div>
-                        </div>
+                        <button type="button" onclick="switchView('sms')" id="staff-nav-sms" class="sidebar-link"><i class="fa-solid fa-comment-sms"></i><span>SMS</span></button>
+                        <button type="button" onclick="switchView('gmail')" id="staff-nav-gmail" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Email</span></button>
                     </div>
                 </div>
                 <button type="button" onclick="switchView('registrar-reports')" id="registrar-nav-registrar-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>Reports</span></button>
