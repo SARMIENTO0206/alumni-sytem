@@ -79,7 +79,7 @@
             tr.innerHTML = `
                 <td class="font-extrabold text-slate-800">
                     <button type="button" onclick="openAlumniDetails(${Number(item.id)})" class="text-left hover:text-brand-magenta hover:underline">
-                        <div>${escapeHtml(item.name || "Alumnus")}</div>
+                        <div>${escapeHtml(item.name || "Alumni")}</div>
                         <div class="text-[10px] text-slate-400 font-mono">${escapeHtml(item.studentId || "—")}</div>
                     </button>
                 </td>
@@ -309,7 +309,7 @@
     /* Add/Edit Alumni */
     function openAddAlumniModal() {
         if (!isStaffRole()) return;
-        document.getElementById("alumniModalTitle").textContent = "Add New Alumnus";
+        document.getElementById("alumniModalTitle").textContent = "Add New Alumni";
         document.getElementById("editAlumniId").value = "";
         document.getElementById("newAlumniName").value = "";
         document.getElementById("newAlumniBatch").value = new Date().getFullYear();
@@ -326,7 +326,7 @@
             alumniList.find(a => Number(a.id) === Number(id));
         if (!item) return;
 
-        document.getElementById("alumniModalTitle").textContent = "Edit Alumnus Record";
+        document.getElementById("alumniModalTitle").textContent = "Edit Alumni Record";
         document.getElementById("editAlumniId").value = item.id;
         document.getElementById("newAlumniName").value = item.name;
         document.getElementById("newAlumniBatch").value = item.batch;
@@ -918,7 +918,7 @@
         employmentRecords.forEach((alumnus) => {
             const tr = document.createElement("tr");
             tr.innerHTML = `
-                <td class="font-extrabold text-slate-800">${escapeHtml(alumnus.name || "Alumnus")}</td>
+                <td class="font-extrabold text-slate-800">${escapeHtml(alumnus.name || "Alumni")}</td>
                 <td class="text-slate-600">${escapeHtml([alumnus.program || alumnus.educationLevel, alumnus.batch].filter(Boolean).join(" • ") || "—")}</td>
                 <td class="text-slate-600 font-semibold">${escapeHtml(alumnus.company || "—")}</td>
                 <td class="text-slate-500">${escapeHtml(alumnus.title || "—")}</td>

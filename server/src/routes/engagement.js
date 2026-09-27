@@ -1103,7 +1103,7 @@ router.post('/feedback', requireRole('alumni'), (req, res) => {
 
   dispatchStaffAudience(
     'New feedback received',
-    `${anonymous ? 'An alumnus' : (req.user.name || 'An alumnus')} submitted feedback under ${category}.`,
+    `${anonymous ? 'An alumni' : (req.user.name || 'An alumni')} submitted feedback under ${category}.`,
     'feedback',
     row.id
   ).catch(() => {});

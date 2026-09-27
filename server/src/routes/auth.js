@@ -239,7 +239,7 @@ router.post('/register', (req, res) => {
     String(username).trim(),
     bcrypt.hashSync(String(password), 10),
     name,
-    `Alumnus (Batch ${batch || new Date().getFullYear()})`,
+    `Alumni (Batch ${batch || new Date().getFullYear()})`,
     avatar,
     normalizedStudentId,
     batch || String(new Date().getFullYear()),

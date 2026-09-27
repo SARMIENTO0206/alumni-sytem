@@ -253,7 +253,7 @@
         const select = document.getElementById("trackAlumniSelect");
         if (select) {
             select.innerHTML = alumniList.map(a => `
-                <option value="${a.id}">${a.name} (${a.batch || 'Alumnus'} - ${a.program || 'SAA'})</option>
+                <option value="${a.id}">${a.name} (${a.batch || 'Alumni'} - ${a.program || 'SAA'})</option>
             `).join("");
 
             // Determine which alumnus to select
@@ -383,7 +383,7 @@
 
     function exportGraduateTrackingReport() {
         const rows = trackingAlumni();
-        const headers = ["Alumnus", "Education Level", "Batch Year", "SHS Strand", "Current Status", "Industry", "Employment Type", "School / Provider", "Course / Training", "Review Status", "Last Updated"];
+        const headers = ["Alumni", "Education Level", "Batch Year", "SHS Strand", "Current Status", "Industry", "Employment Type", "School / Provider", "Course / Training", "Review Status", "Last Updated"];
         const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
         let csv = headers.map(escapeCsv).join(",") + "\n";
         rows.forEach(a => {
@@ -436,7 +436,7 @@
     }
 
     async function reviewTrackingRecord(id, status) {
-        const note = status === "Needs Follow-up" ? window.prompt("Add a note for the alumnus or internal follow-up:", "") : "";
+        const note = status === "Needs Follow-up" ? window.prompt("Add a note for the alumni or internal follow-up:", "") : "";
         if (status === "Needs Follow-up" && note === null) return;
         try {
             await SAA_API.request(`/api/tracking/${id}/review`, {
@@ -480,7 +480,7 @@
                     <p><b>Student / Alumni ID:</b> ${match.studentId || "—"}</p>
                     <p><b>Graduation Batch:</b> ${match.batch}</p>
                     <p><b>Degree / Track:</b> ${match.program}</p>
-                    <p><b>Enrollment Status:</b> SAA Alumnus in Good Standing</p>
+                    <p><b>Enrollment Status:</b> SAA Alumni in Good Standing</p>
                 </div>
             `;
             showToast("Alumni record verified successfully.", "success");

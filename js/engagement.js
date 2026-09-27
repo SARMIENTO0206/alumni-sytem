@@ -779,7 +779,7 @@
         csv += `Date,${r.date}\n`;
         csv += `Venue,${r.venue}\n`;
         csv += `Coordinator,${r.coordinators}\n\n`;
-        csv += "Alumnus Name,Status,Attendance\n";
+        csv += "Alumni Name,Status,Attendance\n";
 
         (r.attendees || []).forEach(a => {
             csv += `"${a.name}","${a.confirmed ? 'CONFIRMED' : 'PENDING'}","${a.present ? 'PRESENT' : 'ABSENT'}"\n`;
@@ -2113,7 +2113,7 @@
             if (response.contactRequested && response.status !== "Resolved") {
                 const flag = document.createElement("i");
                 flag.className = "fa-solid fa-triangle-exclamation text-amber-500 ml-1.5";
-                flag.title = "Alumnus requested a response";
+                flag.title = "Alumni requested a response";
                 name.appendChild(flag);
             }
 

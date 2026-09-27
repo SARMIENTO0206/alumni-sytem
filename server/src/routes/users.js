@@ -34,7 +34,7 @@ router.post('/', requireRole('admin'), (req, res) => {
     bcrypt.hashSync(String(password), 10),
     nextRole,
     name,
-    title || (nextRole === 'admin' ? 'System Administrator' : nextRole === 'staff' ? 'Staff' : 'Alumnus'),
+    title || (nextRole === 'admin' ? 'System Administrator' : nextRole === 'staff' ? 'Staff' : 'Alumni'),
     avatar,
     studentId || '',
     batch || '',

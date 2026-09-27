@@ -552,7 +552,7 @@ router.get('/placements', (req, res) => {
 router.post('/placements', requireRole('admin', 'staff'), (req, res) => {
   const { alumni, company, title, alumniId, userId } = req.body || {};
   if (!alumni || !company || !title) {
-    return res.status(400).json({ error: 'Alumnus name, company and job title are required.' });
+    return res.status(400).json({ error: 'Alumni name, company and job title are required.' });
   }
   const linked = alumniId
     ? db.prepare('SELECT * FROM alumni WHERE id = ?').get(Number(alumniId))

@@ -245,7 +245,7 @@ router.post('/gmail-auto-reply', async (req, res) => {
   );
 
   const finalReply = reply || [
-    `Dear Alumnus,`,
+    `Dear Alumni,`,
     ``,
     `Thank you for contacting the St. Agnes Academy Alumni Relations Office.`,
     `We have received your message regarding "${subject || 'your inquiry'}" and we are glad to assist you.`,

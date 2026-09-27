@@ -656,7 +656,7 @@ function ensureSystemUsers() {
   insertUser.run('admin', hash('admin123'), 'admin', 'Administrator', 'System Administrator', 'AD', 'SAA-ADMIN-01', '', 'Administration', '', 'admin@stagnes.edu.ph', '');
   insertUser.run('staff', hash('staff123'), 'staff', 'Staff Member', 'Staff', 'ST', 'SAA-STAFF-01', '', 'Operations', '', 'staff@stagnes.edu.ph', '');
   insertUser.run('registrar', hash('registrar123'), 'staff', 'Registrar Staff', 'Staff', 'RG', 'SAA-STAFF-02', '', 'Registrar', '', 'registrar@stagnes.edu.ph', '');
-  insertUser.run('alumni', hash('alumni123'), 'alumni', 'Alumni User', 'Alumnus', 'AL', '', '', '', '', '', '');
+  insertUser.run('alumni', hash('alumni123'), 'alumni', 'Alumni User', 'Alumni', 'AL', '', '', '', '', '', '');
   console.log('[db] Created system login accounts only. Module tables were left empty.');
 }
 

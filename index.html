@@ -856,7 +856,7 @@
                                 </button>
                                 <button type="button" id="addAlumniRecordButton" onclick="openAddAlumniModal()" class="btn btn-primary text-xs">
                                     <i class="fa-solid fa-plus"></i>
-                                    <span>Add New Alumnus</span>
+                                    <span>Add New Alumni</span>
                                 </button>
                             </div>
                         </div>
@@ -868,7 +868,7 @@
                                     <i class="fa-solid fa-magnifying-glass"></i>
                                 </span>
                                 <input type="text" id="dbSearch" onkeyup="searchAlumniTable()"
-                                    placeholder="Search by alumnus name, program, batch year..."
+                                    placeholder="Search by alumni name, program, batch year..."
                                     class="form-input pl-9 text-xs sm:text-sm">
                             </div>
                             <div>
@@ -897,7 +897,7 @@
                                 <thead>
                                     <tr>
                                         <th onclick="sortTable(0)" class="cursor-pointer hover:text-brand-magenta">
-                                            Alumnus Name <i class="fa-solid fa-sort text-[10px] ml-1 text-slate-300"></i>
+                                            Alumni Name <i class="fa-solid fa-sort text-[10px] ml-1 text-slate-300"></i>
                                         </th>
                                         <th onclick="sortTable(1)" class="cursor-pointer hover:text-brand-magenta">
                                             Batch Year <i class="fa-solid fa-sort text-[10px] ml-1 text-slate-300"></i>
@@ -993,7 +993,7 @@
                                 </div>
                                 <div>
                                     <label class="form-label" for="profileEmail">Email Address</label>
-                                    <input id="profileEmail" type="email" class="form-input text-sm" placeholder="e.g. alumnus@gmail.com">
+                                    <input id="profileEmail" type="email" class="form-input text-sm" placeholder="e.g. alumni@gmail.com">
                                 </div>
                                 <div>
                                     <label class="form-label" for="profileContact">Mobile Number</label>
@@ -1188,7 +1188,7 @@
                             <table class="modern-table">
                                 <thead>
                                     <tr>
-                                        <th>Alumnus / Requestor</th>
+                                        <th>Alumni / Requestor</th>
                                         <th>Request Date</th>
                                         <th>Document</th>
                                         <th>Status</th>
@@ -1243,7 +1243,7 @@
                             <table class="modern-table">
                                 <thead>
                                     <tr>
-                                        <th>Alumnus Name</th>
+                                        <th>Alumni Name</th>
                                         <th>Certificate Type</th>
                                         <th>Status</th>
                                         <th class="text-right">Action</th>
@@ -1518,7 +1518,7 @@
                             <table class="modern-table">
                                 <thead>
                                     <tr>
-                                        <th>Alumnus Name</th>
+                                        <th>Alumni Name</th>
                                         <th>Batch Year</th>
                                         <th>Last Status Update</th>
                                         <th>Contact Number</th>
@@ -2124,7 +2124,7 @@
                             </div>
                             <div id="feedbackContactBanner" class="hidden mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold flex items-center gap-2">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
-                                <span>Alumnus requested a response. Please follow up and mark this resolved once addressed.</span>
+                                <span>Alumni requested a response. Please follow up and mark this resolved once addressed.</span>
                             </div>
                             <dl id="feedbackDetailFields" class="grid sm:grid-cols-2 gap-4 text-xs"></dl>
                             <form id="feedbackReviewForm" onsubmit="saveFeedbackReview(event)" class="mt-6 border-t border-slate-100 pt-5 space-y-4">
@@ -2244,7 +2244,7 @@
                         </div>
 
                         <div class="flex gap-2 mt-4">
-                            <input id="verificationSearch" type="text" placeholder="Enter alumnus full name or batch..." class="form-input text-sm">
+                            <input id="verificationSearch" type="text" placeholder="Enter alumni full name or batch..." class="form-input text-sm">
                             <button onclick="verifyAlumni()" class="btn btn-primary text-xs px-5">
                                 <i class="fa-solid fa-magnifying-glass"></i> Verify
                             </button>
@@ -3042,7 +3042,7 @@
                     —
                 </p>
                 <p class="text-xs font-bold text-slate-600 mt-1">
-                    Graduation Batch: <span id="certAlumniBatch">—</span> • Status: <span class="text-emerald-700">Authenticated Alumnus</span>
+                    Graduation Batch: <span id="certAlumniBatch">—</span> • Status: <span class="text-emerald-700">Authenticated Alumni</span>
                 </p>
 
                 <!-- Footer Signatures -->
@@ -3129,7 +3129,7 @@
     <div id="addAlumniModal" class="modal-backdrop">
         <div class="modal-box p-6">
             <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
-                <h3 class="font-extrabold text-slate-800 text-base" id="alumniModalTitle">Add New Alumnus</h3>
+                <h3 class="font-extrabold text-slate-800 text-base" id="alumniModalTitle">Add New Alumni</h3>
                 <button onclick="closeAddAlumniModal()" title="Close add alumni modal" aria-label="Close add alumni modal" class="text-slate-400 hover:text-slate-600 p-1">
                     <i class="fa-solid fa-xmark text-base"></i>
                 </button>
@@ -3175,7 +3175,7 @@
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeAddAlumniModal()" class="btn btn-secondary text-xs">Cancel</button>
-                    <button type="submit" class="btn btn-primary text-xs">Save Alumnus Record</button>
+                    <button type="submit" class="btn btn-primary text-xs">Save Alumni Record</button>
                 </div>
             </form>
         </div>
@@ -3769,9 +3769,9 @@
             </div>
 
             <form onsubmit="submitEmploymentUpdate(event)" class="space-y-3.5">
-                <!-- Alumnus Identification -->
+                <!-- Alumni Identification -->
                 <div id="trackAlumniSelectContainer">
-                    <label class="form-label font-bold text-slate-700" for="trackAlumniSelect">Alumnus Profile</label>
+                    <label class="form-label font-bold text-slate-700" for="trackAlumniSelect">Alumni Profile</label>
                     <select id="trackAlumniSelect" onchange="onTrackAlumniSelectChange()" class="form-select text-xs font-semibold text-slate-800">
                         <!-- Populated dynamically -->
                     </select>
