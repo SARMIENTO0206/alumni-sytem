@@ -2017,6 +2017,52 @@
         }
     }
 
+    /**
+     * AI Generate for the SMS Composer (OpenAI API via /api/ai/compose-announcement).
+     * Drafts an SMS-length message; staff still reviews/edits before sending.
+     */
+    async function aiComposeSms() {
+        const topicInput = document.getElementById("smsAiTopic");
+        const messageInput = document.getElementById("smsMessage");
+        const btn = document.getElementById("smsAiComposeBtn");
+        if (!messageInput) return;
+
+        const topic = (topicInput?.value || "").trim() || "Alumni Update";
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="fa-solid fa-spinner fa-spin"></span> <span>Drafting...</span>';
+        }
+
+        try {
+            let content = null;
+
+            if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
+                const data = await SAA_API.request("/api/ai/compose-announcement", {
+                    method: "POST",
+                    body: JSON.stringify({ topic, channel: "SMS" })
+                });
+                if (data && data.content) content = data.content;
+            }
+
+            if (content === null) {
+                // Local fallback template kept within SMS length constraints.
+                content = `St. Agnes Academy: ${topic}. For details, check the Alumni Portal.`;
+            }
+
+            messageInput.value = content.slice(0, 160);
+            if (typeof updateSmsCharacterCount === "function") updateSmsCharacterCount();
+            showToast("AI-drafted SMS is ready. Review before sending.", "success");
+        } catch (err) {
+            showToast("AI compose failed: " + (err.message || "unknown error"), "error");
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> Generate Message';
+            }
+        }
+    }
+
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 5212-5227 */
 /* ------------------------------------------------------------------------- */

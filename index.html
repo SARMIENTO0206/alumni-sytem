@@ -523,7 +523,13 @@
                         <button type="button" onclick="switchView('reports')" id="nav-reports" class="sidebar-link"><i class="fa-solid fa-chart-column"></i><span>System Reports</span></button>
                     </div>
                 </div>
-                <button type="button" onclick="switchView('settings')" id="nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
+                <div class="sidebar-group">
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Administration</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <div class="sidebar-group-items">
+                        <button type="button" onclick="switchView('users')" id="nav-users" class="sidebar-link"><i class="fa-solid fa-user-shield"></i><span>User &amp; Access Management</span></button>
+                        <button type="button" onclick="switchView('settings')" id="nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
+                    </div>
+                </div>
             </div>
 
             <!-- ALUMNI SIDEBAR LINKS -->
@@ -2053,6 +2059,14 @@
                                 <h4 class="text-sm font-extrabold text-slate-800 mb-4">Feedback by Category</h4>
                                 <div id="feedbackCategoryBars" class="space-y-2.5"></div>
                             </article>
+                            <article class="app-card p-6 lg:col-span-2">
+                                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                    <h4 class="text-sm font-extrabold text-slate-800"><i class="fa-regular fa-comments text-brand-magenta mr-1"></i> AI Feedback Summary</h4>
+                                    <button type="button" onclick="runSurveySummary()" class="btn btn-secondary text-xs"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Summarize Feedback</button>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Summarize collected alumni feedback into sentiment, common themes, and suggested actions.</p>
+                                <div id="aiSurveySummary" class="hidden p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
+                            </article>
                         </section>
 
                         <section class="app-card p-6 sm:p-8" aria-labelledby="feedbackResponsesTitle">
@@ -2197,50 +2211,22 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div id="view-ai-tools" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6 sm:p-8">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-                            <div>
-                                <h3 class="text-xl font-extrabold text-slate-800">AI Assistant Tools</h3>
-                                <p class="text-xs text-slate-400 font-medium">AI-assisted operations and analysis, separate from system reporting.</p>
-                            </div>
-                            <span id="aiEngineBadge" class="status-badge status-pending text-[10px]">
-                                <i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Checking AI engine...
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                            <div class="border border-slate-200 rounded-xl p-4 bg-white">
-                                <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-regular fa-envelope text-indigo-500 mr-1"></i> Gmail Auto-Reply</p>
-                                <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Draft a response to an alumni inquiry for staff review.</p>
-                                <form onsubmit="runGmailAutoReply(event)" class="space-y-2">
-                                    <input id="aiGmailFrom" type="email" required placeholder="Alumni email" class="form-input text-xs">
-                                    <input id="aiGmailSubject" type="text" placeholder="Email subject" class="form-input text-xs">
-                                    <textarea id="aiGmailBody" rows="3" required placeholder="Inbound message body..." class="form-input text-xs"></textarea>
-                                    <button type="submit" class="btn btn-primary text-xs w-full py-2"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Auto-Reply</button>
-                                </form>
-                                <div id="aiGmailReply" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
-                            </div>
-                            <div class="space-y-5">
-                                <div class="border border-slate-200 rounded-xl p-4 bg-white">
-                                    <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-regular fa-comments text-brand-magenta mr-1"></i> Survey Response Summary</p>
-                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Summarize alumni feedback into sentiment, themes, and recommendations.</p>
-                                    <button onclick="runSurveySummary()" class="btn btn-secondary text-xs w-full py-2"><i class="fa-solid fa-file-lines text-[#801235] mr-1"></i> Summarize Survey Responses</button>
-                                    <div id="aiSurveySummary" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
-                                </div>
-                                <div class="border border-slate-200 rounded-xl p-4 bg-white">
-                                    <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-solid fa-chart-line text-emerald-600 mr-1"></i> Dashboard Insights</p>
-                                    <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Generate an AI narrative from graduate tracking, requests, and engagement metrics.</p>
-                                    <button onclick="runDashboardInsights()" class="btn btn-secondary text-xs w-full py-2"><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Generate Dashboard Insights</button>
-                                    <div id="aiDashboardInsights" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
+                        <div class="mt-6 border border-slate-200 rounded-xl p-4 bg-white">
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                <h4 class="text-sm font-extrabold text-slate-800"><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> AI Insights</h4>
+                                <div class="flex items-center gap-2">
+                                    <span id="aiEngineBadge" class="status-badge status-pending text-[10px]">
+                                        <i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Checking AI engine...
+                                    </span>
+                                    <button type="button" onclick="runDashboardInsights()" class="btn btn-secondary text-xs"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Insights</button>
                                 </div>
                             </div>
+                            <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Generate an AI narrative from live graduate tracking, request, and engagement metrics.</p>
+                            <div id="aiDashboardInsights" class="hidden p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
                         </div>
                     </div>
                 </div>
-
 
                 <!-- =================================================
                      VIEW: REGISTRAR ALUMNI VERIFICATION
@@ -2644,6 +2630,14 @@
                                     <option value="profile">Profile update reminder</option>
                                 </select>
                             </div>
+                            <div>
+                                <label class="form-label" for="smsAiTopic">✨ AI Topic / Purpose (optional)</label>
+                                <div class="flex gap-2">
+                                    <input id="smsAiTopic" type="text" class="form-input text-sm" placeholder="e.g. Alumni Career Fair on October 24, 2026">
+                                    <button type="button" id="smsAiComposeBtn" onclick="aiComposeSms()" class="btn btn-secondary text-xs whitespace-nowrap"><i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> Generate Message</button>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-1">Drafts a message with OpenAI; review and edit before sending.</p>
+                            </div>
                             <label class="form-label" for="smsMessage">Message *</label>
                             <textarea id="smsMessage" class="form-textarea text-sm" rows="4" placeholder="Write an SMS message..." maxlength="160" required oninput="updateSmsCharacterCount()"></textarea>
                             <p id="smsCharacterCount" class="text-xs text-slate-500">Characters: 0 / 160 • Estimated SMS: 0</p>
@@ -2686,6 +2680,17 @@
                             </div>
                             <button type="submit" class="btn btn-primary text-xs">Send Email</button>
                         </form>
+                        <section class="border border-slate-200 rounded-xl p-4 bg-white max-w-2xl">
+                            <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> AI Draft Reply to Inquiry</p>
+                            <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Paste an alumni inquiry email below to draft a reply for staff review.</p>
+                            <form onsubmit="runGmailAutoReply(event)" class="space-y-2">
+                                <input id="aiGmailFrom" type="email" required placeholder="Alumni email" class="form-input text-xs">
+                                <input id="aiGmailSubject" type="text" placeholder="Email subject" class="form-input text-xs">
+                                <textarea id="aiGmailBody" rows="3" required placeholder="Inbound message body..." class="form-input text-xs"></textarea>
+                                <button type="submit" class="btn btn-secondary text-xs w-full py-2"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Auto-Reply</button>
+                            </form>
+                            <div id="aiGmailReply" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
+                        </section>
                         <section>
                             <h4 class="font-extrabold text-sm text-slate-800 mb-3">Message History / Delivery Logs</h4>
                             <div class="data-table-container"><table class="modern-table"><thead><tr><th>Recipient</th><th>Subject</th><th>Date</th><th>Status</th></tr></thead><tbody id="emailHistoryList"></tbody></table></div>
@@ -2717,13 +2722,6 @@
                     </div>
                 </div>
 
-                <div id="view-ai-chat" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6 max-w-2xl">
-                        <h3 class="text-lg font-extrabold text-slate-800">AI Chat Support</h3>
-                        <p id="aiChatConfigStatus" class="text-sm text-slate-600 mt-2"></p>
-                        <button type="button" class="btn btn-primary text-xs mt-4" onclick="toggleChatWindow()">Open Chat Support</button>
-                    </div>
-                </div>
 
                 <div id="view-payment" class="hidden space-y-6 fade-in">
                     <div class="app-card p-6 sm:p-8 max-w-xl mx-auto">

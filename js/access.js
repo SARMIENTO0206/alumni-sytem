@@ -1094,21 +1094,6 @@ async function loadMessageConfigStatus() {
     updateSmsCharacterCount();
 }
 
-async function loadAiChatView() {
-    const status = document.getElementById("aiChatConfigStatus");
-    if (!status) return;
-    try {
-        const health = await fetch((window.SAA_API && SAA_API.base ? SAA_API.base : "") + "/api/health").then((r) => r.json());
-        if (health.ai && health.ai.configured) {
-            status.textContent = `AI Chat Support is connected (${health.ai.model || "configured model"}).`;
-        } else {
-            status.textContent = "AI Chat Support uses the built-in knowledge answers. Add OPENAI_API_KEY in server/.env to enable the external model.";
-        }
-    } catch (e) {
-        status.textContent = "Unable to read AI configuration. The chat widget still answers from the built-in knowledge base.";
-    }
-}
-
 function renderUnauthorizedView() {
     const who = roleLabel(currentRole());
     const el = document.getElementById("unauthorizedRoleLabel");

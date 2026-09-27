@@ -59,13 +59,14 @@ Featured/Others cards and the full Announcements page.
 | 5 | Alumni Events / 6 Batch Reunions / 7 Donor Campaigns | Self-service under their own menus |
 | 8 | Certificate Reprints | Same flow as transcript requests |
 | 9 | Alumni Newsletter | Registrar drafts → Admin approves/publishes → Alumni read |
-| 10 | Feedback & Surveys | *Surveys & Feedback* |
+| 10 | Feedback & Surveys | *Surveys & Feedback* — Alumni submit → Registrar processes → Admin monitors (Feedback Overview) |
 | 11 | Communications | Admin/Registrar send announcements/SMS/email via Message Center; Notifications inbox is the header bell |
-| 12 | AI Chat Support | Chat bubble, bottom-right, all roles |
-| + | Profile Reminders, Gmail Auto-Reply, AI Survey/Dashboard Insights | Admin → *AI Services* → **AI Assistant Tools** |
+| 12 | AI Chat Support | Chat bubble, bottom-right, all roles; role-aware responses |
+| + | AI features (embedded in their workflows, no standalone "AI Tools" page) | **Summarize Feedback** in Admin's Feedback & Survey Analytics; **Generate Insights** in Admin's System Reports; **Generate Message** in the SMS composer; **AI Draft Reply to Inquiry** in the Email composer; **AI Compose** in the Newsletter composer |
 
-**Roles:** **Admin** — full oversight, analytics, user/access management, AI
-integrations; does not submit/process requests. **Registrar** — alumni
+**Roles:** **Admin** — full oversight, analytics, user/access management (sidebar
+→ Administration → User & Access Management), AI integrations; does not
+submit/process requests. **Registrar** — alumni
 records, request review/processing, announcements, SMS/email, reports.
 **Alumni** — own profile/status, digital ID, requests, jobs, events, surveys.
 

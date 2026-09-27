@@ -11,7 +11,7 @@
         "tracking", "placement", "events", "reunions", "donor", "newsletter", "feedback",
         "reports", "verification", "request-approval", "document-processing", "release-claiming",
         "request-history", "registrar-reports", "academic-records", "users", "settings",
-        "announcements", "notifications", "sms", "gmail", "ai-tools", "ai-chat", "request-status",
+        "announcements", "notifications", "sms", "gmail", "request-status",
         "applications", "unauthorized", "payment", "payment-receipt"
     ];
 
@@ -28,7 +28,6 @@
         feedback: "/surveys",
         "job-opportunities": "/jobs",
         reports: "/reports",
-        "ai-tools": "/ai-tools",
         profile: "/profile",
         idcard: "/idcard",
         placement: "/placement",
@@ -45,7 +44,6 @@
         notifications: "/notifications",
         sms: "/sms",
         gmail: "/gmail",
-        "ai-chat": "/ai-chat",
         "request-status": "/request-status",
         applications: "/applications",
         unauthorized: "/unauthorized",
@@ -78,7 +76,6 @@
         jobs: "job-opportunities",
         "job-opportunities": "job-opportunities",
         reports: "reports",
-        "ai-tools": "ai-tools",
         profile: "profile",
         idcard: "idcard",
         placement: "placement",
@@ -95,7 +92,6 @@
         sms: "sms",
         gmail: "gmail",
         email: "gmail",
-        "ai-chat": "ai-chat",
         "request-status": "request-status",
         applications: "applications",
         unauthorized: "unauthorized",
@@ -258,8 +254,8 @@
         if (viewId === "academic-records" && typeof renderAcademicRecords === "function") renderAcademicRecords();
         if (viewId === "reports") {
             if (typeof updateReports === "function") updateReports();
+            if (typeof refreshAiStatus === "function") refreshAiStatus();
         }
-        if (viewId === "ai-tools" && typeof refreshAiStatus === "function") refreshAiStatus();
         if (viewId === "request-approval" && typeof renderRequestApproval === "function") renderRequestApproval();
         if (viewId === "document-processing" && typeof renderDocumentPreparation === "function") renderDocumentPreparation();
         if (viewId === "release-claiming" && typeof renderReleaseClaiming === "function") renderReleaseClaiming();
@@ -278,7 +274,6 @@
         if ((viewId === "sms" || viewId === "gmail") && typeof loadMessageConfigStatus === "function") loadMessageConfigStatus();
         if (viewId === "request-status" && typeof renderRequestStatusView === "function") renderRequestStatusView();
         if (viewId === "applications" && typeof loadApplicationsView === "function") loadApplicationsView();
-        if (viewId === "ai-chat" && typeof loadAiChatView === "function") loadAiChatView();
         if (viewId === "unauthorized" && typeof renderUnauthorizedView === "function") renderUnauthorizedView();
         if (viewId === "payment" && typeof renderPaymentQrPage === "function") renderPaymentQrPage();
         if (viewId === "payment-receipt" && typeof renderPaymentReceiptPage === "function") renderPaymentReceiptPage();
@@ -408,7 +403,6 @@
             idcard: "Digital Alumni Identification",
             database: "Alumni Records Database",
             profile: "My Profile",
-            "ai-tools": "AI Assistant Tools",
             "job-opportunities": "Job Opportunities Board",
             transcript: "Transcript Request Portal",
             reprint: "Certificate Reprint Requests",
@@ -437,7 +431,6 @@
             notifications: "Notifications",
             sms: "SMS",
             gmail: "Gmail / Email",
-            "ai-chat": "AI Chat Support",
             "request-status": "Request Status",
             applications: "Applications / Referrals",
             unauthorized: "Access Denied",
