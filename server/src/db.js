@@ -316,6 +316,11 @@ export function initDb() {
   ensureColumn('feedback', 'contact_requested', 'contact_requested INTEGER DEFAULT 0');
   ensureColumn('feedback', 'status', "status TEXT DEFAULT 'New'");
   ensureColumn('feedback', 'internal_note', "internal_note TEXT DEFAULT ''");
+  ensureColumn('feedback', 'is_anonymous', 'is_anonymous INTEGER DEFAULT 0');
+  ensureColumn('feedback', 'reference_no', "reference_no TEXT DEFAULT ''");
+  ensureColumn('feedback', 'updated_at', "updated_at TEXT DEFAULT ''");
+  ensureColumn('feedback', 'resolved_at', "resolved_at TEXT DEFAULT ''");
+  ensureColumn('feedback', 'reviewed_by', 'reviewed_by INTEGER DEFAULT 0');
   ensureColumn('job_applications', 'user_id', 'user_id INTEGER DEFAULT 0');
   ensureColumn('job_applications', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
   ensureColumn('job_opportunities', 'industry', "industry TEXT DEFAULT ''");

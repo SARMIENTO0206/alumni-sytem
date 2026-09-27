@@ -501,7 +501,7 @@
                         <button type="button" onclick="switchView('reunions')" id="nav-reunions" class="sidebar-link"><i class="fa-solid fa-people-group"></i><span>Batch Reunions</span></button>
                         <button type="button" onclick="switchView('donor')" id="nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Campaign Management</span></button>
                         <button type="button" onclick="switchView('newsletter')" id="nav-newsletter" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span></button>
-                        <button type="button" onclick="switchView('feedback')" id="nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Feedback Management</span></button>
+                        <button type="button" onclick="switchView('feedback')" id="nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Feedback Analytics</span></button>
                     </div>
                 </div>
                 <div class="sidebar-group">
@@ -611,7 +611,7 @@
                         <button type="button" onclick="switchView('reunions')" id="staff-nav-reunions" class="sidebar-link"><i class="fa-solid fa-people-group"></i><span>Batch Reunions</span></button>
                         <button type="button" onclick="switchView('donor')" id="staff-nav-donor" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i><span>Donation Records</span></button>
                         <button type="button" onclick="switchView('newsletter')" id="staff-nav-newsletter" class="sidebar-link"><i class="fa-regular fa-envelope"></i><span>Alumni Newsletter</span></button>
-                        <button type="button" onclick="switchView('feedback')" id="staff-nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Survey Responses</span></button>
+                        <button type="button" onclick="switchView('feedback')" id="staff-nav-feedback" class="sidebar-link"><i class="fa-regular fa-comments"></i><span>Feedback Management</span></button>
                     </div>
                 </div>
                 <div class="sidebar-group">
@@ -1891,58 +1891,61 @@
                      VIEW: ALUMNI SURVEYS & FEEDBACK
                      ================================================= -->
                 <div id="view-feedback" class="hidden space-y-6 fade-in">
-                    <div id="alumniSurveyFormPanel" class="app-card p-6 sm:p-8 max-w-2xl mx-auto">
+                    <div id="alumniSurveyFormPanel" class="app-card p-6 sm:p-8 max-w-[880px] mx-auto">
                         <div class="text-center mb-6">
                             <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-2 text-lg">
                                 <i class="fa-regular fa-comments"></i>
                             </div>
                             <h3 class="text-xl font-extrabold text-slate-800">Alumni Feedback & Survey</h3>
-                            <p class="text-xs text-slate-400 font-medium mt-1">Share your thoughts to help us enhance our programs and services.</p>
+                            <p class="text-xs text-slate-400 font-medium mt-1">Help us improve alumni services and programs.</p>
                         </div>
 
                         <form onsubmit="submitSurvey(event)" class="space-y-5">
                             <!-- Category Dropdown -->
                             <div>
-                                <label class="form-label" for="surveyCategory">What is your feedback about?</label>
+                                <label class="form-label" for="surveyCategory">Feedback Category</label>
                                 <select id="surveyCategory" required class="form-select text-xs">
                                     <option value="" disabled selected>Select feedback topic / category...</option>
-                                    <option value="Alumni Services">Alumni Services</option>
-                                    <option value="Registrar / Document Requests">Registrar / Document Requests</option>
-                                    <option value="Alumni Events & Reunions">Alumni Events & Reunions</option>
-                                    <option value="Alumni Portal/System">Alumni Portal/System</option>
-                                    <option value="Career & Graduate Services">Career & Graduate Services</option>
-                                    <option value="School Programs & Activities">School Programs & Activities</option>
-                                    <option value="Facilities">Facilities</option>
-                                    <option value="Communication / Newsletter">Communication / Newsletter</option>
-                                    <option value="Alumni Records">Alumni Records</option>
+                                    <option value="Transcript/Document Services">Transcript/Document Services</option>
+                                    <option value="Alumni Events">Alumni Events</option>
+                                    <option value="Career Services">Career Services</option>
+                                    <option value="Alumni Portal">Alumni Portal</option>
+                                    <option value="Communication">Communication</option>
+                                    <option value="Donation/Campaign">Donation/Campaign</option>
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
 
-                            <!-- 1-5 Satisfaction Scale -->
+                            <!-- 1-5 Satisfaction Scale (compact horizontal) -->
                             <div>
-                                <label class="form-label mb-2">Overall Satisfaction Rating</label>
-                                <div class="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-                                    <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer p-1.5 rounded-lg hover:bg-white transition">
-                                        <input type="radio" name="rating" value="1" class="text-brand-magenta focus:ring-pink-500">
-                                        <span class="font-medium text-amber-600">⭐ 1 — Very Dissatisfied</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer p-1.5 rounded-lg hover:bg-white transition">
-                                        <input type="radio" name="rating" value="2" class="text-brand-magenta focus:ring-pink-500">
-                                        <span class="font-medium text-amber-600">⭐⭐ 2 — Dissatisfied</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer p-1.5 rounded-lg hover:bg-white transition">
-                                        <input type="radio" name="rating" value="3" class="text-brand-magenta focus:ring-pink-500">
-                                        <span class="font-medium text-amber-600">⭐⭐⭐ 3 — Neutral</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer p-1.5 rounded-lg hover:bg-white transition">
-                                        <input type="radio" name="rating" value="4" class="text-brand-magenta focus:ring-pink-500">
-                                        <span class="font-medium text-amber-600">⭐⭐⭐⭐ 4 — Satisfied</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer p-1.5 rounded-lg hover:bg-white transition">
-                                        <input type="radio" name="rating" value="5" checked class="text-brand-magenta focus:ring-pink-500">
-                                        <span class="font-medium text-amber-600">⭐⭐⭐⭐⭐ 5 — Very Satisfied</span>
-                                    </label>
+                                <label class="form-label mb-2">Overall Satisfaction</label>
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                                    <div class="grid grid-cols-5 gap-2 text-center">
+                                        <label class="cursor-pointer">
+                                            <input type="radio" name="rating" value="1" class="sr-only peer">
+                                            <div class="py-2.5 rounded-lg text-base bg-white border border-slate-200 peer-checked:bg-brand-magenta peer-checked:text-white peer-checked:border-brand-magenta hover:bg-pink-50 transition">😞<span class="block text-xs font-bold mt-0.5">1</span></div>
+                                        </label>
+                                        <label class="cursor-pointer">
+                                            <input type="radio" name="rating" value="2" class="sr-only peer">
+                                            <div class="py-2.5 rounded-lg text-base bg-white border border-slate-200 peer-checked:bg-brand-magenta peer-checked:text-white peer-checked:border-brand-magenta hover:bg-pink-50 transition">🙁<span class="block text-xs font-bold mt-0.5">2</span></div>
+                                        </label>
+                                        <label class="cursor-pointer">
+                                            <input type="radio" name="rating" value="3" class="sr-only peer">
+                                            <div class="py-2.5 rounded-lg text-base bg-white border border-slate-200 peer-checked:bg-brand-magenta peer-checked:text-white peer-checked:border-brand-magenta hover:bg-pink-50 transition">😐<span class="block text-xs font-bold mt-0.5">3</span></div>
+                                        </label>
+                                        <label class="cursor-pointer">
+                                            <input type="radio" name="rating" value="4" class="sr-only peer">
+                                            <div class="py-2.5 rounded-lg text-base bg-white border border-slate-200 peer-checked:bg-brand-magenta peer-checked:text-white peer-checked:border-brand-magenta hover:bg-pink-50 transition">🙂<span class="block text-xs font-bold mt-0.5">4</span></div>
+                                        </label>
+                                        <label class="cursor-pointer">
+                                            <input type="radio" name="rating" value="5" checked class="sr-only peer">
+                                            <div class="py-2.5 rounded-lg text-base bg-white border border-slate-200 peer-checked:bg-brand-magenta peer-checked:text-white peer-checked:border-brand-magenta hover:bg-pink-50 transition">😊<span class="block text-xs font-bold mt-0.5">5</span></div>
+                                        </label>
+                                    </div>
+                                    <div class="flex justify-between text-[10px] text-slate-400 font-semibold mt-2 px-1">
+                                        <span>Very Dissatisfied</span>
+                                        <span>Very Satisfied</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -2001,24 +2004,30 @@
                                 </div>
                             </div>
 
-                            <!-- "What should we improve?" question -->
+                            <!-- Suggestions for Improvement -->
                             <div>
-                                <label class="form-label" for="surveyImprovement">What is one thing you would like the Academy to improve?</label>
-                                <textarea id="surveyImprovement" rows="2" placeholder="Tell us what standard, program, or facility we could enhance..." class="form-textarea text-xs"></textarea>
+                                <label class="form-label" for="surveyImprovement">Suggestions for Improvement</label>
+                                <p class="text-[11px] text-slate-400 font-medium mb-1">What can we improve about this service or program?</p>
+                                <textarea id="surveyImprovement" required rows="2" placeholder="Tell us what standard, program, or facility we could enhance..." class="form-textarea text-xs"></textarea>
                             </div>
 
-                            <!-- Larger comment box -->
+                            <!-- Additional Comments -->
                             <div>
-                                <label class="form-label" for="surveyFeedback">Your Feedback</label>
-                                <textarea id="surveyFeedback" required rows="5" placeholder="Please share your suggestions, experiences, or concerns..." class="form-textarea text-xs"></textarea>
+                                <label class="form-label" for="surveyFeedback">Additional Comments (Optional)</label>
+                                <textarea id="surveyFeedback" rows="4" placeholder="Anything else you'd like to share..." class="form-textarea text-xs"></textarea>
                             </div>
 
-                            <!-- Optional Follow-up Checkbox -->
-                            <div class="pt-1">
+                            <!-- Follow-up + Anonymous options -->
+                            <div class="pt-1 space-y-2.5 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
                                 <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                                    <input type="checkbox" id="surveyContactMe" class="h-4 w-4 text-brand-magenta focus:ring-pink-500 border-slate-300 rounded cursor-pointer">
+                                    <input type="checkbox" id="surveyContactMe" onchange="handleFeedbackContactMeToggle()" class="h-4 w-4 text-brand-magenta focus:ring-pink-500 border-slate-300 rounded cursor-pointer">
                                     <span>I would like someone from the Academy to contact me about my feedback.</span>
                                 </label>
+                                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                    <input type="checkbox" id="surveyAnonymous" onchange="handleFeedbackAnonymousToggle()" class="h-4 w-4 text-brand-magenta focus:ring-pink-500 border-slate-300 rounded cursor-pointer">
+                                    <span>Submit anonymously</span>
+                                </label>
+                                <p id="surveyAnonymousHint" class="hidden text-[11px] text-amber-600 font-semibold pl-6">Anonymous submissions can't be combined with a contact request, since we'd need to know who to reach.</p>
                             </div>
 
                             <button type="submit" class="btn btn-primary w-full py-3 text-xs font-bold shadow-md">
@@ -2027,25 +2036,31 @@
                         </form>
                     </div>
 
+                    <section id="myFeedbackHistorySection" class="hidden app-card p-6 sm:p-8 max-w-[880px] mx-auto" aria-labelledby="myFeedbackHistoryTitle">
+                        <h4 id="myFeedbackHistoryTitle" class="text-sm font-extrabold text-slate-800 mb-1">My Feedback</h4>
+                        <p class="text-xs text-slate-400 mb-4">Track the status of the feedback you've submitted.</p>
+                        <div id="myFeedbackHistoryList" class="space-y-3">
+                            <p class="text-xs text-slate-400 text-center py-4">No feedback submitted yet.</p>
+                        </div>
+                    </section>
+
                     <section id="feedbackReviewPanel" class="hidden space-y-6" aria-labelledby="feedbackReviewTitle">
                         <div>
-                            <h3 id="feedbackReviewTitle" class="text-xl font-extrabold text-slate-800">Survey &amp; Feedback Responses</h3>
+                            <h3 id="feedbackReviewTitle" class="text-xl font-extrabold text-slate-800">Feedback Management</h3>
                             <p id="feedbackReviewDescription" class="text-xs text-slate-400 mt-1">Review feedback routed to the Registrar team.</p>
                         </div>
-                        <div class="grid sm:grid-cols-3 gap-4">
-                            <article class="app-card p-5">
-                                <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Total Responses</p>
-                                <p id="feedbackTotalResponses" class="text-2xl font-extrabold text-slate-800 mt-1">0</p>
+                        <div id="feedbackStatsGrid" class="grid sm:grid-cols-4 gap-4"></div>
+
+                        <section id="feedbackAnalyticsSection" class="hidden grid lg:grid-cols-2 gap-4">
+                            <article class="app-card p-6">
+                                <h4 class="text-sm font-extrabold text-slate-800 mb-4">Satisfaction Overview</h4>
+                                <div id="feedbackSatisfactionBars" class="space-y-2.5"></div>
                             </article>
-                            <article class="app-card p-5">
-                                <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Average Rating</p>
-                                <p id="feedbackAverageRating" class="text-2xl font-extrabold text-slate-800 mt-1">—</p>
+                            <article class="app-card p-6">
+                                <h4 class="text-sm font-extrabold text-slate-800 mb-4">Feedback by Category</h4>
+                                <div id="feedbackCategoryBars" class="space-y-2.5"></div>
                             </article>
-                            <article class="app-card p-5">
-                                <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Needs Follow-up</p>
-                                <p id="feedbackFollowUpCount" class="text-2xl font-extrabold text-amber-600 mt-1">0</p>
-                            </article>
-                        </div>
+                        </section>
 
                         <section class="app-card p-6 sm:p-8" aria-labelledby="feedbackResponsesTitle">
                             <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
@@ -2069,14 +2084,16 @@
                                 <select id="feedbackStatusFilter" class="form-select text-xs">
                                     <option value="">All Statuses</option>
                                     <option value="New">New</option>
-                                    <option value="Reviewed">Reviewed</option>
-                                    <option value="Follow-up">Follow-up</option>
+                                    <option value="Under Review">Under Review</option>
+                                    <option value="Needs Response">Needs Response</option>
+                                    <option value="Resolved">Resolved</option>
                                 </select>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left text-xs">
                                     <thead>
                                         <tr class="border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-400">
+                                            <th class="py-3 pr-4">Date</th>
                                             <th class="py-3 pr-4">Alumni</th>
                                             <th class="py-3 pr-4">Category</th>
                                             <th class="py-3 pr-4">Rating</th>
@@ -2085,7 +2102,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="feedbackResponsesBody">
-                                        <tr><td colspan="5" class="py-8 text-center text-slate-400">Loading survey responses…</td></tr>
+                                        <tr><td colspan="6" class="py-8 text-center text-slate-400">Loading survey responses…</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -2099,23 +2116,33 @@
                                 </div>
                                 <button type="button" onclick="closeFeedbackDetails()" class="btn btn-secondary text-xs">Close</button>
                             </div>
+                            <div id="feedbackContactBanner" class="hidden mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold flex items-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span>Alumnus requested a response. Please follow up and mark this resolved once addressed.</span>
+                            </div>
                             <dl id="feedbackDetailFields" class="grid sm:grid-cols-2 gap-4 text-xs"></dl>
                             <form id="feedbackReviewForm" onsubmit="saveFeedbackReview(event)" class="mt-6 border-t border-slate-100 pt-5 space-y-4">
                                 <div>
                                     <label class="form-label" for="feedbackReviewStatus">Status</label>
                                     <select id="feedbackReviewStatus" class="form-select text-xs">
                                         <option value="New">New</option>
-                                        <option value="Reviewed">Reviewed</option>
-                                        <option value="Follow-up">Follow-up</option>
+                                        <option value="Under Review">Under Review</option>
+                                        <option value="Needs Response">Needs Response</option>
+                                        <option value="Resolved">Resolved</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="form-label" for="feedbackInternalNote">Internal Note</label>
-                                    <textarea id="feedbackInternalNote" rows="3" maxlength="2000" placeholder="Registrar notes..." class="form-textarea text-xs"></textarea>
+                                    <label class="form-label" for="feedbackInternalNote">Registrar Notes</label>
+                                    <textarea id="feedbackInternalNote" rows="3" maxlength="2000" placeholder="Internal notes visible to Registrar/Admin only..." class="form-textarea text-xs"></textarea>
                                 </div>
-                                <button type="submit" class="btn btn-primary text-xs">
-                                    <i class="fa-solid fa-check mr-1"></i> Save Review
-                                </button>
+                                <div class="flex flex-wrap gap-3">
+                                    <button type="submit" class="btn btn-primary text-xs">
+                                        <i class="fa-solid fa-check mr-1"></i> Save Changes
+                                    </button>
+                                    <button type="button" onclick="markFeedbackResolved()" class="btn btn-secondary text-xs">
+                                        <i class="fa-solid fa-circle-check mr-1"></i> Mark as Resolved
+                                    </button>
+                                </div>
                             </form>
                         </section>
                     </section>
@@ -3553,9 +3580,10 @@
                 <i class="fa-solid fa-circle-check"></i>
             </div>
             <h3 class="text-xl font-extrabold text-slate-800 mb-2">Thank you for your feedback!</h3>
-            <p class="text-xs text-slate-600 leading-relaxed mb-6 max-w-sm mx-auto">
-                Your response has been recorded and will help us improve our alumni programs and services.
+            <p class="text-xs text-slate-600 leading-relaxed mb-3 max-w-sm mx-auto">
+                Your response has been successfully submitted and will help us improve our alumni programs and services.
             </p>
+            <p class="text-[11px] text-slate-400 font-semibold mb-6">Reference: <span id="feedbackReferenceNo" class="text-slate-600 font-mono">—</span></p>
             <button onclick="closeFeedbackConfirmationModal()" class="btn btn-primary text-xs px-6 py-2.5 w-full">
                 Close & Return
             </button>

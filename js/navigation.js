@@ -421,8 +421,8 @@
             feedback: currentUser?.role === "alumni"
                 ? "Alumni Surveys & Feedback"
                 : currentUser?.role === "admin"
-                    ? "Survey & Feedback Management"
-                    : "Survey Response Review",
+                    ? "Feedback & Survey Analytics"
+                    : "Feedback Management",
             reports: "System Reports & Statistics",
             verification: "Alumni Record Verification",
             "request-approval": "Request Approval Queue",

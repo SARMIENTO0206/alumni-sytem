@@ -964,52 +964,59 @@ router.post('/newsletters/:id/archive', requireRole('admin'), (req, res) => {
 /* -------------------------------- Feedback -------------------------------- */
 
 const FEEDBACK_CATEGORIES = new Set([
-  'Alumni Services',
-  'Registrar / Document Requests',
-  'Alumni Events & Reunions',
-  'Alumni Portal/System',
-  'Career & Graduate Services',
-  'School Programs & Activities',
-  'Facilities',
-  'Communication / Newsletter',
-  'Other',
-  'Alumni Records'
+  'Transcript/Document Services',
+  'Alumni Events',
+  'Career Services',
+  'Alumni Portal',
+  'Communication',
+  'Donation/Campaign',
+  'Other'
 ]);
 
-const REGISTRAR_FEEDBACK_CATEGORIES = new Set([
-  'Alumni Services',
-  'Registrar / Document Requests',
-  'Alumni Records',
-  'Career & Graduate Services'
-]);
+const FEEDBACK_STATUSES = ['New', 'Under Review', 'Needs Response', 'Resolved'];
 
-function feedbackRowForClient(row, includeStaffFields) {
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function feedbackReferenceNo(id, createdAt) {
+  const year = (createdAt ? new Date(createdAt) : new Date()).getFullYear();
+  return `FDB-${year}-${String(id).padStart(5, '0')}`;
+}
+
+/**
+ * Builds the client-facing feedback record. Identity fields are only exposed when the
+ * viewer is the alumni author themselves; anonymous submissions are masked for everyone else
+ * (including staff/admin) at this layer so anonymity cannot be bypassed by the front end.
+ */
+function feedbackRowForClient(row, { isOwner = false, includeStaffFields = false } = {}) {
+  const anonymous = Boolean(row.is_anonymous);
   const record = {
     id: row.id,
-    name: row.account_name || row.alumni_name || row.name || 'Alumni',
-    educationLevel: row.education_level || '',
-    batch: row.user_batch || row.alumni_batch || row.education_year || '',
+    name: anonymous && !isOwner ? 'Anonymous' : (row.account_name || row.alumni_name || row.name || 'Alumni'),
+    educationLevel: anonymous && !isOwner ? '' : (row.education_level || ''),
+    batch: anonymous && !isOwner ? '' : (row.user_batch || row.alumni_batch || row.education_year || ''),
     category: row.category || 'Other',
     rating: Number(row.rating || 0),
     recommendationRating: row.recommendation_rating == null ? null : Number(row.recommendation_rating),
     improvement: row.improvement || '',
     message: row.message || '',
     contactRequested: Boolean(row.contact_requested),
-    createdAt: row.created_at || ''
+    isAnonymous: anonymous,
+    referenceNo: row.reference_no || feedbackReferenceNo(row.id, row.created_at),
+    createdAt: row.created_at || '',
+    updatedAt: row.updated_at || ''
   };
   if (includeStaffFields) {
     record.status = row.status || 'New';
     record.internalNote = row.internal_note || '';
+    record.resolvedAt = row.resolved_at || '';
   }
   return record;
 }
 
-/** GET /api/feedback - alumni can see their own submissions; staff see routed records. */
-router.get('/feedback', (req, res) => {
-  if (!isAlumni(req.user) && !isAdmin(req.user) && !isStaff(req.user)) {
-    return res.status(403).json({ error: 'You do not have permission to view survey responses.' });
-  }
-  const rows = db.prepare(`
+function feedbackJoinedRows() {
+  return db.prepare(`
     SELECT f.*, u.name AS account_name, u.education_level, u.batch AS user_batch,
       a.name AS alumni_name, a.batch AS alumni_batch, a.education_year
     FROM feedback f
@@ -1017,23 +1024,35 @@ router.get('/feedback', (req, res) => {
     LEFT JOIN alumni a ON a.id = f.alumni_id
     ORDER BY f.id DESC
   `).all();
-  const visible = isAlumni(req.user)
-    ? rows.filter((row) => ownsLinkedRow(req.user, row))
-    : isStaff(req.user)
-      ? rows.filter((row) => REGISTRAR_FEEDBACK_CATEGORIES.has(row.category))
-      : rows;
-  res.json({
-    feedback: visible.map((row) => feedbackRowForClient(row, !isAlumni(req.user)))
-  });
+}
+
+/**
+ * GET /api/feedback - single shared feedback dataset for all roles.
+ * Alumni only see their own submissions; Registrar (staff) and Admin see everything,
+ * with anonymous identities masked for both.
+ */
+router.get('/feedback', (req, res) => {
+  if (!isAlumni(req.user) && !isAdmin(req.user) && !isStaff(req.user)) {
+    return res.status(403).json({ error: 'You do not have permission to view survey responses.' });
+  }
+  const rows = feedbackJoinedRows();
+  if (isAlumni(req.user)) {
+    const own = rows.filter((row) => ownsLinkedRow(req.user, row));
+    return res.json({ feedback: own.map((row) => feedbackRowForClient(row, { isOwner: true, includeStaffFields: true })) });
+  }
+  res.json({ feedback: rows.map((row) => feedbackRowForClient(row, { isOwner: false, includeStaffFields: true })) });
 });
 
-/** POST /api/feedback - submit alumni feedback. */
+/** POST /api/feedback - submit alumni feedback into the single shared feedback table. */
 router.post('/feedback', requireRole('alumni'), (req, res) => {
-  const { rating, recommendationRating, category, message, improvement, contactRequested } = req.body || {};
+  const { rating, recommendationRating, category, message, improvement, contactRequested, isAnonymous } = req.body || {};
   const satisfaction = Number(rating);
   const recommendation = Number(recommendationRating);
   const cleanMessage = String(message || '').trim();
   const cleanImprovement = String(improvement || '').trim();
+  const contactMe = contactRequested === true;
+  // An alumnus who wants to be contacted cannot remain anonymous - enforced server-side.
+  const anonymous = contactMe ? false : isAnonymous === true;
   if (!FEEDBACK_CATEGORIES.has(category)) {
     return res.status(400).json({ error: 'Choose a valid feedback category.' });
   }
@@ -1044,16 +1063,21 @@ router.post('/feedback', requireRole('alumni'), (req, res) => {
       !Number.isInteger(recommendation) || recommendation < 0 || recommendation > 10) {
     return res.status(400).json({ error: 'Recommendation score must be between 0 and 10.' });
   }
-  if (!cleanMessage || cleanMessage.length > 5000 || cleanImprovement.length > 2000) {
-    return res.status(400).json({ error: 'Feedback is required and must be 5,000 characters or fewer; suggestions must be 2,000 characters or fewer.' });
+  if (!cleanImprovement || cleanImprovement.length > 2000) {
+    return res.status(400).json({ error: 'Suggestions for improvement are required and must be 2,000 characters or fewer.' });
+  }
+  if (cleanMessage.length > 2000) {
+    return res.status(400).json({ error: 'Additional comments must be 2,000 characters or fewer.' });
   }
   const linked = findAlumniForUser(req.user);
+  const createdAt = nowIso();
 
   const info = db.prepare(
     `INSERT INTO feedback (
       name, rating, category, message, user_id, alumni_id,
-      recommendation_rating, improvement, contact_requested, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'New')`
+      recommendation_rating, improvement, contact_requested, status,
+      is_anonymous, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'New', ?, ?, ?)`
   ).run(
     req.user.name || 'Alumni',
     satisfaction,
@@ -1063,43 +1087,76 @@ router.post('/feedback', requireRole('alumni'), (req, res) => {
     linked?.id || 0,
     recommendation,
     cleanImprovement,
-    contactRequested === true ? 1 : 0
+    contactMe ? 1 : 0,
+    anonymous ? 1 : 0,
+    createdAt,
+    createdAt
   );
+
+  const referenceNo = feedbackReferenceNo(info.lastInsertRowid, createdAt);
+  db.prepare('UPDATE feedback SET reference_no = ? WHERE id = ?').run(referenceNo, info.lastInsertRowid);
 
   const row = db.prepare('SELECT * FROM feedback WHERE id = ?').get(info.lastInsertRowid);
   mirror('feedback', Object.fromEntries(Object.entries(row).filter(([key]) =>
-    !['recommendation_rating', 'improvement', 'contact_requested', 'status', 'internal_note'].includes(key)
+    !['recommendation_rating', 'improvement', 'contact_requested', 'status', 'internal_note', 'reviewed_by'].includes(key)
   )));
-  res.status(201).json({ feedback: feedbackRowForClient(row, false) });
+
+  dispatchStaffAudience(
+    'New feedback received',
+    `${anonymous ? 'An alumnus' : (req.user.name || 'An alumnus')} submitted feedback under ${category}.`,
+    'feedback',
+    row.id
+  ).catch(() => {});
+
+  res.status(201).json({ feedback: feedbackRowForClient(row, { isOwner: true, includeStaffFields: true }) });
 });
 
+/** PUT /api/feedback/:id - Registrar or Admin process a feedback record through the shared workflow. */
 router.put('/feedback/:id', requireRole('admin', 'staff'), (req, res) => {
   const id = Number(req.params.id);
   const row = db.prepare('SELECT * FROM feedback WHERE id = ?').get(id);
   if (!row) return res.status(404).json({ error: 'Feedback response not found.' });
-  if (isStaff(req.user) && !REGISTRAR_FEEDBACK_CATEGORIES.has(row.category)) {
-    return res.status(403).json({ error: 'This feedback response is routed to another team.' });
-  }
 
   const status = String(req.body?.status || '');
   const internalNote = String(req.body?.internalNote ?? row.internal_note ?? '').trim();
-  if (!['New', 'Reviewed', 'Follow-up'].includes(status)) {
-    return res.status(400).json({ error: 'Choose New, Reviewed, or Follow-up status.' });
+  if (!FEEDBACK_STATUSES.includes(status)) {
+    return res.status(400).json({ error: 'Choose New, Under Review, Needs Response, or Resolved status.' });
   }
   if (internalNote.length > 2000) {
     return res.status(400).json({ error: 'Internal note must be 2,000 characters or fewer.' });
   }
-  db.prepare('UPDATE feedback SET status = ?, internal_note = ? WHERE id = ?').run(status, internalNote, id);
-  const updated = db.prepare(`
-    SELECT f.*, u.name AS account_name, u.education_level, u.batch AS user_batch,
-      a.name AS alumni_name, a.batch AS alumni_batch, a.education_year
-    FROM feedback f
-    LEFT JOIN users u ON u.id = f.user_id
-    LEFT JOIN alumni a ON a.id = f.alumni_id
-    WHERE f.id = ?
-  `).get(id);
+  const updatedAt = nowIso();
+  const resolvedAt = status === 'Resolved' ? updatedAt : '';
+  db.prepare(
+    'UPDATE feedback SET status = ?, internal_note = ?, updated_at = ?, resolved_at = ?, reviewed_by = ? WHERE id = ?'
+  ).run(status, internalNote, updatedAt, resolvedAt, req.user.id, id);
+
+  const updated = db.prepare('SELECT * FROM feedback WHERE id = ?').get(id);
+  mirrorUpdate('feedback', updated);
   writeAudit(req.user, 'update', 'feedback', id, `Status: ${status}`);
-  res.json({ feedback: feedbackRowForClient(updated, true) });
+
+  const previousStatus = row.status || 'New';
+  if (status !== previousStatus && (row.user_id || row.alumni_id)) {
+    const statusMessages = {
+      'Under Review': 'Your feedback is currently being reviewed.',
+      'Resolved': 'Your feedback has been marked as resolved. Thank you for helping us improve.'
+    };
+    if (statusMessages[status]) {
+      dispatchNotification({
+        userId: row.user_id || 0,
+        alumniId: row.alumni_id || 0,
+        recipient: row.account_name || row.alumni_name || row.name || 'Alumni',
+        channel: 'SYSTEM',
+        subject: 'Feedback status update',
+        message: statusMessages[status],
+        relatedType: 'feedback',
+        relatedId: id
+      }).catch(() => {});
+    }
+  }
+
+  const joined = feedbackJoinedRows().find((r) => r.id === id) || updated;
+  res.json({ feedback: feedbackRowForClient(joined, { isOwner: false, includeStaffFields: true }) });
 });
 
 /* --------------------------- Job opportunities ---------------------------- */
