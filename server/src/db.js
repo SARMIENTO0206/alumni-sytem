@@ -365,6 +365,7 @@ export function initDb() {
   ensureColumn('announcements', 'send_email', 'send_email INTEGER DEFAULT 0');
   ensureColumn('announcements', 'send_sms', 'send_sms INTEGER DEFAULT 0');
   ensureColumn('announcements', 'created_by', 'created_by INTEGER DEFAULT 0');
+  ensureColumn('announcements', 'image_data', "image_data TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'fee_centavos', 'fee_centavos INTEGER DEFAULT 0');
   ensureColumn('transcript_requests', 'payment_status', "payment_status TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'copies', 'copies INTEGER DEFAULT 1');

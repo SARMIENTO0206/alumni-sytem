@@ -44,7 +44,9 @@ Reports, Transcript Requests, Events, etc.), reachable from the sidebar.
 **Targeted announcements:** composers pick a Target Audience — `All Users`,
 `Alumni Only`, `Specific Batch` (shows a batch picker), or `Admin & Registrar`.
 Admin sees everything; Registrar sees `All Users`/`Admin & Registrar`; Alumni
-see `All Users`/`Alumni Only`/their own matching `Specific Batch`.
+see `All Users`/`Alumni Only`/their own matching `Specific Batch`. An optional
+photo (JPG/PNG/WebP, up to 1 MB) can be attached and is shown on the
+Featured/Others cards and the full Announcements page.
 
 ## 🧩 System modules & roles
 

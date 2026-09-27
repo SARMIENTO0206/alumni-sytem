@@ -2515,6 +2515,17 @@
                             <input id="announceTitle" class="form-input text-sm" placeholder="e.g. Alumni General Assembly 2026" maxlength="160" required>
                             <label class="form-label" for="announceBody">Message *</label>
                             <textarea id="announceBody" class="form-textarea text-sm" rows="4" placeholder="Write the official announcement..." maxlength="10000" required></textarea>
+                            <div>
+                                <label class="form-label" for="announceImage">Photo <span class="font-normal text-slate-400">(optional)</span></label>
+                                <input type="file" id="announceImage" accept="image/jpeg,image/png,image/webp" onchange="previewAnnouncementImage(this)" class="form-input text-sm">
+                                <p class="mt-1 text-[10px] text-slate-400">JPG, PNG, or WebP; maximum file size 1 MB.</p>
+                                <div class="relative mt-3 hidden" id="announceImagePreviewWrap">
+                                    <img id="announceImagePreview" alt="Announcement image preview" class="max-h-48 w-full rounded-lg border border-slate-200 object-cover">
+                                    <button type="button" onclick="clearAnnouncementImagePreview()" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/70 text-white text-xs flex items-center justify-center hover:bg-slate-900">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                            </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label class="form-label" for="announceAudience">Target Audience</label>

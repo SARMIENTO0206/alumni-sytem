@@ -1,5 +1,49 @@
 /* access.js - Three-role helpers, settings, users, communications, and profile extras. */
 
+let newAnnouncementImageData = "";
+
+function previewAnnouncementImage(input) {
+    const file = input.files && input.files[0];
+    const wrap = document.getElementById("announceImagePreviewWrap");
+    const preview = document.getElementById("announceImagePreview");
+    newAnnouncementImageData = "";
+    if (preview) preview.removeAttribute("src");
+    if (wrap) wrap.classList.add("hidden");
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        input.value = "";
+        showToast("Choose a JPG, PNG, or WebP image.", "error");
+        return;
+    }
+    if (file.size > 1024 * 1024) {
+        input.value = "";
+        showToast("Announcement images must be 1 MB or smaller.", "error");
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+        if (typeof reader.result !== "string") {
+            showToast("Unable to preview this image.", "error");
+            return;
+        }
+        newAnnouncementImageData = reader.result;
+        if (preview) preview.src = reader.result;
+        if (wrap) wrap.classList.remove("hidden");
+    };
+    reader.onerror = () => showToast("Unable to read this image.", "error");
+    reader.readAsDataURL(file);
+}
+
+function clearAnnouncementImagePreview() {
+    newAnnouncementImageData = "";
+    const input = document.getElementById("announceImage");
+    const wrap = document.getElementById("announceImagePreviewWrap");
+    const preview = document.getElementById("announceImagePreview");
+    if (input) input.value = "";
+    if (preview) preview.removeAttribute("src");
+    if (wrap) wrap.classList.add("hidden");
+}
+
 function normalizeRole(role) {
     if (role === "registrar") return "staff";
     return String(role || "");
@@ -195,20 +239,26 @@ function renderDashboardAnnouncements() {
 
     const [featured, ...rest] = visible;
     featuredBox.innerHTML = `
-        <button type="button" onclick="showAnnouncementDetails('${featured.id}')" class="w-full text-left rounded-xl bg-gradient-to-br from-[#801235] to-[#4a0a1f] p-6 text-white hover:shadow-lg transition">
-            <span class="inline-block px-2.5 py-1 rounded-full bg-white/15 text-pink-100 text-[10px] font-bold tracking-wider uppercase mb-2">Featured • ${escapeHtml(announcementAudienceLabel(featured))}</span>
-            <h4 class="text-lg font-extrabold">${escapeHtml(featured.title)}</h4>
-            <p class="text-sm text-pink-100/90 mt-2 line-clamp-3 whitespace-pre-wrap">${escapeHtml(featured.body || "")}</p>
-            <span class="inline-flex items-center gap-1 text-xs font-bold text-pink-100 mt-4">View Details <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+        <button type="button" onclick="showAnnouncementDetails('${featured.id}')" class="w-full text-left rounded-xl bg-gradient-to-br from-[#801235] to-[#4a0a1f] text-white hover:shadow-lg transition overflow-hidden">
+            ${featured.imageUrl ? `<img src="${escapeHtml(featured.imageUrl)}" alt="" class="w-full h-40 sm:h-56 object-cover">` : ""}
+            <div class="p-6">
+                <span class="inline-block px-2.5 py-1 rounded-full bg-white/15 text-pink-100 text-[10px] font-bold tracking-wider uppercase mb-2">Featured • ${escapeHtml(announcementAudienceLabel(featured))}</span>
+                <h4 class="text-lg font-extrabold">${escapeHtml(featured.title)}</h4>
+                <p class="text-sm text-pink-100/90 mt-2 line-clamp-3 whitespace-pre-wrap">${escapeHtml(featured.body || "")}</p>
+                <span class="inline-flex items-center gap-1 text-xs font-bold text-pink-100 mt-4">View Details <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+            </div>
         </button>
     `;
 
     othersBox.innerHTML = rest.length
         ? rest.slice(0, 4).map((a) => `
-            <button type="button" onclick="showAnnouncementDetails('${a.id}')" class="w-full text-left app-card p-4 hover:shadow-md transition">
-                <span class="text-[10px] font-bold text-brand-magenta uppercase tracking-wider">${escapeHtml(announcementAudienceLabel(a))}</span>
-                <h5 class="font-bold text-slate-800 text-sm mt-1">${escapeHtml(a.title)}</h5>
-                <p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(a.body || "")}</p>
+            <button type="button" onclick="showAnnouncementDetails('${a.id}')" class="w-full text-left app-card overflow-hidden hover:shadow-md transition">
+                ${a.imageUrl ? `<img src="${escapeHtml(a.imageUrl)}" alt="" class="w-full h-28 object-cover">` : ""}
+                <div class="p-4">
+                    <span class="text-[10px] font-bold text-brand-magenta uppercase tracking-wider">${escapeHtml(announcementAudienceLabel(a))}</span>
+                    <h5 class="font-bold text-slate-800 text-sm mt-1">${escapeHtml(a.title)}</h5>
+                    <p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(a.body || "")}</p>
+                </div>
             </button>
         `).join("")
         : `<p class="text-xs text-slate-400 col-span-1 sm:col-span-2 py-4 text-center">No other announcements.</p>`;
@@ -545,14 +595,17 @@ function renderAnnouncementsView() {
         return;
     }
     list.innerHTML = visible.map((a) => `
-        <article class="app-card p-5">
-            <div class="flex items-start justify-between gap-3">
-                <div>
-                    <h4 class="font-extrabold text-slate-800">${escapeHtml(a.title)}</h4>
-                    <p class="text-xs text-slate-400 mt-1">${escapeHtml(a.status || "Published")} • ${escapeHtml(announcementAudienceLabel(a))}${a.status === "Scheduled" && a.publish_at ? ` • Publishes ${escapeHtml(a.publish_at)}` : ""}${a.expires_at ? ` • Expires ${escapeHtml(a.expires_at)}` : ""}</p>
+        <article class="app-card overflow-hidden">
+            ${a.imageUrl ? `<img src="${escapeHtml(a.imageUrl)}" alt="" class="w-full h-48 sm:h-64 object-cover">` : ""}
+            <div class="p-5">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h4 class="font-extrabold text-slate-800">${escapeHtml(a.title)}</h4>
+                        <p class="text-xs text-slate-400 mt-1">${escapeHtml(a.status || "Published")} • ${escapeHtml(announcementAudienceLabel(a))}${a.status === "Scheduled" && a.publish_at ? ` • Publishes ${escapeHtml(a.publish_at)}` : ""}${a.expires_at ? ` • Expires ${escapeHtml(a.expires_at)}` : ""}</p>
+                    </div>
                 </div>
+                <p class="text-sm text-slate-600 mt-3 whitespace-pre-wrap">${escapeHtml(a.body || "")}</p>
             </div>
-            <p class="text-sm text-slate-600 mt-3 whitespace-pre-wrap">${escapeHtml(a.body || "")}</p>
         </article>
     `).join("");
 }
@@ -601,12 +654,14 @@ async function publishAnnouncement(event) {
                 expiresAt,
                 sendInApp: document.getElementById("announceInApp").checked,
                 sendEmail: document.getElementById("announceEmail").checked,
-                sendSms: document.getElementById("announceSms").checked
+                sendSms: document.getElementById("announceSms").checked,
+                imageData: newAnnouncementImageData
             })
         });
         event.target.reset();
         toggleAnnouncementSchedule();
         toggleAnnouncementBatchField();
+        clearAnnouncementImagePreview();
         const outcome = result.notification;
         if (status === "Draft") showToast("Announcement saved as a draft.", "success");
         else if (status === "Scheduled") showToast("Announcement scheduled.", "success");

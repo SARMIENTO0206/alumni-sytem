@@ -1297,6 +1297,11 @@ function announcementDateError(value, field) {
   return '';
 }
 
+const mapAnnouncement = (row) => {
+  const { image_data, ...rest } = row;
+  return { ...rest, imageUrl: image_data ? `/api/public/announcements/${row.id}/image` : '' };
+};
+
 async function notifyAnnouncement(announcement) {
   const shortMessage = `${announcement.title} has been published by St. Agnes Academy. View Announcements in the Alumni Portal.`;
   if (announcement.audience === 'staff') {
@@ -1364,7 +1369,7 @@ router.get('/announcements', async (req, res) => {
   const visible = (isAdmin(req.user) || isStaff(req.user))
     ? rows
     : rows.filter((announcement) => announcement.status === 'Published');
-  res.json({ announcements: visible });
+  res.json({ announcements: visible.map(mapAnnouncement) });
 });
 
 router.post('/announcements', requireRole('admin', 'staff'), async (req, res) => {
@@ -1383,6 +1388,8 @@ router.post('/announcements', requireRole('admin', 'staff'), async (req, res) =>
   if (!['Draft', 'Scheduled', 'Published'].includes(status)) return res.status(400).json({ error: 'Choose Draft, Scheduled, or Published.' });
   if (!['all', 'alumni', 'staff', 'batch'].includes(audience)) return res.status(400).json({ error: 'Choose a valid target audience.' });
   if (audience === 'batch' && !batch) return res.status(400).json({ error: 'Choose a batch year to target.' });
+  const image = validateEventImageData(req.body?.imageData);
+  if (image.error) return res.status(400).json({ error: image.error });
   const publishDate = req.body?.publishAt ? new Date(req.body.publishAt).toISOString() : '';
   const expirationDate = req.body?.expiresAt ? new Date(req.body.expiresAt).toISOString().slice(0, 10) : '';
   if (status === 'Scheduled' && (!publishDate || new Date(publishDate) <= new Date())) {
@@ -1402,11 +1409,11 @@ router.post('/announcements', requireRole('admin', 'staff'), async (req, res) =>
   }
   const info = db.prepare(`
     INSERT INTO announcements
-      (title, body, status, audience, batch, publish_at, expires_at, send_in_app, send_email, send_sms, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (title, body, status, audience, batch, publish_at, expires_at, send_in_app, send_email, send_sms, created_by, image_data)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     title, body, status, audience, audience === 'batch' ? batch : '', publishDate, expirationDate,
-    sendInApp ? 1 : 0, sendEmail ? 1 : 0, sendSms ? 1 : 0, req.user.id
+    sendInApp ? 1 : 0, sendEmail ? 1 : 0, sendSms ? 1 : 0, req.user.id, image.data
   );
   let announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(info.lastInsertRowid);
   let notification = null;
@@ -1414,7 +1421,7 @@ router.post('/announcements', requireRole('admin', 'staff'), async (req, res) =>
     notification = await notifyAnnouncement(announcement);
   }
   writeAudit(req.user, status === 'Published' ? 'publish' : 'create', 'announcement', announcement.id, `${status}: ${title}`);
-  res.status(201).json({ announcement, notification });
+  res.status(201).json({ announcement: mapAnnouncement(announcement), notification });
 });
 
 router.get('/announcements/:id', (req, res) => {
@@ -1426,7 +1433,7 @@ router.get('/announcements/:id', (req, res) => {
   if (announcement.status !== 'Published' && !isAdmin(req.user) && !isStaff(req.user)) {
     return res.status(403).json({ error: 'This announcement is not available.' });
   }
-  res.json({ announcement });
+  res.json({ announcement: mapAnnouncement(announcement) });
 });
 
 router.post('/surveys/invite', requireRole('admin', 'staff'), (req, res) => {
