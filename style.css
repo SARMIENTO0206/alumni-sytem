@@ -372,6 +372,23 @@ html {
   background-position: center;
 }
 
+/* Login page brand sidebar: real campus photo behind a maroon gradient tint */
+.login-sidebar-photo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url('campus.png');
+  background-size: cover;
+  background-position: center;
+}
+
+.login-sidebar-tint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(160deg, rgba(27, 17, 36, 0.88) 0%, rgba(46, 18, 41, 0.85) 40%, rgba(111, 18, 52, 0.82) 80%, rgba(138, 16, 54, 0.85) 100%);
+}
+
 .progress-bar-75 {
   width: 75%;
 }

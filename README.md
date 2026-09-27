@@ -28,15 +28,18 @@ devices must clone this repo and run `npm start` in `server/`.
 
 ## 📊 Role-based dashboards
 
-Same visual design for every role (KPI cards → announcements/attention panel
-→ role-specific work area), different content per role:
+Every role shares the exact same dashboard layout — welcome banner → 4
+role-based summary cards → Announcements (Featured announcement + grid of
+other announcements). Only the data shown in the cards differs per role; the
+detailed analytics, request queues, and activity feeds that used to live on
+the dashboard now live in their respective modules (Graduate Tracking /
+Reports, Transcript Requests, Events, etc.), reachable from the sidebar.
 
 | Section | Admin | Registrar | Alumni |
 | ------- | ----- | --------- | ------ |
-| KPIs | Total Alumni, Pending Requests, Employed Alumni, Upcoming Events | Pending Requests, For Processing, Completed Requests, Records to Verify | My Requests, Upcoming Events, Job Opportunities, Profile Completion |
-| Attention panel | System issues & tasks | Processing tasks (clickable) | Personal reminders (profile, graduate status, corrections) |
-| Growth chart | ✅ | ❌ | ❌ |
-| Work area | Analytics + system-wide activity feed | Request Queue table + registrar activity | Quick Services (Request Transcript/Certificate, Update Graduate Status, Browse Jobs) |
+| Summary cards | Total Alumni, Pending Requests, Employed Alumni, Upcoming Events | Pending Requests, For Processing, Completed Requests, Records to Verify | My Requests, Request Status, Job Opportunities, Upcoming Events |
+| Announcements | Featured + other announcements (role-filtered) | Featured + other announcements (role-filtered) | Featured + other announcements (role-filtered) |
+| Growth chart | Available under Graduate Tracking / Reports | ❌ | ❌ |
 
 **Targeted announcements:** composers pick a Target Audience — `All Users`,
 `Alumni Only`, `Specific Batch` (shows a batch picker), or `Admin & Registrar`.

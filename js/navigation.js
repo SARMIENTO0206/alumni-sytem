@@ -233,9 +233,6 @@
 
     function renderOpenedView(viewId) {
         if (viewId === "dashboard") {
-            if (typeof renderGrowthChart === "function") renderGrowthChart();
-            if (typeof renderDashboardUpcomingEvents === "function") renderDashboardUpcomingEvents();
-            if (typeof renderDashboardActivity === "function") renderDashboardActivity();
             if (typeof renderRoleDashboard === "function") renderRoleDashboard();
         }
         if (viewId === "idcard" && typeof renderDigitalIdCard === "function") renderDigitalIdCard();
@@ -246,6 +243,7 @@
         if (viewId === "tracking") {
             if (typeof applyTrackingRoleView === "function") applyTrackingRoleView();
             if (typeof renderTrackingCharts === "function") renderTrackingCharts();
+            if (typeof renderGrowthChart === "function") renderGrowthChart();
             if (typeof renderOutdatedProfilesTable === "function") renderOutdatedProfilesTable();
             if (typeof renderTrackingRecordsTable === "function") renderTrackingRecordsTable();
             if (typeof renderMyTrackingSummary === "function") renderMyTrackingSummary();
