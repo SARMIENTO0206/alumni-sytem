@@ -2026,7 +2026,6 @@
     function feedbackStatusBadgeClass(status) {
         if (status === "Resolved") return "status-approved";
         if (status === "Under Review") return "status-freelance";
-        if (status === "Needs Response") return "status-rejected";
         return "status-pending";
     }
 
@@ -2229,12 +2228,10 @@
             const avgRating = total
                 ? feedbackResponses.reduce((sum, item) => sum + Number(item.rating || 0), 0) / total
                 : 0;
-            const contactRequests = feedbackResponses.filter((item) => item.contactRequested).length;
             const unresolved = feedbackResponses.filter((item) => item.status !== "Resolved").length;
             grid.append(
-                feedbackStatCard("Total Responses", String(total)),
+                feedbackStatCard("Total Feedback", String(total)),
                 feedbackStatCard("Avg. Rating", total ? `${avgRating.toFixed(1)}/5` : "—"),
-                feedbackStatCard("Contact Requests", String(contactRequests), "text-amber-600"),
                 feedbackStatCard("Unresolved", String(unresolved), "text-brand-magenta")
             );
 
@@ -2281,8 +2278,8 @@
             if (analyticsSection) analyticsSection.classList.add("hidden");
             const countByStatus = (status) => feedbackResponses.filter((item) => (item.status || "New") === status).length;
             grid.append(
+                feedbackStatCard("Total", String(feedbackResponses.length)),
                 feedbackStatCard("New", String(countByStatus("New"))),
-                feedbackStatCard("Needs Response", String(countByStatus("Needs Response")), "text-rose-600"),
                 feedbackStatCard("Under Review", String(countByStatus("Under Review")), "text-blue-600"),
                 feedbackStatCard("Resolved", String(countByStatus("Resolved")), "text-emerald-600")
             );
@@ -2327,7 +2324,7 @@
         if (!isAlumni && description) {
             description.textContent = isAdmin
                 ? "Oversight of all alumni feedback. Registrar handles day-to-day responses; use this view to monitor trends."
-                : "Review and process every alumni feedback submission through New \u2192 Under Review \u2192 Needs Response \u2192 Resolved.";
+                : "Review and process every alumni feedback submission through New \u2192 Under Review \u2192 Resolved.";
         }
 
         const search = document.getElementById("feedbackSearch");

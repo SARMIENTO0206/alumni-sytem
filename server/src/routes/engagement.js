@@ -973,7 +973,7 @@ const FEEDBACK_CATEGORIES = new Set([
   'Other'
 ]);
 
-const FEEDBACK_STATUSES = ['New', 'Under Review', 'Needs Response', 'Resolved'];
+const FEEDBACK_STATUSES = ['New', 'Under Review', 'Resolved'];
 
 function nowIso() {
   return new Date().toISOString();
@@ -1120,7 +1120,7 @@ router.put('/feedback/:id', requireRole('admin', 'staff'), (req, res) => {
   const status = String(req.body?.status || '');
   const internalNote = String(req.body?.internalNote ?? row.internal_note ?? '').trim();
   if (!FEEDBACK_STATUSES.includes(status)) {
-    return res.status(400).json({ error: 'Choose New, Under Review, Needs Response, or Resolved status.' });
+    return res.status(400).json({ error: 'Choose New, Under Review, or Resolved status.' });
   }
   if (internalNote.length > 2000) {
     return res.status(400).json({ error: 'Internal note must be 2,000 characters or fewer.' });
