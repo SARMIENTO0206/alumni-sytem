@@ -362,6 +362,9 @@ export function initDb() {
   ensureColumn('users', 'address', "address TEXT DEFAULT ''");
   ensureColumn('alumni', 'email', "email TEXT DEFAULT ''");
   ensureColumn('alumni', 'address', "address TEXT DEFAULT ''");
+  /* Machine-readable event date (YYYY-MM-DD) that drives the automated SMS flow.
+     `events.date` stays a human-readable display string for the existing UI. */
+  ensureColumn('events', 'event_date', "event_date TEXT DEFAULT ''");
   ensureColumn('announcements', 'audience', "audience TEXT DEFAULT 'alumni'");
   ensureColumn('announcements', 'batch', "batch TEXT DEFAULT ''");
   ensureColumn('announcements', 'publish_at', "publish_at TEXT DEFAULT ''");
@@ -507,6 +510,21 @@ export function initDb() {
       provider_ref    TEXT DEFAULT '',
       created_at      TEXT DEFAULT (datetime('now'))
     );
+
+    /* Bookkeeping for the automated, event-triggered reminder flow (T-3 / T-1).
+       One row per event stage, so a stage is never dispatched twice. */
+    CREATE TABLE IF NOT EXISTS event_reminders (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_id    INTEGER DEFAULT 0,
+      days_before INTEGER DEFAULT 0,
+      channel     TEXT DEFAULT '',
+      audience    INTEGER DEFAULT 0,
+      accepted    INTEGER DEFAULT 0,
+      failed      INTEGER DEFAULT 0,
+      sent_at     TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_event_reminders_stage ON event_reminders (event_id, days_before);
 
     CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications (user_id, is_read);
   `);

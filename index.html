@@ -1544,10 +1544,16 @@
                             <h3 class="text-xl font-extrabold text-slate-800">Alumni Events & Gatherings</h3>
                             <p class="text-xs text-slate-400 font-medium">Participate in school homecomings, webinars, summits, and outreach activities.</p>
                         </div>
-                        <button id="adminAddEventBtn" onclick="openAddEventModal()" class="btn btn-primary text-xs hidden">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>Create Event</span>
-                        </button>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button id="adminEventReminderBtn" onclick="runEventReminderSweep()" class="btn btn-secondary text-xs hidden" title="Dispatch the automated T-3 / T-1 event reminders that are due now">
+                                <i class="fa-solid fa-comment-sms"></i>
+                                <span>Send Due Reminders</span>
+                            </button>
+                            <button id="adminAddEventBtn" onclick="openAddEventModal()" class="btn btn-primary text-xs hidden">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Create Event</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="eventCardsGrid">
@@ -2484,6 +2490,16 @@
                             <input id="announceTitle" class="form-input text-sm" placeholder="e.g. Alumni General Assembly 2026" maxlength="160" required>
                             <label class="form-label" for="announceBody">Message *</label>
                             <textarea id="announceBody" class="form-textarea text-sm" rows="4" placeholder="Write the official announcement..." maxlength="10000" required></textarea>
+                            <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-2">
+                                <label class="form-label" for="announceAiTopic"><i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> Draft with AI <span class="font-normal text-slate-400">(optional)</span></label>
+                                <div class="flex flex-col sm:flex-row gap-2">
+                                    <input id="announceAiTopic" type="text" class="form-input text-sm" maxlength="160" placeholder="e.g. Alumni Homecoming 2026">
+                                    <button type="button" id="announceAiComposeBtn" onclick="aiComposeAnnouncement()" class="btn btn-secondary text-xs whitespace-nowrap">
+                                        <i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> Generate Draft
+                                    </button>
+                                </div>
+                                <p class="text-[11px] text-slate-400">Drafts a title and message with OpenAI (built-in fallback when no API key is configured). Review and edit before publishing.</p>
+                            </div>
                             <div>
                                 <label class="form-label" for="announceImage">Photo <span class="font-normal text-slate-400">(optional)</span></label>
                                 <input type="file" id="announceImage" accept="image/jpeg,image/png,image/webp" onchange="previewAnnouncementImage(this)" class="form-input text-sm">

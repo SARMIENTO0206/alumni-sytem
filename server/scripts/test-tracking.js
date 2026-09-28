@@ -26,6 +26,13 @@ async function req(token, method, path, body) {
   return { status: res.status, data };
 }
 
+/** Local (server-timezone) YYYY-MM-DD date N days from today. */
+function localDatePlusDays(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 const [admin, registrar, alumni] = await Promise.all([
   login('admin', 'admin123'),
   login('registrar', 'registrar123'),
@@ -108,6 +115,38 @@ assert(scheduledAnnouncement.status === 201 && scheduledAnnouncement.data.announ
 await new Promise((resolve) => setTimeout(resolve, 1500));
 const activatedAnnouncements = await req(alumni.token, 'GET', '/api/announcements');
 assert(activatedAnnouncements.data.announcements.some((item) => item.id === scheduledAnnouncement.data.announcement.id), 'scheduled announcements publish and become visible to Alumni when due');
+
+const announcementDeliveries = await req(admin.token, 'GET', `/api/announcements/${publishedAnnouncement.data.announcement.id}/deliveries`);
+assert(announcementDeliveries.status === 200 && announcementDeliveries.data.summary.portal.selected === true, 'Admin can open the delivery report of a published announcement');
+assert(announcementDeliveries.data.summary.portal.delivered >= 1 && announcementDeliveries.data.recipients.length >= 1, 'the delivery report lists the alumni who received the portal announcement');
+assert(announcementDeliveries.data.channels.email === false && announcementDeliveries.data.summary.email.selected === false, 'the delivery report marks an unused channel as not selected');
+const alumniAnnouncementDeliveries = await req(alumni.token, 'GET', `/api/announcements/${publishedAnnouncement.data.announcement.id}/deliveries`);
+assert(alumniAnnouncementDeliveries.status === 403, 'Alumni cannot read announcement delivery reports');
+
+const aiAnnouncementDraft = await req(registrar.token, 'POST', '/api/ai/compose-announcement', {
+  topic: 'Alumni Homecoming 2026',
+  channel: 'Announcement'
+});
+assert(aiAnnouncementDraft.status === 200 && typeof aiAnnouncementDraft.data.content === 'string' && aiAnnouncementDraft.data.content.length > 0, 'AI compose returns a draft announcement for staff review');
+
+const reminderEvent = await req(admin.token, 'POST', '/api/events', {
+  title: `Automated Reminder Event ${Date.now()}`,
+  date: localDatePlusDays(3),
+  location: 'Caloocan Campus'
+});
+assert(reminderEvent.status === 201, 'Admin can create an event that the automated reminder flow tracks');
+const reminderEventRsvp = await req(alumni.token, 'POST', `/api/events/${reminderEvent.data.event.id}/rsvp`);
+assert(reminderEventRsvp.status === 200 && reminderEventRsvp.data.event.rsvps >= 1, 'Alumni can register for the event reminder test');
+const alumniReminderLog = await req(alumni.token, 'GET', '/api/events/reminders');
+assert(alumniReminderLog.status === 403, 'Alumni cannot read the automated reminder schedule or log');
+const firstReminderRun = await req(admin.token, 'POST', '/api/events/reminders/run');
+assert(firstReminderRun.status === 200 && firstReminderRun.data.reminders >= 1, 'automated event reminders dispatch when an event is three days away');
+const secondReminderRun = await req(admin.token, 'POST', '/api/events/reminders/run');
+assert(secondReminderRun.status === 200 && secondReminderRun.data.reminders === 0, 'an event reminder stage is never dispatched twice');
+const reminderSchedule = await req(admin.token, 'GET', '/api/events/reminders');
+assert(reminderSchedule.status === 200 && Array.isArray(reminderSchedule.data.offsets) && reminderSchedule.data.offsets.includes(3), 'the reminder schedule reports the configured T-3 / T-1 stages');
+const reminderStage = reminderSchedule.data.log.find((row) => Number(row.eventId) === Number(reminderEvent.data.event.id) && Number(row.daysBefore) === 3);
+assert(reminderStage && Number(reminderStage.audience) >= 1, 'the reminder log records the dispatched T-3 stage and its audience size');
 
 const alumniRecords = await req(alumni.token, 'GET', '/api/tracking');
 assert(alumniRecords.status === 200 && alumniRecords.data.alumni.length >= 1, 'alumni should see their linked tracking record');

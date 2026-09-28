@@ -105,7 +105,7 @@ function confirmAndLogout() {
 function applyRoleChrome() {
     const role = currentRole();
     const staffOps = isAdminRole() || isStaffRole();
-    ["adminAddEventBtn", "adminCreateReunionBtn", "adminNewsletterBtn", "adminAddJobOpportunityBtn", "adminSmsSweepBtn"].forEach((id) => {
+    ["adminAddEventBtn", "adminCreateReunionBtn", "adminNewsletterBtn", "adminAddJobOpportunityBtn", "adminSmsSweepBtn", "adminEventReminderBtn"].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
         el.classList.toggle("hidden", !staffOps);
@@ -605,9 +605,105 @@ function renderAnnouncementsView() {
                     </div>
                 </div>
                 <p class="text-sm text-slate-600 mt-3 whitespace-pre-wrap">${escapeHtml(a.body || "")}</p>
+                ${canManage && a.status !== "Draft" ? `
+                <div class="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                    <span><i class="fa-solid fa-tower-broadcast text-[#801235] mr-1"></i>${escapeHtml(announcementChannelSummary(a))}</span>
+                    <button type="button" class="text-[#801235] font-bold hover:underline" onclick="showAnnouncementDeliveryReport(${a.id})">Delivery Report</button>
+                </div>
+                <div id="announcementDeliveryReport_${a.id}" class="hidden mt-3 border border-slate-200 rounded-lg bg-slate-50/60 p-3"></div>` : ""}
             </div>
         </article>
     `).join("");
+}
+
+/** "Portal + Email + SMS" label for one announcement's selected channels. */
+function announcementChannelSummary(item) {
+    const channels = [];
+    if (Number(item.send_in_app)) channels.push("Portal");
+    if (Number(item.send_email)) channels.push("Email");
+    if (Number(item.send_sms)) channels.push("SMS");
+    return channels.length ? channels.join(" + ") : "No channels selected";
+}
+
+/** Maps a stored delivery status to a readable label and colour. */
+function deliveryStatusLabel(status, selected) {
+    const value = String(status || "");
+    if (!selected) return { label: "Not selected", className: "text-slate-400" };
+    if (value === "accepted") return { label: "Sent", className: "text-emerald-700 font-bold" };
+    if (value === "failed") return { label: "Failed", className: "text-rose-600 font-bold" };
+    if (value === "not_configured") return { label: "Service unavailable", className: "text-amber-600 font-bold" };
+    if (value === "skipped") return { label: "Skipped (no contact)", className: "text-amber-600" };
+    return { label: "Not attempted", className: "text-slate-400" };
+}
+
+async function showAnnouncementDeliveryReport(id) {
+    const panel = document.getElementById(`announcementDeliveryReport_${id}`);
+    if (!panel) return;
+    panel.classList.remove("hidden");
+    panel.innerHTML = `<p class="text-[11px] text-slate-500"><span class="fa-solid fa-spinner fa-spin mr-1"></span> Loading delivery report…</p>`;
+    try {
+        const data = await SAA_API.request(`/api/announcements/${id}/deliveries`);
+        renderAnnouncementDeliveryReport(id, data);
+    } catch (err) {
+        panel.innerHTML = `<p class="text-[11px] text-rose-600">${escapeHtml(err.message || "Unable to load the delivery report.")}</p>`;
+    }
+}
+
+function hideAnnouncementDeliveryReport(id) {
+    const panel = document.getElementById(`announcementDeliveryReport_${id}`);
+    if (!panel) return;
+    panel.classList.add("hidden");
+    panel.innerHTML = "";
+}
+
+/** Renders the per-channel delivery report returned by the API. */
+function renderAnnouncementDeliveryReport(id, data) {
+    const panel = document.getElementById(`announcementDeliveryReport_${id}`);
+    if (!panel) return;
+    const channels = data.channels || {};
+    const summary = data.summary || {};
+    const portal = summary.portal || {};
+    const email = summary.email || {};
+    const sms = summary.sms || {};
+    const chip = (label, value, selected) => `
+        <span class="px-2 py-1 rounded-full bg-white border border-slate-200 ${selected ? "text-emerald-700" : "text-slate-400"}">${escapeHtml(label)}: ${escapeHtml(value)}</span>`;
+    const channelDetail = (totals) => [
+        `${totals.accepted || 0} sent`,
+        `${totals.failed || 0} failed`,
+        totals.notAttempted ? `${totals.notAttempted} not attempted` : "",
+        totals.notConfigured ? `${totals.notConfigured} service unavailable` : ""
+    ].filter(Boolean).join(", ");
+    const chipRow = [
+        chip("Portal", channels.portal ? `${portal.delivered || 0} published, ${portal.read || 0} read` : "Not selected", channels.portal),
+        chip("Email", channels.email ? channelDetail(email) : "Not selected", channels.email),
+        chip("SMS", channels.sms ? channelDetail(sms) : "Not selected", channels.sms)
+    ].join("");
+    const rows = (data.recipients || []).map((row) => {
+        const emailState = deliveryStatusLabel(row.emailStatus, channels.email);
+        const smsState = deliveryStatusLabel(row.smsStatus, channels.sms);
+        const portalState = row.portal
+            ? `<span class="text-emerald-700 font-bold">Published${row.portalRead ? " • Read" : ""}</span>`
+            : `<span class="text-slate-400">${channels.portal ? "Not delivered" : "Not selected"}</span>`;
+        return `
+        <tr>
+            <td>${escapeHtml(row.name || "—")}</td>
+            <td>${escapeHtml(row.email || row.contact || "—")}</td>
+            <td>${portalState}</td>
+            <td class="${emailState.className}">${escapeHtml(emailState.label)}${row.emailReason ? ` <span class="text-slate-400">(${escapeHtml(row.emailReason)})</span>` : ""}</td>
+            <td class="${smsState.className}">${escapeHtml(smsState.label)}${row.smsReason ? ` <span class="text-slate-400">(${escapeHtml(row.smsReason)})</span>` : ""}</td>
+        </tr>`;
+    }).join("");
+    panel.innerHTML = `
+        <div class="flex flex-wrap items-center gap-2 text-[11px]">${chipRow}</div>
+        <div class="data-table-container mt-3 max-h-64 overflow-y-auto">
+            <table class="modern-table">
+                <thead><tr><th>Recipient</th><th>Email / Contact</th><th>Portal</th><th>Email</th><th>SMS</th></tr></thead>
+                <tbody>${rows || `<tr><td colspan="5" class="text-center text-slate-400">No delivery records yet.</td></tr>`}</tbody>
+            </table>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2">${data.truncated ? "Showing the first 300 recipients. " : ""}&ldquo;Sent&rdquo; means the email or SMS provider accepted the message. Statuses are read from the system delivery logs.</p>
+        <button type="button" class="btn btn-secondary text-[11px] mt-2" onclick="hideAnnouncementDeliveryReport(${id})">Close</button>
+    `;
 }
 
 function toggleAnnouncementSchedule() {
@@ -671,6 +767,55 @@ async function publishAnnouncement(event) {
         renderAnnouncementsView();
     } catch (err) {
         showToast(err.message || "Unable to save the announcement.", "error");
+    }
+}
+
+/**
+ * AI Compose for the Announcement Composer (OpenAI API via
+ * /api/ai/compose-announcement). Falls back to an institutional template when
+ * the API is offline. The admin always reviews the draft before publishing.
+ */
+async function aiComposeAnnouncement() {
+    const topicInput = document.getElementById("announceAiTopic");
+    const titleInput = document.getElementById("announceTitle");
+    const bodyInput = document.getElementById("announceBody");
+    const btn = document.getElementById("announceAiComposeBtn");
+    if (!titleInput || !bodyInput) return;
+
+    const topic = (topicInput?.value || titleInput.value || "").trim();
+    if (!topic) {
+        showToast("Enter an AI topic (or a title) first.", "error");
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="fa-solid fa-spinner fa-spin mr-1"></span> Drafting…';
+    }
+
+    try {
+        let content = null;
+        if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
+            const data = await SAA_API.request("/api/ai/compose-announcement", {
+                method: "POST",
+                body: JSON.stringify({ topic, channel: "Announcement" })
+            });
+            if (data && data.content) content = data.content;
+        }
+        if (content === null) {
+            // Local fallback template kept in the institution's notice format.
+            content = `ST. AGNES ACADEMY OF CALOOCAN INC. NOTICE: Warm greetings! In line with "${topic}", we invite all Agnesian alumni to participate. Please check your Alumni Portal for the complete schedule and details. Caritas et Scientia.`;
+        }
+        if (!titleInput.value.trim()) titleInput.value = topic.slice(0, 160);
+        bodyInput.value = content;
+        showToast("AI-drafted announcement is ready. Review before publishing.", "success");
+    } catch (err) {
+        showToast("AI draft failed: " + (err.message || "unknown error"), "error");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> Generate Draft';
+        }
     }
 }
 

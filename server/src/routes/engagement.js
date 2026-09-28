@@ -4,8 +4,16 @@ import { isAdmin, isAlumni, isStaff, ownsLinkedRow, requireRole } from '../auth.
 import { mirror, mirrorUpdate, mirrorDelete } from '../sync-supabase.js';
 import { dispatchAlumniAudience, dispatchNotification, dispatchStaffAudience } from '../notify.js';
 import { normalizePhMobile } from '../phone.js';
+import { smsConfig } from '../sms.js';
 
 const router = Router();
+
+/** Shared YYYY-MM-DD validator used by the event routes and the reminder flow. */
+function normalizeIsoDate(value) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw) return '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+}
 
 const parseJson = (str, fallback) => {
   try { return JSON.parse(str || '[]'); } catch (e) { return fallback; }
@@ -101,7 +109,7 @@ function validateEventImageData(imageData) {
 
 function mirrorEvent(row, update = false) {
   const legacyRow = Object.fromEntries(
-    Object.entries(row).filter(([key]) => key !== 'description' && key !== 'image_data')
+    Object.entries(row).filter(([key]) => !['description', 'image_data', 'event_date'].includes(key))
   );
   if (update) mirrorUpdate('events', legacyRow);
   else mirror('events', legacyRow);
@@ -135,22 +143,193 @@ router.get('/events', (req, res) => {
 
 /** POST /api/events - create an event (admin only). */
 router.post('/events', requireRole('admin', 'staff'), (req, res) => {
-  const { title, date, location, description = '', imageData } = req.body || {};
+  const { title, date, location, description = '', imageData, eventDate } = req.body || {};
   if (!title) return res.status(400).json({ error: 'Event title is required.' });
   if (typeof description !== 'string' || description.length > 5000) {
     return res.status(400).json({ error: 'Event description must be 5,000 characters or fewer.' });
+  }
+  if (eventDate !== undefined && String(eventDate).trim() && !normalizeIsoDate(eventDate)) {
+    return res.status(400).json({ error: 'Event date must use the YYYY-MM-DD format.' });
   }
   const image = validateEventImageData(imageData);
   if (image.error) return res.status(400).json({ error: image.error });
 
   const info = db.prepare(
-    "INSERT INTO events (title, date, location, description, image_data, rsvps, registered, status, attendees) VALUES (?, ?, ?, ?, ?, 0, 0, 'Upcoming', '[]')"
-  ).run(title, date || '', location || '', description.trim(), image.data);
+    "INSERT INTO events (title, date, location, description, image_data, event_date, rsvps, registered, status, attendees) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 'Upcoming', '[]')"
+  ).run(title, date || '', location || '', description.trim(), image.data, normalizeIsoDate(eventDate));
 
   const row = db.prepare('SELECT * FROM events WHERE id = ?').get(info.lastInsertRowid);
   dispatchAlumniAudience(`New alumni event: ${title}`, `${title} is scheduled${date ? ` on ${date}` : ''}.`, 'event', row.id).catch(() => {});
   mirrorEvent(row);
   res.status(201).json({ event: mapEvent(row) });
+});
+
+/* ---------------- Automated event reminder flow (T-3 / T-1) ----------------
+ * Once an event exists, this scheduler runs the "event is approaching" leg of
+ * the automated text message flow: registered alumni get a portal notification
+ * plus an SMS (only when an SMS provider is configured, so the school never
+ * pays for SMS it did not ask for) three days and one day before the event.
+ * Each stage is recorded in `event_reminders`, so a stage is never sent twice.
+ * --------------------------------------------------------------------------- */
+
+/** Reminder stages in days before the event (override with EVENT_REMINDER_DAYS_BEFORE). */
+function eventReminderOffsets() {
+  const values = String(process.env.EVENT_REMINDER_DAYS_BEFORE || '3,1')
+    .split(',')
+    .map((value) => Number(String(value).trim()))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  return values.length ? [...new Set(values)].sort((a, b) => b - a) : [3, 1];
+}
+
+/**
+ * Machine-readable event date. Prefers events.event_date, then any ISO date
+ * inside the display string, then the leading date of that display string
+ * (existing events store e.g. "October 24, 2026 - 9:00 AM - 5:00 PM").
+ */
+function eventDateOnly(event) {
+  const stored = String(event?.event_date || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(stored)) return stored;
+  const raw = String(event?.date || '').trim();
+  const inline = raw.match(/(\d{4}-\d{2}-\d{2})/);
+  if (inline) return inline[1];
+  const parsed = new Date(raw.split('•')[0].trim());
+  if (Number.isNaN(parsed.getTime())) return '';
+  return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+}
+
+/** Whole days from today until a YYYY-MM-DD date, or null when unusable. */
+function daysUntilEventDate(dateOnly) {
+  const match = String(dateOnly || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const target = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((target - today) / 86400000);
+}
+
+/** Sends every reminder stage that is due and not yet recorded as sent. */
+async function dispatchDueEventReminders({ catchUp = false } = {}) {
+  const offsets = eventReminderOffsets();
+  const smsReady = smsConfig().configured;
+  const events = db.prepare("SELECT * FROM events WHERE COALESCE(status, '') != 'Cancelled'").all();
+  const summary = {
+    offsets,
+    smsConfigured: smsReady,
+    catchUp,
+    eventsChecked: events.length,
+    reminders: 0,
+    skipped: 0,
+    recipients: 0,
+    smsAccepted: 0,
+    smsFailed: 0
+  };
+
+  for (const event of events) {
+    const days = daysUntilEventDate(eventDateOnly(event));
+    if (days === null || days < 0) continue;
+
+    for (const stage of offsets) {
+      if (catchUp ? days > stage : days !== stage) continue;
+      if (db.prepare('SELECT id FROM event_reminders WHERE event_id = ? AND days_before = ?').get(event.id, stage)) {
+        summary.skipped += 1;
+        continue;
+      }
+      const attendees = parseJson(event.attendees, []);
+      if (!attendees.length) continue; // wait for the first registration, then send
+
+      const whenLabel = String(event.date || '').trim() || eventDateOnly(event);
+      const timing = days === 0 ? 'today' : (days === 1 ? 'tomorrow' : `in ${days} days`);
+      const subject = `Event reminder: ${event.title}`;
+      const portalMessage = [
+        `${event.title} is ${timing}${whenLabel ? ` on ${whenLabel}` : ''}.`,
+        event.location ? `Venue: ${event.location}.` : '',
+        'Log in to the Alumni Portal for the full details.'
+      ].filter(Boolean).join(' ');
+      const smsMessage = `St. Agnes Alumni: ${event.title} is ${timing}. ${event.location ? `Venue: ${event.location}. ` : ''}See you there!`;
+
+      let accepted = 0;
+      let failed = 0;
+      for (const attendee of attendees) {
+        const user = attendee.email
+          ? db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?)').get(attendee.email)
+          : db.prepare('SELECT * FROM users WHERE LOWER(name) = LOWER(?)').get(attendee.name);
+        const outcome = await dispatchNotification({
+          userId: user?.id || 0,
+          alumniId: user?.alumni_id || 0,
+          recipient: attendee.email || attendee.name,
+          channel: 'SYSTEM',
+          subject,
+          message: portalMessage,
+          relatedType: 'event',
+          relatedId: event.id,
+          notificationType: 'event_reminder',
+          email: attendee.email || user?.email || '',
+          phone: attendee.contact || user?.contact || '',
+          sendEmail: false,      // reminders use the portal + the automated SMS flow
+          sendSms: smsReady,
+          forceChannels: true,
+          smsMessage
+        });
+        summary.recipients += 1;
+        if (outcome?.smsStatus === 'accepted') accepted += 1;
+        else if (outcome?.smsStatus === 'failed') failed += 1;
+      }
+
+      db.prepare(
+        `INSERT OR REPLACE INTO event_reminders (event_id, days_before, channel, audience, accepted, failed, sent_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).run(event.id, stage, smsReady ? 'PORTAL+SMS' : 'PORTAL', attendees.length, accepted, failed, new Date().toISOString());
+      summary.reminders += 1;
+      summary.smsAccepted += accepted;
+      summary.smsFailed += failed;
+    }
+  }
+  return summary;
+}
+
+/** GET /api/events/reminders - automated reminder schedule, stages and log. */
+router.get('/events/reminders', requireRole('admin', 'staff'), (req, res) => {
+  const offsets = eventReminderOffsets();
+  const log = db.prepare(`
+    SELECT r.id, r.event_id AS eventId, r.days_before AS daysBefore, r.channel, r.audience,
+      r.accepted, r.failed, r.sent_at AS sentAt,
+      COALESCE(e.title, 'Removed event') AS eventTitle, COALESCE(e.date, '') AS eventDate
+    FROM event_reminders r
+    LEFT JOIN events e ON e.id = r.event_id
+    ORDER BY r.id DESC
+    LIMIT 100
+  `).all();
+  const schedule = [];
+  for (const event of db.prepare("SELECT * FROM events WHERE COALESCE(status, '') != 'Cancelled'").all()) {
+    const eventDate = eventDateOnly(event);
+    const daysUntilEvent = daysUntilEventDate(eventDate);
+    if (daysUntilEvent === null || daysUntilEvent < 0) continue;
+    const sentStages = db.prepare('SELECT days_before AS daysBefore FROM event_reminders WHERE event_id = ?')
+      .all(event.id).map((row) => Number(row.daysBefore));
+    schedule.push({
+      id: event.id,
+      title: event.title,
+      date: event.date,
+      eventDate,
+      daysUntilEvent,
+      registrations: parseJson(event.attendees, []).length,
+      sentStages: offsets.filter((offset) => sentStages.includes(offset)),
+      missedStages: offsets.filter((offset) => offset > daysUntilEvent && !sentStages.includes(offset)),
+      nextStage: offsets.filter((offset) => offset <= daysUntilEvent && !sentStages.includes(offset)).sort((a, b) => b - a)[0] || 0
+    });
+  }
+  schedule.sort((a, b) => a.daysUntilEvent - b.daysUntilEvent);
+  res.json({ offsets, smsConfigured: smsConfig().configured, schedule, log });
+});
+
+/** POST /api/events/reminders/run - dispatch due stages now (idempotent). */
+router.post('/events/reminders/run', requireRole('admin', 'staff'), async (req, res) => {
+  const summary = await dispatchDueEventReminders({ catchUp: req.body?.catchUp === true });
+  if (summary.reminders) {
+    writeAudit(req.user, 'update', 'event_reminder', 0,
+      `Reminder run: ${summary.reminders} stage(s), ${summary.recipients} recipient(s), ${summary.smsAccepted} SMS accepted, ${summary.smsFailed} failed.`);
+  }
+  res.json(summary);
 });
 
 router.get('/events/:id', (req, res) => {
@@ -247,15 +426,19 @@ router.put('/events/:id', requireRole('admin', 'staff'), (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'Event not found.' });
-  const { title, date, location, status, description, imageData } = req.body || {};
+  const { title, date, location, status, description, imageData, eventDate } = req.body || {};
   if (description !== undefined && (typeof description !== 'string' || description.length > 5000)) {
     return res.status(400).json({ error: 'Event description must be 5,000 characters or fewer.' });
   }
+  if (eventDate !== undefined && String(eventDate).trim() && !normalizeIsoDate(eventDate)) {
+    return res.status(400).json({ error: 'Event date must use the YYYY-MM-DD format.' });
+  }
   const image = imageData === undefined ? { data: existing.image_data || '' } : validateEventImageData(imageData);
   if (image.error) return res.status(400).json({ error: image.error });
-  db.prepare('UPDATE events SET title = ?, date = ?, location = ?, status = ?, description = ?, image_data = ? WHERE id = ?').run(
+  const nextEventDate = eventDate === undefined ? (existing.event_date || '') : normalizeIsoDate(eventDate);
+  db.prepare('UPDATE events SET title = ?, date = ?, location = ?, status = ?, description = ?, image_data = ?, event_date = ? WHERE id = ?').run(
     title ?? existing.title, date ?? existing.date, location ?? existing.location, status ?? existing.status,
-    description === undefined ? existing.description : description.trim(), image.data, id
+    description === undefined ? existing.description : description.trim(), image.data, nextEventDate, id
   );
   const updated = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
   mirrorEvent(updated, true);
@@ -1416,6 +1599,22 @@ const announcementScheduler = setInterval(() => {
 }, 30000);
 announcementScheduler.unref?.();
 
+/* Same timer pattern for the automated event reminder flow: check the T-3 / T-1
+   stages every minute, and run once shortly after boot so restarting the server
+   never skips a stage. */
+const eventReminderScheduler = setInterval(() => {
+  dispatchDueEventReminders().catch((error) => {
+    console.error('Unable to dispatch automated event reminders:', error);
+  });
+}, 60000);
+eventReminderScheduler.unref?.();
+
+setTimeout(() => {
+  dispatchDueEventReminders().catch((error) => {
+    console.error('Unable to dispatch automated event reminders:', error);
+  });
+}, 5000).unref?.();
+
 router.get('/announcements', async (req, res) => {
   await activateDueAnnouncements();
   const rows = db.prepare(`
@@ -1479,6 +1678,148 @@ router.post('/announcements', requireRole('admin', 'staff'), async (req, res) =>
   }
   writeAudit(req.user, status === 'Published' ? 'publish' : 'create', 'announcement', announcement.id, `${status}: ${title}`);
   res.status(201).json({ announcement: mapAnnouncement(announcement), notification });
+});
+
+/** User ids an announcement targeted, mirroring the dispatch audience rules. */
+function announcementAudienceUserIds(announcement) {
+  if (announcement.audience === 'staff') {
+    return db.prepare("SELECT id FROM users WHERE role IN ('admin','staff','registrar') AND (status IS NULL OR status = 'Active')")
+      .all().map((row) => Number(row.id));
+  }
+  if (announcement.audience === 'batch' && announcement.batch) {
+    return db.prepare(`
+      SELECT u.id FROM users u JOIN alumni a ON a.id = u.alumni_id
+      WHERE u.role = 'alumni' AND (u.status IS NULL OR u.status = 'Active') AND a.batch = ?
+    `).all(String(announcement.batch)).map((row) => Number(row.id));
+  }
+  return db.prepare("SELECT id FROM users WHERE role = 'alumni' AND (status IS NULL OR status = 'Active')")
+    .all().map((row) => Number(row.id));
+}
+
+/** Buckets one channel's per-recipient statuses for the delivery report. */
+function summarizeChannelStatuses(recipients, key) {
+  const totals = { accepted: 0, failed: 0, skipped: 0, notConfigured: 0, notAttempted: 0 };
+  for (const recipient of recipients) {
+    const status = String(recipient[key] || '');
+    if (status === 'accepted') totals.accepted += 1;
+    else if (status === 'failed') totals.failed += 1;
+    else if (status === 'skipped') totals.skipped += 1;
+    else if (status === 'not_configured') totals.notConfigured += 1;
+    else totals.notAttempted += 1;
+  }
+  return totals;
+}
+
+/**
+ * GET /api/announcements/:id/deliveries - delivery report for one announcement.
+ *
+ * Read model over the delivery data the dispatcher already writes: the
+ * `notifications` rows (one per recipient, with per-channel status) and the
+ * `mail_logs` / `sms_logs` delivery history. Log rows that carry no notification
+ * row (an announcement published with the portal channel switched off) are
+ * matched to the announcement's audience inside the distribution window, so
+ * email-only and SMS-only announcements are still reported.
+ */
+router.get('/announcements/:id/deliveries', requireRole('admin', 'staff'), (req, res) => {
+  const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(Number(req.params.id));
+  if (!announcement) return res.status(404).json({ error: 'Announcement not found.' });
+
+  const notifications = db.prepare(`
+    SELECT n.id, n.user_id AS userId, n.recipient, n.is_read AS isRead,
+      n.email_status AS emailStatus, n.sms_status AS smsStatus, n.created_at AS sentAt,
+      COALESCE(u.name, n.recipient) AS name, COALESCE(u.email, '') AS email, COALESCE(u.contact, '') AS contact
+    FROM notifications n
+    LEFT JOIN users u ON u.id = n.user_id
+    WHERE n.related_type = 'announcement' AND n.related_id = ?
+    ORDER BY n.id
+  `).all(String(announcement.id));
+
+  const recipients = notifications.map((row) => ({
+    userId: row.userId,
+    name: row.name,
+    email: row.email,
+    contact: row.contact,
+    portal: announcement.send_in_app ? 'Published' : '',
+    portalRead: Boolean(Number(row.isRead)),
+    emailStatus: row.emailStatus || '',
+    emailReason: '',
+    smsStatus: row.smsStatus || '',
+    smsReason: '',
+    sentAt: row.sentAt
+  }));
+  const byNotificationId = new Map(notifications.map((row, index) => [Number(row.id), recipients[index]]));
+  const applyLog = (log, statusKey, reasonKey) => {
+    const target = byNotificationId.get(Number(log.notificationId));
+    if (!target) return;
+    target[statusKey] = log.status || '';
+    target[reasonKey] = log.reason || '';
+  };
+  for (const log of db.prepare(`
+    SELECT l.notification_id AS notificationId, l.status, l.reason
+    FROM mail_logs l JOIN notifications n ON n.id = l.notification_id
+    WHERE n.related_type = 'announcement' AND n.related_id = ?
+  `).all(String(announcement.id))) applyLog(log, 'emailStatus', 'emailReason');
+  for (const log of db.prepare(`
+    SELECT l.notification_id AS notificationId, l.status, l.reason
+    FROM sms_logs l JOIN notifications n ON n.id = l.notification_id
+    WHERE n.related_type = 'announcement' AND n.related_id = ?
+  `).all(String(announcement.id))) applyLog(log, 'smsStatus', 'smsReason');
+
+  const audienceIds = new Set(announcementAudienceUserIds(announcement));
+  const inAudience = (userId) => !audienceIds.size || audienceIds.has(Number(userId));
+  const windowStart = announcement.created_at;
+  const unlinkedMail = db.prepare(`
+    SELECT user_id AS userId, recipient, status, reason, created_at AS sentAt
+    FROM mail_logs WHERE notification_id = 0 AND created_at >= ?
+  `).all(windowStart).filter((row) => inAudience(row.userId));
+  const unlinkedSms = db.prepare(`
+    SELECT user_id AS userId, recipient, status, reason, created_at AS sentAt
+    FROM sms_logs WHERE notification_id = 0 AND created_at >= ?
+  `).all(windowStart).filter((row) => inAudience(row.userId));
+  for (const log of unlinkedMail) {
+    recipients.push({
+      userId: log.userId, name: log.recipient, email: log.recipient, contact: '',
+      portal: '', portalRead: false,
+      emailStatus: log.status || '', emailReason: log.reason || '',
+      smsStatus: '', smsReason: '', sentAt: log.sentAt
+    });
+  }
+  for (const log of unlinkedSms) {
+    recipients.push({
+      userId: log.userId, name: log.recipient, email: '', contact: log.recipient,
+      portal: '', portalRead: false,
+      emailStatus: '', emailReason: '',
+      smsStatus: log.status || '', smsReason: log.reason || '', sentAt: log.sentAt
+    });
+  }
+
+  res.json({
+    announcement: {
+      id: announcement.id,
+      title: announcement.title,
+      status: announcement.status,
+      audience: announcement.audience,
+      batch: announcement.batch || '',
+      publishedAt: announcement.publish_at || announcement.created_at
+    },
+    channels: {
+      portal: Boolean(announcement.send_in_app),
+      email: Boolean(announcement.send_email),
+      sms: Boolean(announcement.send_sms)
+    },
+    summary: {
+      recipients: recipients.length,
+      portal: {
+        selected: Boolean(announcement.send_in_app),
+        delivered: recipients.filter((row) => row.portal).length,
+        read: recipients.filter((row) => row.portalRead).length
+      },
+      email: { selected: Boolean(announcement.send_email), ...summarizeChannelStatuses(recipients, 'emailStatus') },
+      sms: { selected: Boolean(announcement.send_sms), ...summarizeChannelStatuses(recipients, 'smsStatus') }
+    },
+    recipients: recipients.slice(0, 300),
+    truncated: recipients.length > 300
+  });
 });
 
 router.get('/announcements/:id', (req, res) => {

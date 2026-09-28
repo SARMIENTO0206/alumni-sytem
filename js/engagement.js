@@ -392,7 +392,7 @@
         try {
             await SAA_API.request("/api/events", {
                 method: "POST",
-                body: JSON.stringify({ title, date, location, description, imageData: newEventImageData })
+                body: JSON.stringify({ title, date, location, description, imageData: newEventImageData, eventDate })
             });
             await SAA_API.refreshAllData();
             renderEventsGrid();
@@ -414,6 +414,25 @@
             showToast(`Event reminder recorded for ${data.reminders || 0} registrant(s). Delivery status depends on SMTP/SMS configuration.`, "info");
         } catch (err) {
             showToast(err.message || "Unable to send event reminders.", "error");
+        }
+    }
+
+    /* Automated event reminder flow (T-3 / T-1) */
+    async function runEventReminderSweep() {
+        try {
+            const data = await SAA_API.request("/api/events/reminders/run", { method: "POST" });
+            if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
+            if (typeof renderEventsGrid === "function") renderEventsGrid();
+            if (!data.reminders) {
+                showToast(`No reminder stage is due right now. Stages are checked ${(data.offsets || []).join(" and ")} days before the event across ${data.eventsChecked || 0} event(s).`, "info");
+                return;
+            }
+            const smsNote = data.smsConfigured
+                ? `${data.smsAccepted} SMS accepted${data.smsFailed ? `, ${data.smsFailed} failed` : ""}.`
+                : "No SMS provider is configured, so recipients received the portal reminder only.";
+            showToast(`Automated reminders sent for ${data.reminders} event stage(s), ${data.recipients} recipient(s). ${smsNote}`, data.smsFailed ? "info" : "success");
+        } catch (err) {
+            showToast(err.message || "Unable to run the automated event reminders.", "error");
         }
     }
 

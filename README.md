@@ -169,11 +169,81 @@ except `/health` and `/auth/login|register`).
   `PUT /tracking/:id/employment`, `PUT /tracking/:id/review`,
   `POST /tracking/reminders/sweep`
 - **Engagement:** events, reunions, donations, newsletters, feedback, jobs, announcements
+- **Announcements:** `GET/POST /announcements`, `GET /announcements/:id`,
+  `GET /announcements/:id/deliveries` (per-channel delivery report; Admin/Staff)
+- **Event reminders (automated SMS flow):** `GET /events/reminders` (schedule,
+  stages, delivery log) and `POST /events/reminders/run` (dispatch due stages now)
 - **Reports / AI:** operational + Registrar reports; assistant, announcement composition, survey summaries, dashboard insights
 
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts/test-api.ps1
 ```
+
+## 📣 Announcements, delivery reports & the automated SMS flow
+
+**One announcement, many channels.** Admin (or the Registrar) writes the
+announcement once — title, message, optional banner photo, target audience
+(*All Users / Alumni Only / Specific Batch / Admin & Registrar*), publish
+timing (now or scheduled), expiry and the channels to use — then the system
+distributes it:
+
+```text
+Create Announcement → Publish
+        ↓
+announcements table (single source of truth)
+        ↓
+   ┌────┴─────┬──────────┐
+ PORTAL     EMAIL       SMS
+ (always)  (optional) (optional)
+   ↓          ↓          ↓
+Dashboard  Registered  Registered
+           email       mobile number
+```
+
+- **Portal** ("Publish to Alumni Portal") is the default channel; Email and SMS
+  are optional so an announcement never costs SMS credits unless selected.
+- Publishing stores the record, then dispatches the selected channels and links
+  every recipient to the announcement through the notification log.
+- **Delivery Report** on each published announcement shows Portal (published /
+  read), Email (sent / failed / not attempted / service unavailable) and SMS per
+  channel, plus the per-recipient table with the provider reason for failures.
+  The report is a read model over `notifications`, `mail_logs` and `sms_logs`, so
+  it always matches the real delivery history — nothing is double-written.
+- "Sent" always means the email/SMS provider **accepted** the message. With no
+  provider configured the status stays honest (`not_configured`) instead of
+  pretending the message went out.
+- **AI draft:** the Create Announcement form has **Draft with AI**
+  (`POST /api/ai/compose-announcement`, OpenAI when `OPENAI_API_KEY` is set,
+  built-in fallback otherwise). The draft fills the title and message fields and
+  is always reviewed by the Admin before publishing.
+
+### ⏰ Event-triggered reminder flow (T-3 / T-1)
+
+Once an event exists, the server runs the "event is approaching" leg of the
+automated text message flow — no manual send required:
+
+```text
+Admin creates Alumni Event
+        ↓
+Announcement (portal + email) goes out immediately
+        ↓
+3 days before the event → portal notification + SMS
+1 day before the event  → portal notification + SMS
+```
+
+- Stages are configurable: `EVENT_REMINDER_DAYS_BEFORE=3,1` (comma-separated
+  days before the event; default `3,1`).
+- Recipients are the alumni who registered for the event. SMS is attempted only
+  when a provider is configured (`SEMAPHORE_API_KEY` or the Twilio trio), and
+  the phone number comes from the alumni profile.
+- Every dispatched stage is recorded in the `event_reminders` table, so a stage
+  is **never sent twice**, even across server restarts (the server also checks
+  for due stages at boot).
+- Admin/Staff can review the schedule, the sent stages and the delivery log, or
+  force a due-stage dispatch, with **Send Due Reminders** on the Events page
+  (`GET /api/events/reminders`, `POST /api/events/reminders/run`).
+  Pass `{ "catchUp": true }` to `run` to deliberately recover stages the server
+  was offline for.
 
 ## 🤖 OpenAI API — AI Assistant
 
@@ -185,7 +255,7 @@ otherwise a built-in fallback answers from the live database.
 | -------- | ------- |
 | `GET /api/ai/status` | Active engine (OpenAI vs fallback) |
 | `POST /api/ai/assistant` | AI Chat Support |
-| `POST /api/ai/compose-announcement` | AI-generated SMS/newsletter copy |
+| `POST /api/ai/compose-announcement` | AI-drafted announcement / newsletter / SMS copy (used by the announcement composer, Newsletter AI Compose and the SMS composer) |
 | `POST /api/ai/gmail-auto-reply` | Drafted reply for inbound email |
 | `POST /api/ai/summarize-survey` | Survey sentiment/themes/recommendations |
 | `POST /api/ai/dashboard-insights` | Narrative insight from live metrics |
