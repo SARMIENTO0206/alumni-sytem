@@ -3,13 +3,9 @@
  * SQLite remains the local working store when SUPABASE_ANON_KEY is not set.
  * This never seeds rows. It only mirrors records the user created through the API.
  */
-import { getSupabase, isSupabaseConfigured } from './supabase.js';
+import { getSupabase } from './supabase.js';
 
-export function supabaseWriteEnabled() {
-  return isSupabaseConfigured();
-}
-
-export async function supabaseUpsert(table, row) {
+async function supabaseUpsert(table, row) {
   const sb = getSupabase();
   if (!sb || !row) return { skipped: true };
   const { error } = await sb.from(table).upsert(row, { onConflict: 'id' });
@@ -20,7 +16,7 @@ export async function supabaseUpsert(table, row) {
   return { ok: true };
 }
 
-export async function supabaseInsert(table, row) {
+async function supabaseInsert(table, row) {
   const sb = getSupabase();
   if (!sb || !row) return { skipped: true };
   const { error } = await sb.from(table).insert(row);
@@ -31,7 +27,7 @@ export async function supabaseInsert(table, row) {
   return { ok: true };
 }
 
-export async function supabaseDelete(table, id) {
+async function supabaseDelete(table, id) {
   const sb = getSupabase();
   if (!sb) return { skipped: true };
   const { error } = await sb.from(table).delete().eq('id', id);

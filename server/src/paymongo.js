@@ -149,7 +149,7 @@ export async function createQrPhPayment({ amountCentavos, description, metadata 
   };
 }
 
-export async function persistQrImage(imageUrl) {
+async function persistQrImage(imageUrl) {
   const raw = String(imageUrl || '').trim();
   if (!raw) return '';
   if (raw.startsWith('data:')) return raw;
@@ -183,36 +183,6 @@ export function qrImageSrc(imageUrl) {
   if (!raw) return '';
   if (raw.startsWith('data:') || raw.startsWith('http://') || raw.startsWith('https://')) return raw;
   return `data:image/png;base64,${raw}`;
-}
-
-/** Official Checkout Session. payment_method_types includes gcash. */
-export function createGcashCheckout({ amountCentavos, description, name, email, phone, successUrl, cancelUrl, reference, metadata }) {
-  return paymongoRequest('POST', '/v1/checkout_sessions', {
-    data: {
-      attributes: {
-        billing: {
-          name: name || 'Alumni',
-          email: email || undefined,
-          phone: phone || undefined
-        },
-        send_email_receipt: false,
-        show_description: true,
-        show_line_items: true,
-        description: description || 'Alumni Management System payment',
-        line_items: [{
-          currency: 'PHP',
-          amount: amountCentavos,
-          name: description || 'Document request fee',
-          quantity: 1
-        }],
-        payment_method_types: ['gcash'],
-        reference_number: reference || undefined,
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        metadata: metadata || {}
-      }
-    }
-  });
 }
 
 export function retrieveCheckout(checkoutId) {

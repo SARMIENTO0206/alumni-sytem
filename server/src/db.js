@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '..', 'data');
 mkdirSync(DATA_DIR, { recursive: true });
 
-export const dbFile = join(DATA_DIR, 'saa.db');
+const dbFile = join(DATA_DIR, 'saa.db');
 export const db = new DatabaseSync(dbFile);
 
 db.exec('PRAGMA journal_mode = WAL;');
@@ -37,14 +37,6 @@ export function initDb() {
     CREATE TABLE IF NOT EXISTS sessions (
       token      TEXT PRIMARY KEY,
       user_id    INTEGER NOT NULL,
-      created_at TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS password_reset_tokens (
-      token_hash TEXT PRIMARY KEY,
-      user_id INTEGER NOT NULL,
-      expires_at TEXT NOT NULL,
-      used_at TEXT DEFAULT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     );
 

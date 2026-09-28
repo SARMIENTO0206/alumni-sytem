@@ -25,11 +25,11 @@ export function isFollowUp(text) {
   return /^(saan|san|paano|ano|where|how|what|and then|tapos)/i.test(q) && q.split(/\s+/).length <= 6;
 }
 
-export function isConfusion(text) {
+function isConfusion(text) {
   return CONFUSION.test(String(text || ''));
 }
 
-export function isAck(text) {
+function isAck(text) {
   return ACK.test(String(text || '').trim());
 }
 

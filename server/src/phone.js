@@ -29,12 +29,3 @@ export function normalizePhMobile(input, { required = false } = {}) {
 
   return `+63${local.slice(1)}`;
 }
-
-export function displayPhMobile(stored) {
-  const normalized = String(stored || '').trim();
-  if (!normalized) return '';
-  if (normalized.startsWith('+63') && normalized.length === 13) {
-    return `0${normalized.slice(3)}`;
-  }
-  return normalized;
-}

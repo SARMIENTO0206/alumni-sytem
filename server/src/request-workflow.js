@@ -22,7 +22,7 @@ const PROCESSOR_TRANSITIONS = {
 export const ALUMNI_CANCEL_FROM = ['Pending', 'For Correction'];
 export const ALUMNI_UPLOAD_FROM = ['Pending', 'For Correction'];
 
-export function isDocumentProcessor(user) {
+function isDocumentProcessor(user) {
   return isStaff(user) || isAdmin(user);
 }
 

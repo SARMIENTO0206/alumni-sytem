@@ -897,10 +897,6 @@
         if (!silent) switchView("reprint", { detailId: item.id });
     }
 
-    async function approveReprint(id) {
-        await updateRequestStatus(id, "Approved", "reprint");
-    }
-
     /* Alumni employment records are sourced from the graduate tracking profile. */
     function renderPlacementLogs() {
         const body = document.getElementById("placementTableBody");

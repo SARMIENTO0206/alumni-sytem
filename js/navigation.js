@@ -703,16 +703,6 @@
     }
 
     /**
-     * Navigate to registration modal via login page
-     */
-    function goToRegister() {
-        goToLoginPage();
-        setTimeout(() => {
-            openSelfRegisterModal();
-        }, 300);
-    }
-
-    /**
      * Scroll to explore features section on homepage
      */
     function exploreFeatures() {
@@ -721,23 +711,6 @@
             sections[2].scrollIntoView({ behavior: 'smooth', block: 'start' });
             showToast("Exploring our alumni services and features...", "info");
         }
-    }
-
-    /**
-     * Return to homepage from any page
-     */
-    function goBackToHomepage() {
-        if (typeof closeSelfRegisterModal === "function") closeSelfRegisterModal();
-        if (typeof closeOfficialCertModal === "function") closeOfficialCertModal();
-        if (typeof closeClaimStubModal === "function") closeClaimStubModal();
-        if (isAuthenticated()) {
-            showDashboardScreen();
-            switchView("dashboard");
-            return;
-        }
-        showPublicScreen("home");
-        history.pushState({ viewId: "home" }, "", "#/home");
-        window.scrollTo(0, 0);
     }
 
     function scrollHomeSection(sectionId) {

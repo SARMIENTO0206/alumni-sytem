@@ -1397,8 +1397,6 @@
         pendingCheckout = null;
     }
 
-    function switchPaymentFields() { /* QR Ph only */ }
-
     function submitPayment(event) {
         event.preventDefault();
         if (!pendingCheckout) return;
@@ -1444,10 +1442,6 @@
                 document.getElementById("qrPageExpiry").textContent = formatExpiry(lastVerifiedPayment.qrExpiresAt);
             }
         }, 1000);
-    }
-
-    function renderPaymentReturnPage() {
-        renderPaymentQrPage();
     }
 
     async function checkQrPaymentStatus() {

@@ -111,17 +111,3 @@ export async function pingSupabase() {
 
   return result;
 }
-
-/**
- * Existing login stays on SQLite + bcrypt (roles: admin, registrar, alumni).
- * Switching to Supabase Auth later would require:
- *  - creating matching users in Supabase Auth
- *  - a public.profiles table for role / name / student_id
- *  - verifying the Supabase JWT in requireAuth instead of the sessions table
- * That switch is not enabled here so the current login page keeps working.
- */
-export const SUPABASE_AUTH_MIGRATION_NOTES = {
-  currentRoles: ['admin', 'registrar', 'alumni'],
-  currentMechanism: 'SQLite users + bcrypt + bearer session tokens',
-  futureMechanism: 'Supabase Auth JWT + public.profiles.role'
-};
