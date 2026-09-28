@@ -954,6 +954,59 @@
         `;
     }
 
+    /** Opens the review panel so staff can edit the draft and send it. */
+    function openAiReplySendPanel(data) {
+        const panel = document.getElementById("aiGmailSendPanel");
+        const subjectEl = document.getElementById("aiGmailReplySubject");
+        const textEl = document.getElementById("aiGmailReplyText");
+        const note = document.getElementById("aiGmailSendNote");
+        const btn = document.getElementById("aiGmailSendBtn");
+        if (!panel) return;
+        panel.classList.remove("hidden");
+        if (subjectEl) subjectEl.value = data.subject || "";
+        if (textEl) textEl.value = data.reply || "";
+        const matched = Boolean(data.matchedAlumni);
+        if (btn) btn.disabled = !matched;
+        if (note) {
+            note.textContent = matched
+                ? `Sends from the school mailbox to the registered address ${data.matchedAlumni.email}.`
+                : "Sending is disabled: the sender is not a registered alumni email. Use the Email composer for other recipients.";
+        }
+    }
+
+    /** Sends the reviewed draft; only registered alumni addresses are accepted. */
+    async function sendAiGmailReply() {
+        const btn = document.getElementById("aiGmailSendBtn");
+        const to = (document.getElementById("aiGmailFrom") || {}).value?.trim() || "";
+        const subject = (document.getElementById("aiGmailReplySubject") || {}).value?.trim() || "";
+        const reply = (document.getElementById("aiGmailReplyText") || {}).value?.trim() || "";
+        if (!to || !reply) {
+            showToast("Generate a draft first, then review it before sending.", "error");
+            return;
+        }
+        if (!confirm(`Send this reply to ${to}?`)) return;
+        if (btn) btn.disabled = true;
+        try {
+            const data = await SAA_API.request("/api/ai/gmail-auto-reply/send", {
+                method: "POST",
+                body: JSON.stringify({ to, subject, reply })
+            });
+            const status = data.status || "unknown";
+            if (data.accepted) {
+                showToast(`Reply sent to ${data.recipient.email} (${status}).`, "success");
+            } else if (status === "not_configured") {
+                showToast("Email is not configured on the server, so the reply was logged but not delivered. Add SMTP credentials to server/.env or Railway variables.", "warning");
+            } else {
+                showToast(`The email provider did not accept the reply (${status})${data.reason ? `: ${data.reason}` : ""}.`, "error");
+            }
+            if (typeof loadCommunicationHistory === "function") loadCommunicationHistory().catch(() => {});
+        } catch (err) {
+            showToast(err.message || "Unable to send the reply.", "error");
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
     /** Gmail Auto-Reply: inbound email -> OpenAI -> drafted reply (logged server-side). */
     async function runGmailAutoReply(event) {
         if (event) event.preventDefault();
@@ -973,6 +1026,7 @@
 
         showAiOutput("aiGmailReply", `Draft reply - ${data.provider}`, data.reply);
         renderMatchedAlumni(data.matchedAlumni);
+        openAiReplySendPanel(data);
         showToast(`Auto-reply drafted for ${from} and logged to the notification centre.`, "success");
     }
 

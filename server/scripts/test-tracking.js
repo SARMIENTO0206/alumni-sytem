@@ -247,8 +247,11 @@ const registrarArchivedRecords = await req(registrar.token, 'GET', '/api/alumni?
 assert(registrarArchivedRecords.status === 403, 'Registrar cannot access the Admin-only archive view');
 const registrarArchivedDetail = await req(registrar.token, 'GET', `/api/alumni/${otherRecordId}`);
 assert(registrarArchivedDetail.status === 404, 'Registrar cannot open an archived alumni record by ID');
-const permanentDelete = await req(admin.token, 'DELETE', `/api/alumni/${otherRecordId}`);
-assert(permanentDelete.status === 404, 'the alumni API no longer exposes permanent deletion');
+/* Permanent deletion is Admin-only and refused while a record is still active. */
+const registrarDeleteAttempt = await req(registrar.token, 'DELETE', `/api/alumni/${otherRecordId}`);
+assert(registrarDeleteAttempt.status === 403, 'only Admin can delete an alumni record permanently');
+const deleteActiveRecordAttempt = await req(admin.token, 'DELETE', `/api/alumni/${ownRecord.id}`);
+assert(deleteActiveRecordAttempt.status === 409, 'an active record must be archived before permanent deletion');
 const restoredRecord = await req(admin.token, 'POST', `/api/alumni/${otherRecordId}/restore`);
 assert(restoredRecord.status === 200 && restoredRecord.data.alumni.verificationStatus === 'Verified', 'Admin can restore an archived alumni record');
 
@@ -511,7 +514,40 @@ const unmatchedReply = await req(registrar.token, 'POST', '/api/ai/gmail-auto-re
   body: 'Who are you?'
 });
 assert(unmatchedReply.status === 200 && unmatchedReply.data.matchedAlumni === null, 'an unknown sender is not matched to any alumni record');
+
+/* The reviewed AI reply is actually delivered to the registered alumni address. */
+const alumniSendsReply = await req(alumni.token, 'POST', '/api/ai/gmail-auto-reply/send', { to: newAlumniEmail, subject: 'Re: Inquiry', reply: 'Hello' });
+assert(alumniSendsReply.status === 403, 'only Admin/Registrar can send a drafted reply');
+const unregisteredReplyTarget = await req(registrar.token, 'POST', '/api/ai/gmail-auto-reply/send', { to: `stranger.${Date.now()}@example.test`, subject: 'Re: Inquiry', reply: 'Hello' });
+assert(unregisteredReplyTarget.status === 403, 'the school mailbox cannot send to addresses that are not registered alumni');
+const sentAiReply = await req(registrar.token, 'POST', '/api/ai/gmail-auto-reply/send', {
+  to: newAlumniEmail,
+  subject: 'Re: Transcript request',
+  reply: 'Dear alumnus, please file your document request through the Alumni Portal.'
+});
+assert(sentAiReply.status === 200 && sentAiReply.data.recipient.email === newAlumniEmail, 'Registrar can send the reviewed AI reply to the registered address');
+assert(['not_configured', 'accepted', 'failed'].includes(sentAiReply.data.status), 'the send reports the provider result honestly');
+const replyInbox = await req(emailToken, 'GET', '/api/notifications');
+assert(replyInbox.data.notifications.some((n) => String(n.subject || '').startsWith('Re: Transcript request')), 'the sent reply is recorded in the alumnus notification centre');
+
 await req(admin.token, 'DELETE', `/api/users/${createdEmailAccount.data.user.id}`);
+
+/* Permanent deletion: Admin only, and only for records that are already archived. */
+const deletableRecord = await req(registrar.token, 'POST', '/api/alumni', {
+  name: `Permanent Delete Test ${Date.now()}`,
+  batch: '2019',
+  program: 'SHS'
+});
+assert(deletableRecord.status === 201, 'Registrar can create a record for the permanent-delete test');
+const deleteBeforeArchive = await req(admin.token, 'DELETE', `/api/alumni/${deletableRecord.data.alumni.id}`);
+assert(deleteBeforeArchive.status === 409, 'an active record must be archived before it can be deleted permanently');
+const registrarDeletesRecord = await req(registrar.token, 'DELETE', `/api/alumni/${deletableRecord.data.alumni.id}`);
+assert(registrarDeletesRecord.status === 403, 'only Admin can delete an alumni record permanently');
+await req(admin.token, 'POST', `/api/alumni/${deletableRecord.data.alumni.id}/archive`);
+const permanentDelete = await req(admin.token, 'DELETE', `/api/alumni/${deletableRecord.data.alumni.id}`);
+assert(permanentDelete.status === 204, 'Admin can permanently delete an archived record');
+const deletedRecordLookup = await req(admin.token, 'GET', `/api/alumni/${deletableRecord.data.alumni.id}`);
+assert(deletedRecordLookup.status === 404, 'the permanently deleted record is gone from the alumni database');
 
 /* Academic data stays Registrar-owned: alumni request corrections, staff decide. */
 const alumniMe = await req(alumni.token, 'GET', '/api/auth/me');

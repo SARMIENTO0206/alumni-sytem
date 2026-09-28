@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db, mapAlumni, writeAudit } from '../db.js';
 import { isAdmin, isAlumni, isStaff, ownsAlumniRecord, requireRole } from '../auth.js';
-import { mirror, mirrorUpdate } from '../sync-supabase.js';
+import { mirror, mirrorUpdate, mirrorDelete } from '../sync-supabase.js';
 import { dispatchNotification, dispatchStaffAudience } from '../notify.js';
 import { normalizePhMobile } from '../phone.js';
 
@@ -347,6 +347,42 @@ router.post('/:id/restore', requireRole('admin'), (req, res) => {
   writeAudit(req.user, 'restore', 'alumni', id, row.name);
   mirrorUpdate('alumni', row);
   res.json({ alumni: mapAlumni(row) });
+});
+
+/**
+ * DELETE /api/alumni/:id - permanent removal of an archived record (Admin only).
+ *
+ * Archiving stays the default: a record must be archived before it can be
+ * deleted permanently. Document requests, payments and notifications are kept
+ * for the audit trail and are only unlinked from the removed record.
+ */
+router.delete('/:id', requireRole('admin'), (req, res) => {
+  const id = Number(req.params.id);
+  const record = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
+  if (!record) return res.status(404).json({ error: 'Alumni record not found.' });
+  if (!record.archived_at) {
+    return res.status(409).json({ error: 'Archive the record before deleting it permanently.' });
+  }
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.prepare('UPDATE users SET alumni_id = 0 WHERE alumni_id = ?').run(id);
+    for (const table of ['transcript_requests', 'reprints', 'notifications', 'job_applications', 'payments']) {
+      try {
+        db.prepare(`UPDATE ${table} SET alumni_id = 0 WHERE alumni_id = ?`).run(id);
+      } catch { /* table keeps no alumni link */ }
+    }
+    db.prepare('DELETE FROM record_corrections WHERE alumni_id = ?').run(id);
+    db.prepare('DELETE FROM alumni WHERE id = ?').run(id);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+
+  writeAudit(req.user, 'delete', 'alumni', id, `${record.name} (permanent)`);
+  mirrorDelete('alumni', id);
+  res.status(204).end();
 });
 
 export default router;

@@ -2694,7 +2694,7 @@
                         </form>
                         <section class="border border-slate-200 rounded-xl p-4 bg-white max-w-2xl">
                             <p class="font-extrabold text-slate-800 text-sm mb-1"><i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i> AI Draft Reply to Inquiry</p>
-                            <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Paste an alumni inquiry email below to draft a reply for staff review.</p>
+                            <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">Paste an alumni inquiry email below: the system matches the sender to the registered alumni email, drafts a reply, and lets you review its content before sending it from the school mailbox.</p>
                             <form onsubmit="runGmailAutoReply(event)" class="space-y-2">
                                 <input id="aiGmailFrom" type="email" required placeholder="Alumni email" class="form-input text-xs">
                                 <input id="aiGmailSubject" type="text" placeholder="Email subject" class="form-input text-xs">
@@ -2703,6 +2703,18 @@
                             </form>
                             <div id="aiGmailMatched" class="hidden mt-3 p-3 rounded-lg border border-emerald-200 bg-emerald-50/60 text-[11px] text-emerald-900"></div>
                             <div id="aiGmailReply" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
+                            <div id="aiGmailSendPanel" class="hidden mt-3 space-y-2 border-t border-slate-100 pt-3">
+                                <label class="form-label" for="aiGmailReplySubject">Subject</label>
+                                <input id="aiGmailReplySubject" type="text" class="form-input text-xs" maxlength="200">
+                                <label class="form-label" for="aiGmailReplyText">Reply (edit before sending)</label>
+                                <textarea id="aiGmailReplyText" rows="6" class="form-textarea text-xs"></textarea>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button type="button" id="aiGmailSendBtn" onclick="sendAiGmailReply()" class="btn btn-primary text-xs">
+                                        <i class="fa-solid fa-paper-plane mr-1"></i> Send Reply
+                                    </button>
+                                    <span id="aiGmailSendNote" class="text-[10px] text-slate-400"></span>
+                                </div>
+                            </div>
                         </section>
                         <section>
                             <h4 class="font-extrabold text-sm text-slate-800 mb-3">Message History / Delivery Logs</h4>

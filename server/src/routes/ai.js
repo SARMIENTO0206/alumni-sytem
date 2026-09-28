@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { db, getSetting } from '../db.js';
+import { requireRole } from '../auth.js';
+import { sendMail } from '../mail.js';
+import { db, getSetting, writeAudit } from '../db.js';
 import { ask, chat, aiProvider, isAiConfigured, aiModel } from '../ai.js';
 import {
   buildAssistantSystemPrompt,
@@ -312,6 +314,49 @@ router.post('/gmail-auto-reply', async (req, res) => {
     matchedAlumni,
     provider: aiProvider(reply ? 'gmail auto-reply' : 'gmail auto-reply fallback'),
     logged: true
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * POST /api/ai/gmail-auto-reply/send - deliver the reviewed reply
+ *
+ * The AI only drafts; staff review and send. The endpoint refuses any
+ * address that is not a registered alumni email, so the school mailbox
+ * cannot be used as an open relay. Every send is logged to mail_logs by
+ * the mail service and appears in the alumnus notification centre.
+ * ------------------------------------------------------------------ */
+router.post('/gmail-auto-reply/send', requireRole('admin', 'staff'), async (req, res) => {
+  const to = String(req.body?.to || '').trim().toLowerCase();
+  const subject = String(req.body?.subject || '').trim() || 'Re: Alumni Inquiry';
+  const reply = String(req.body?.reply || '').trim();
+  if (!to || !reply) {
+    return res.status(400).json({ error: 'A recipient address and the reply body are required.' });
+  }
+  if (reply.length > 8000) {
+    return res.status(400).json({ error: 'Keep the reply under 8,000 characters.' });
+  }
+  const recipient = db.prepare("SELECT * FROM users WHERE LOWER(email) = ? AND role = 'alumni'").get(to);
+  if (!recipient) {
+    return res.status(403).json({ error: 'This address is not a registered alumni email. Use the Email composer for other recipients.' });
+  }
+
+  const result = await sendMail({ to: recipient.email, subject, text: reply, userId: recipient.id });
+  try {
+    /* Record the reply in the alumnus inbox without re-sending the email. */
+    db.prepare(
+      `INSERT INTO notifications (channel, recipient, subject, message, user_id, alumni_id, related_type, related_id, is_read, notification_type, target_url, email_status)
+       VALUES ('EMAIL', ?, ?, ?, ?, ?, 'system', '', 0, 'system', '/#/notifications', ?)`
+    ).run(recipient.email, subject, reply, recipient.id, recipient.alumni_id || 0, result.status || '');
+  } catch { /* the mail log already holds the delivery result */ }
+
+  writeAudit(req.user, 'send', 'ai_gmail_reply', recipient.id, `${recipient.email}: ${result.status}`);
+  res.json({
+    ok: true,
+    status: result.status,
+    accepted: Boolean(result.accepted),
+    reason: result.reason || '',
+    recipient: { name: recipient.name, email: recipient.email },
+    provider: aiProvider('gmail auto-reply send')
   });
 });
 

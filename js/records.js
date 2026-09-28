@@ -26,6 +26,10 @@
                 ? `<button type="button" onclick="restoreAlumniRecord(${Number(item.id)})" class="text-xs text-emerald-700 hover:underline font-bold">Restore</button>`
                 : `<button type="button" onclick="archiveAlumniRecord(${Number(item.id)})" class="text-xs text-rose-700 hover:underline font-bold">Archive</button>`
             : "";
+        /* Permanent removal stays Admin-only and only for records already archived. */
+        const deleteAction = admin && recordStatus === "Archived"
+            ? `<button type="button" onclick="deleteAlumniRecordPermanently(${Number(item.id)})" class="text-xs text-rose-700 hover:underline font-bold">Delete</button>`
+            : "";
         const documentAction = staff && recordStatus !== "Archived"
             ? `<button type="button" onclick="viewAlumniAcademicRecord(${Number(item.id)})" class="text-xs text-slate-600 hover:underline font-bold">Academic Record</button>`
             : "";
@@ -37,6 +41,7 @@
                 ${editAction}
                 ${verifyAction}
                 ${archiveAction}
+                ${deleteAction}
             </div>`;
     }
 
@@ -506,6 +511,27 @@
             showToast("Alumni record archived and linked account deactivated.", "success");
         } catch (err) {
             showToast(err.message || "Unable to archive alumni record.", "error");
+        }
+    }
+
+    /** Admin-only permanent removal of an already archived record. */
+    async function deleteAlumniRecordPermanently(id) {
+        if (!isAdminRole()) return;
+        const item = (alumniTableRows || []).find((a) => Number(a.id) === Number(id))
+            || alumniList.find((a) => Number(a.id) === Number(id));
+        const label = item ? `${item.name}${item.studentId ? ` (${item.studentId})` : ""}` : `record #${id}`;
+        if (!confirm(`Permanently delete ${label}?\n\nThis cannot be undone. Document requests, payments and notifications stay in the audit trail but are unlinked from this record.`)) return;
+        try {
+            if (typeof SAA_API === "undefined" || !(await SAA_API.health())) {
+                showToast("Unable to delete alumni record. The server is offline.", "error");
+                return;
+            }
+            await SAA_API.request(`/api/alumni/${id}`, { method: "DELETE" });
+            await SAA_API.refreshAllData();
+            await searchAlumniTable();
+            showToast("Alumni record permanently deleted.", "success");
+        } catch (err) {
+            showToast(err.message || "Unable to delete the alumni record.", "error");
         }
     }
 

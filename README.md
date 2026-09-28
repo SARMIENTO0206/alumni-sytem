@@ -95,7 +95,9 @@ The official **Alumni ID** (`SAA-<graduation year>-<sequence>`, e.g.
 the Registrar verifies the record, it is read-only afterwards, and staff or
 admin accounts never carry one.
 
-Key business rules: alumni records are archived (never deleted); new manual
+Key business rules: alumni records are archived (never deleted) and only the
+Administrator can permanently delete an already-archived record after the audit
+trail is unlinked; new manual
 records stay **Pending Verification** until the Registrar verifies them, and that
 verification issues the official Alumni ID (a school-issued number is kept when
 the record already has one);
@@ -190,6 +192,8 @@ except `/health` and `/auth/login|register`).
   `POST /auth/profile/email/verify`, `POST /auth/profile/email/cancel`
 - **Academic record corrections (Registrar-owned data):** `GET /alumni/corrections`,
   `POST /alumni/:id/correction-request`, `POST /alumni/corrections/:id/resolve`
+- **Permanent removal (Admin):** `DELETE /alumni/:id` for already-archived records;
+  document requests, payments and notifications stay in the audit trail
 - **Tracking:** `GET /tracking`, `GET/PUT /tracking/settings`,
   `PUT /tracking/:id/employment`, `PUT /tracking/:id/review`,
   `POST /tracking/reminders/sweep`
@@ -282,6 +286,7 @@ otherwise a built-in fallback answers from the live database.
 | `POST /api/ai/assistant` | AI Chat Support |
 | `POST /api/ai/compose-announcement` | AI-drafted announcement / newsletter / SMS copy (used by the announcement composer, Newsletter AI Compose and the SMS composer) |
 | `POST /api/ai/gmail-auto-reply` | Drafted reply for inbound email (sender matched to the registered alumni account) |
+| `POST /api/ai/gmail-auto-reply/send` | Sends the staff-reviewed reply from the school mailbox to the registered alumni address only |
 | `POST /api/ai/summarize-survey` | Survey sentiment/themes/recommendations |
 | `POST /api/ai/dashboard-insights` | Narrative insight from live metrics |
 
