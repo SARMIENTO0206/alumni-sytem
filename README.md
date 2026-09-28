@@ -59,18 +59,36 @@ the header, not the sidebar.
   Career & Tracking · Alumni Engagement · Communications ·
   Reports & Administration
 - **Registrar (*Registrar Operations*)** — Dashboard · Alumni Database ·
-  Document Services · Career & Tracking · Alumni Engagement · Communications ·
-  Reports
+  Document Services (Academic Record Requests · Certificate Reprints) ·
+  Career & Tracking · Alumni Engagement · Communications · Reports
 - **Alumni (*Alumni Portal*)** — Dashboard · My Graduate Status ·
   Document Requests · Career · Alumni Engagement · Announcements ·
   Settings
+
+### Document services workflow
+
+Both document-service pages share one workflow:
+
+```
+Pending → Processing (Approved) → Ready for Release → Completed
+```
+
+The Registrar works it from the request page itself with status cards, filter
+tabs (`All · Pending · Processing · Ready · Completed · Cancelled / Rejected`)
+and per-request actions (`Review` → `Mark as Ready` → `Mark as Claimed`). The
+alumni is notified automatically when a request is ready for release.
+
+`Cancelled` and `Rejected` are terminal states and are never counted as
+Completed. The former `Approval Queue` and `Release & Claiming` pages were
+merged into these tabs; the old hashes (`#/request-approval`,
+`#/document-processing`, `#/release-claiming`) now open the matching filter.
 
 ## 🧩 System modules & roles
 
 | # | Module | How to reach it |
 | - | ------ | --------------- |
 | 1 | Alumni Database | Registrar creates/edits/verifies; Admin has export/archive oversight |
-| 2 | Transcript Requests | Alumni submit → Registrar processes → Admin monitors |
+| 2 | Transcript Requests | Alumni submit → Registrar processes (Pending → Processing → Ready for Release → Completed) → Admin monitors |
 | 3 | Graduate Tracking | Alumni update own status; Registrar verifies; Admin analytics/exports |
 | 4 | Career & Job Opportunities | Admin/Registrar post and manage job listings; Alumni browse them, apply, and track submissions in the Alumni-only **My Applications** menu |
 | 5 | Alumni Events / 6 Batch Reunions / 7 Donor Campaigns | Self-service under their own menus |

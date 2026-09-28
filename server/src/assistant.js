@@ -134,9 +134,13 @@ function statusMeaning(status, lang) {
       en: 'Ready for Release means the document is prepared and can go through the release or claim process.',
       fil: 'Ang Ready for Release ibig sabihin handa na ang dokumento para sa release o claim.'
     },
+    completed: {
+      en: 'Completed means the document was claimed or released to the alumni, so the request is finished.',
+      fil: 'Ang Completed ibig sabihin naibigay o na-claim na ang dokumento, kaya tapos na ang request.'
+    },
     released: {
-      en: 'Released means the document was already released or claimed.',
-      fil: 'Ang Released ibig sabihin naibigay na ang dokumento.'
+      en: 'Released means the same as Completed: the document was already claimed or released to the alumni.',
+      fil: 'Ang Released ay kapareho ng Completed: naibigay o na-claim na ang dokumento.'
     }
   };
   const row = map[key];
@@ -166,7 +170,7 @@ function pathFor(topic, role) {
     ...alumni,
     transcript: 'Document Services > Academic Record Requests',
     reprint: 'Document Services > Certificate Reprints',
-    documents: 'Document Services > Approval Queue',
+    documents: 'Document Services > Academic Record Requests',
     tracking: 'Career & Tracking > Graduate Tracking',
     jobs: 'Career & Tracking > Job Opportunities',
     donations: 'Alumni Engagement > Donation Records',
@@ -298,7 +302,7 @@ export function generateConversationalReply({ user, text, language, topic, inten
   }
 
   if (intent === 'confusion') {
-    const mentioned = String(text).match(/pending|processing|approved|rejected|released|ready for release|submitted|under review/i);
+    const mentioned = String(text).match(/pending|processing|approved|rejected|released|completed|ready for release|submitted|under review/i);
     if (mentioned) return statusMeaning(mentioned[0], lang);
     if (topic === 'transcript' || topic === 'reprint' || topic === 'documents') {
       const simple = steps(topic === 'documents' ? 'transcript' : topic, lang, role);
@@ -312,7 +316,7 @@ export function generateConversationalReply({ user, text, language, topic, inten
   }
 
   if (intent === 'meaning') {
-    const mentioned = String(text).match(/pending|processing|approved|rejected|released|ready for release|submitted|under review/i);
+    const mentioned = String(text).match(/pending|processing|approved|rejected|released|completed|ready for release|submitted|under review/i);
     if (mentioned) return statusMeaning(mentioned[0], lang);
     if (topic === 'transcript' || topic === 'reprint') return statusMeaning('processing', lang);
   }

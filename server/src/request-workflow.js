@@ -6,17 +6,20 @@ export const DOCUMENT_STATUSES = [
   'Approved',
   'Processing',
   'Ready for Release',
-  'Released',
+  /* Completed is the terminal state: the document was claimed/released. */
+  'Completed',
   'Rejected',
   'Cancelled'
 ];
 
+/* Pending -> Approved/Processing -> Ready for Release -> Completed.
+   Cancelled and Rejected are terminal and never count as Completed. */
 const PROCESSOR_TRANSITIONS = {
   Pending: ['Approved', 'Rejected', 'For Correction'],
   'For Correction': ['Pending', 'Rejected'],
   Approved: ['Processing'],
   Processing: ['Ready for Release'],
-  'Ready for Release': ['Released']
+  'Ready for Release': ['Completed']
 };
 
 export const ALUMNI_CANCEL_FROM = ['Pending', 'For Correction'];
@@ -94,7 +97,7 @@ export function stampForStatus(status) {
   const now = new Date().toISOString();
   if (status === 'Approved') return { approved_at: now };
   if (status === 'Processing') return { processed_at: now };
-  if (status === 'Released') return { released_at: now };
+  if (status === 'Completed') return { completed_at: now };
   if (status === 'Cancelled') return { cancelled_at: now };
   return {};
 }

@@ -172,6 +172,10 @@
         document.getElementById("transcriptDetailName").textContent = item.name || "Request";
         document.getElementById("transcriptDetailDate").textContent = item.date || "—";
         document.getElementById("transcriptDetailStatus").textContent = item.status || "—";
+        const codeEl = document.getElementById("transcriptDetailCode");
+        if (codeEl) codeEl.textContent = documentRequestCode("transcript", item);
+        const workflowEl = document.getElementById("transcriptDetailWorkflow");
+        if (workflowEl) workflowEl.innerHTML = documentWorkflowHtml(item.status);
         const detailLines = [
             `Alumni: ${item.name || "—"}`,
             `Educational Level: ${item.educationLevel || "—"}`,
@@ -189,7 +193,8 @@
         if (remarksEl) remarksEl.textContent = item.remarks || item.correctionNotes || "—";
         const claimEl = document.getElementById("transcriptDetailClaim");
         if (claimEl) {
-            const bits = [item.delivery, item.claimWindow, item.claimNotes, item.releasedAt ? `Released ${item.releasedAt}` : ""].filter(Boolean);
+            const completedAt = item.completedAt || item.releasedAt;
+            const bits = [item.delivery, item.claimWindow, item.claimNotes, completedAt ? `Completed ${completedAt}` : ""].filter(Boolean);
             claimEl.textContent = bits.join(" • ") || "Not set yet.";
         }
         const attBox = document.getElementById("transcriptDetailAttachments");
@@ -217,13 +222,14 @@
             html += `<button type="button" onclick="openClaimStub(${item.id})" class="btn btn-secondary text-xs">View Claim Stub</button>`;
             if (isOwnerAlumni && item.canCancel) html += `<button type="button" onclick="cancelDocumentRequest('transcript', ${item.id})" class="btn btn-danger text-xs">Cancel Request</button>`;
             if (isProcessor && item.status === "Pending") {
-                html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Approved')" class="btn btn-success text-xs">Approve</button>`;
-                html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Rejected')" class="btn btn-danger text-xs">Reject</button>`;
+                html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Approved')" class="btn btn-success text-xs">Approve Request</button>`;
+                html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Rejected')" class="btn btn-danger text-xs">Reject Request</button>`;
                 html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'For Correction')" class="btn btn-secondary text-xs">Return for Correction</button>`;
             }
             if (isProcessor && item.status === "Approved") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Processing')" class="btn btn-primary text-xs">Start Processing</button>`;
-            if (isProcessor && item.status === "Processing") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Ready for Release')" class="btn btn-primary text-xs">Ready for Release</button>`;
-            if (isProcessor && item.status === "Ready for Release") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Released')" class="btn btn-primary text-xs">Mark Released / Claimed</button>`;
+            if (isProcessor && item.status === "Processing") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Ready for Release')" class="btn btn-primary text-xs">Mark as Ready</button>`;
+            if (isProcessor && item.status === "Ready for Release") html += `<button type="button" onclick="updateRequestStatus(${item.id}, 'Completed')" class="btn btn-primary text-xs"><i class="fa-solid fa-box-open mr-1"></i>Mark as Claimed</button>`;
+            if (isProcessor && documentStatusBucket(item.status) === "Completed") html += `<span class="text-xs font-semibold text-emerald-700 self-center">Document claimed — request completed.</span>`;
             actions.innerHTML = html;
         }
         const forms = document.getElementById("transcriptDetailForms");
@@ -660,6 +666,122 @@
         })();
     }
 
+    /* -------------------------------------------------------------------------
+       ONE document-request workflow for both request pages.
+       Pending -> Processing (Approved) -> Ready for Release -> Completed.
+       Cancelled and Rejected are terminal states and never count as Completed.
+       The Registrar works the whole flow from the request page itself, so the
+       former Approval Queue and Release & Claiming pages are status filters.
+       ------------------------------------------------------------------------- */
+    const DOCUMENT_STATUS_BUCKETS = {
+        Pending: ["Pending", "For Correction"],
+        Processing: ["Approved", "Processing"],
+        Ready: ["Ready for Release"],
+        Completed: ["Completed", "Released"],
+        Closed: ["Rejected", "Cancelled"]
+    };
+
+    const DOCUMENT_FILTERS = ["All", "Pending", "Processing", "Ready", "Completed", "Closed"];
+
+    const DOCUMENT_FILTER_LABELS = {
+        All: "All",
+        Pending: "Pending",
+        Processing: "Processing",
+        Ready: "Ready",
+        Completed: "Completed",
+        Closed: "Cancelled / Rejected"
+    };
+
+    const DOCUMENT_WORKFLOW_STEPS = [
+        { key: "Pending", label: "Pending" },
+        { key: "Processing", label: "Processing" },
+        { key: "Ready", label: "Ready for Release" },
+        { key: "Completed", label: "Completed" }
+    ];
+
+    const documentRequestFilters = { transcript: "All", reprint: "All" };
+
+    function documentStatusBucket(status) {
+        const value = String(status || "");
+        const entry = Object.entries(DOCUMENT_STATUS_BUCKETS).find(([, list]) => list.includes(value));
+        return entry ? entry[0] : "Pending";
+    }
+
+    function documentStatusClass(status) {
+        switch (documentStatusBucket(status)) {
+            case "Completed": return "status-completed";
+            case "Ready": return "status-ready";
+            case "Processing": return "status-processing";
+            case "Closed": return String(status) === "Cancelled" ? "status-cancelled" : "status-rejected";
+            default: return "status-pending";
+        }
+    }
+
+    function documentRequestCode(kind, item) {
+        const prefix = kind === "reprint" ? "RPT" : "REQ";
+        const year = String(item?.date || "").slice(0, 4) || String(new Date().getFullYear());
+        return `${prefix}-${year}-${String(item?.id ?? 0).padStart(4, "0")}`;
+    }
+
+    /* Read-only progress strip shown on the request detail panel. */
+    function documentWorkflowHtml(status) {
+        const bucket = documentStatusBucket(status);
+        if (bucket === "Closed") {
+            const label = String(status) === "Cancelled" ? "Cancelled" : "Rejected";
+            const tone = String(status) === "Cancelled" ? "status-cancelled" : "status-rejected";
+            return `<p class="text-xs text-slate-500 font-semibold">Workflow closed — <span class="status-badge ${tone}">${label}</span> requests are not counted as Completed.</p>`;
+        }
+        const currentIndex = DOCUMENT_WORKFLOW_STEPS.findIndex((step) => step.key === bucket);
+        return DOCUMENT_WORKFLOW_STEPS.map((step, index) => {
+            const reached = index <= currentIndex;
+            const chip = `<span class="px-2.5 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-wide ${reached ? "bg-[#801235] text-white border-[#801235]" : "bg-slate-50 text-slate-400 border-slate-200"}">${index + 1}. ${step.label}${step.key === bucket ? " • current" : ""}</span>`;
+            return index ? `<i class="fa-solid fa-arrow-right text-slate-300 text-[10px]"></i>${chip}` : chip;
+        }).join("");
+    }
+
+    function renderDocumentRequestCounters(kind, rows) {
+        const prefix = kind === "reprint" ? "reprint" : "document";
+        ["Pending", "Processing", "Ready", "Completed"].forEach((key) => {
+            const element = document.getElementById(`${prefix}${key}Count`);
+            if (element) element.textContent = String(rows.filter((row) => documentStatusBucket(row.status) === key).length);
+        });
+    }
+
+    function renderDocumentRequestTabs(kind, rows) {
+        const container = document.getElementById(kind === "reprint" ? "reprintRequestTabs" : "documentRequestTabs");
+        if (!container) return;
+        const active = documentRequestFilters[kind] || "All";
+        documentRequestFilters[kind] = active;
+        container.innerHTML = DOCUMENT_FILTERS.map((key) => {
+            const count = key === "All" ? rows.length : rows.filter((row) => documentStatusBucket(row.status) === key).length;
+            return `<button type="button" onclick="setDocumentRequestFilter('${kind}', '${key}')" class="btn ${key === active ? "btn-primary" : "btn-secondary"} text-xs py-1.5 px-3">${DOCUMENT_FILTER_LABELS[key]} <span class="font-extrabold">${count}</span></button>`;
+        }).join("");
+    }
+
+    /* Used by the status cards, the filter tabs and the retired page routes. */
+    function setDocumentRequestFilter(kind, filter) {
+        const target = kind === "reprint" ? "reprint" : "transcript";
+        documentRequestFilters[target] = DOCUMENT_FILTERS.includes(filter) ? filter : "All";
+        if (target === "reprint") renderReprintRequests();
+        else renderTranscriptRequests();
+    }
+
+    function visibleDocumentRequests(kind, rows) {
+        const active = documentRequestFilters[kind] || "All";
+        if (active === "All") return rows;
+        return rows.filter((row) => documentStatusBucket(row.status) === active);
+    }
+
+    function documentRequestActionLabel(kind, item, canProcess) {
+        const bucket = documentStatusBucket(item.status);
+        /* Finished or closed requests are read-only in the table. */
+        if (bucket === "Completed" || bucket === "Closed") return "View";
+        if (!canProcess) return "View Details";
+        if (bucket === "Pending") return "Review";
+        if (bucket === "Ready") return "Release";
+        return "View";
+    }
+
     function renderTranscriptRequests() {
         const body = document.getElementById("transcriptTableBody");
         if (!body) return;
@@ -672,33 +794,32 @@
         const description = document.querySelector("#transcriptListPanel h3 + p");
         if (requestButton) requestButton.classList.toggle("hidden", !isAlumni);
         document.getElementById("documentRequestOverview")?.classList.toggle("hidden", isAlumni);
+        document.getElementById("documentRequestTabs")?.classList.toggle("hidden", isAlumni);
         if (heading) heading.textContent = isAlumni ? "My Academic Record Requests" : isRegistrar ? "Transcript & Academic Record Requests" : "Document Requests Overview";
         if (description) description.textContent = isAlumni
             ? "Submit academic record requests and track their review and release status."
             : isRegistrar
-                ? "Review, verify, process, and release alumni academic record requests."
+                ? "Review, process, mark as ready, then confirm the claim to complete each academic record request."
                 : "Monitor academic record request status. Processing controls are reserved for Registrar staff.";
-        const allRequests = [].concat(transcriptRequests || [], reprintRequests || []);
-        const setCount = (id, count) => {
-            const element = document.getElementById(id);
-            if (element) element.textContent = String(count);
-        };
-        setCount("documentPendingCount", allRequests.filter((request) => ["Pending", "For Correction"].includes(request.status)).length);
-        setCount("documentProcessingCount", allRequests.filter((request) => ["Approved", "Processing"].includes(request.status)).length);
-        setCount("documentReadyCount", allRequests.filter((request) => request.status === "Ready for Release").length);
-        setCount("documentCompletedCount", allRequests.filter((request) => ["Released", "Completed"].includes(request.status)).length);
 
-        if (!transcriptRequests.length) {
+        const rows = transcriptRequests || [];
+        renderDocumentRequestCounters("transcript", rows);
+        if (!isAlumni) renderDocumentRequestTabs("transcript", rows);
+
+        if (!rows.length) {
             body.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-semibold">No transcript requests yet.</td></tr>`;
             return;
         }
 
-        transcriptRequests.forEach(item => {
-            const tr = document.createElement("tr");
-            const statusClass = item.status === "Approved" ? "status-approved" :
-                                item.status === "Rejected" ? "status-rejected" :
-                                item.status === "Released" ? "status-released" : "status-pending";
+        const visible = isAlumni ? rows : visibleDocumentRequests("transcript", rows);
+        if (!visible.length) {
+            body.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-semibold">No ${DOCUMENT_FILTER_LABELS[documentRequestFilters.transcript] || "matching"} academic record requests.</td></tr>`;
+            return;
+        }
 
+        visible.forEach(item => {
+            const tr = document.createElement("tr");
+            const statusClass = documentStatusClass(item.status);
             const canProcess = isRegistrar;
             const cancelBtn = isAlumni && item.canCancel
                 ? `<button type="button" onclick="cancelDocumentRequest('transcript', ${item.id})" class="text-xs text-rose-600 font-semibold hover:underline ml-2">Cancel</button>`
@@ -707,6 +828,7 @@
             tr.innerHTML = `
                 <td class="font-extrabold text-slate-800">
                     <div>${item.name}</div>
+                    <p class="text-[10px] font-mono text-slate-400">${documentRequestCode("transcript", item)}</p>
                     <button type="button" onclick="openTranscriptDetails(${item.id})" class="text-[10px] text-[#801235] font-bold hover:underline mr-2">
                         <i class="fa-solid fa-eye mr-0.5"></i> View Details
                     </button>
@@ -714,13 +836,11 @@
                         <i class="fa-solid fa-receipt mr-0.5"></i> View Claim Stub
                     </button>
                 </td>
-                <td class="text-slate-500">${item.date}</td>
+                <td class="text-slate-500">${item.date || "—"}</td>
                 <td class="text-slate-600 font-medium">${item.type || "Academic Record"}</td>
                 <td><span class="status-badge ${statusClass}">${item.status}</span></td>
                 <td class="text-right">
-                    ${canProcess && ["Pending", "For Correction", "Approved", "Processing", "Ready for Release"].includes(item.status)
-                        ? `<button type="button" onclick="openTranscriptDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">View / Process</button>`
-                        : `<button type="button" onclick="openTranscriptDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">View Details</button>`}
+                    <button type="button" onclick="openTranscriptDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">${documentRequestActionLabel("transcript", item, canProcess)}</button>
                     ${cancelBtn}
                 </td>
             `;
@@ -766,13 +886,17 @@
             renderReprintRequests();
             if (typeof updateReports === "function") updateReports();
             if (typeof updateRegistrarReports === "function") updateRegistrarReports();
-            if (typeof renderRequestApproval === "function") renderRequestApproval();
-            if (typeof renderDocumentPreparation === "function") renderDocumentPreparation();
-            if (typeof renderReleaseClaiming === "function") renderReleaseClaiming();
             if (typeof renderRequestHistory === "function") renderRequestHistory();
+            if (typeof renderRequestStatusView === "function") renderRequestStatusView();
             if (type === "transcript" && typeof showTranscriptDetails === "function") showTranscriptDetails(id, true);
             if (type === "reprint" && typeof showReprintDetails === "function") showReprintDetails(id, true);
-            showToast(`Request marked as ${newStatus}. The alumni will be notified.`, "success");
+            if (newStatus === "Completed") {
+                showToast("Request marked as Completed. The document has been claimed.", "success");
+            } else if (newStatus === "Ready for Release") {
+                showToast("Request is Ready for Release. The alumni has been notified.", "success");
+            } else {
+                showToast(`Request marked as ${newStatus}. The alumni will be notified.`, "success");
+            }
         } catch (err) {
             showToast(err.message || "Unable to update request status.", "error");
         }
@@ -872,19 +996,11 @@
         const isAlumni = role === "alumni";
         const isRegistrar = role === "staff" || role === "registrar";
         const requestButton = document.getElementById("reprintRequestButton");
-        const heading = document.querySelector("#view-reprint h3");
-        const description = document.querySelector("#view-reprint h3 + p");
+        const heading = document.querySelector("#reprintListPanel h3");
+        const description = document.querySelector("#reprintListPanel h3 + p");
         if (requestButton) requestButton.classList.toggle("hidden", !isAlumni);
-        document.getElementById("documentRequestOverview")?.classList.toggle("hidden", isAlumni);
-        const allRequests = [].concat(transcriptRequests || [], reprintRequests || []);
-        const setCount = (id, count) => {
-            const element = document.getElementById(id);
-            if (element) element.textContent = String(count);
-        };
-        setCount("documentPendingCount", allRequests.filter((request) => ["Pending", "For Correction"].includes(request.status)).length);
-        setCount("documentProcessingCount", allRequests.filter((request) => ["Approved", "Processing"].includes(request.status)).length);
-        setCount("documentReadyCount", allRequests.filter((request) => request.status === "Ready for Release").length);
-        setCount("documentCompletedCount", allRequests.filter((request) => ["Released", "Completed"].includes(request.status)).length);
+        document.getElementById("reprintRequestOverview")?.classList.toggle("hidden", isAlumni);
+        document.getElementById("reprintRequestTabs")?.classList.toggle("hidden", isAlumni);
         if (heading) heading.textContent = isAlumni
             ? "My Certificate & Diploma Reprint Requests"
             : isRegistrar
@@ -893,26 +1009,39 @@
         if (description) description.textContent = isAlumni
             ? "Request eligible certificate reprints and follow their review and release status."
             : isRegistrar
-                ? "Review and process alumni certificate and diploma reprint requests."
+                ? "Review, process, mark as ready, then confirm the claim to complete each certificate reprint request."
                 : "Monitor certificate reprint request status. Processing controls are reserved for Registrar staff.";
-        if (!reprintRequests.length) {
-            body.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-semibold">No certificate reprint requests yet.</td></tr>`;
+
+        const rows = reprintRequests || [];
+        renderDocumentRequestCounters("reprint", rows);
+        if (!isAlumni) renderDocumentRequestTabs("reprint", rows);
+
+        if (!rows.length) {
+            body.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-semibold">No certificate reprint requests yet.</td></tr>`;
             return;
         }
 
-        reprintRequests.forEach(item => {
+        const visible = isAlumni ? rows : visibleDocumentRequests("reprint", rows);
+        if (!visible.length) {
+            body.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-semibold">No ${DOCUMENT_FILTER_LABELS[documentRequestFilters.reprint] || "matching"} certificate reprint requests.</td></tr>`;
+            return;
+        }
+
+        visible.forEach(item => {
             const tr = document.createElement("tr");
-            const statusClass = item.status === "Approved" ? "status-approved" : "status-pending";
+            const statusClass = documentStatusClass(item.status);
             const canProcess = isRegistrar;
 
             tr.innerHTML = `
-                <td class="font-extrabold text-slate-800"><button type="button" class="hover:text-brand-magenta" onclick="openReprintDetails(${item.id})">${item.name}</button></td>
-                <td class="text-slate-600">${item.type}</td>
+                <td class="font-extrabold text-slate-800">
+                    <button type="button" class="hover:text-brand-magenta" onclick="openReprintDetails(${item.id})">${item.name}</button>
+                    <p class="text-[10px] font-mono text-slate-400">${documentRequestCode("reprint", item)}</p>
+                </td>
+                <td class="text-slate-600">${item.type || "—"}</td>
+                <td class="text-slate-500">${item.date || "—"}</td>
                 <td><span class="status-badge ${statusClass}">${item.status}</span></td>
                 <td class="text-right">
-                    ${canProcess && ["Pending", "For Correction", "Approved", "Processing", "Ready for Release"].includes(item.status)
-                        ? `<button type="button" onclick="openReprintDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">View / Process</button>`
-                        : `<button type="button" onclick="openReprintDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">View Details</button>`}
+                    <button type="button" onclick="openReprintDetails(${item.id})" class="text-xs text-brand-magenta font-semibold hover:underline">${documentRequestActionLabel("reprint", item, canProcess)}</button>
                     ${isAlumni && item.canCancel ? `<button type="button" onclick="cancelDocumentRequest('reprint', ${item.id})" class="text-xs text-rose-600 font-semibold hover:underline ml-2">Cancel</button>` : ""}
                 </td>
             `;
@@ -942,40 +1071,37 @@
         if (list) list.classList.add("hidden");
         panel.classList.remove("hidden");
         document.getElementById("reprintDetailName").textContent = item.name || "Request";
+        const codeEl = document.getElementById("reprintDetailCode");
+        if (codeEl) codeEl.textContent = documentRequestCode("reprint", item);
+        const requestedEl = document.getElementById("reprintDetailRequested");
+        if (requestedEl) requestedEl.textContent = item.date || "—";
         document.getElementById("reprintDetailType").textContent = item.type || "—";
         document.getElementById("reprintDetailStatus").textContent = item.status || "—";
-        const actions = document.getElementById("reprintDetailActions");
-        const role = typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role;
-        const isAlumni = role === "alumni";
-        const isRegistrar = role === "staff" || role === "registrar";
-        if (actions) {
-            actions.replaceChildren();
-            const details = document.createElement("div");
-            details.className = "w-full space-y-2 text-xs text-slate-600";
-            const info = document.createElement("p");
-            info.textContent = [
+        const workflowEl = document.getElementById("reprintDetailWorkflow");
+        if (workflowEl) workflowEl.innerHTML = documentWorkflowHtml(item.status);
+        const infoEl = document.getElementById("reprintDetailInfo");
+        if (infoEl) {
+            const completedAt = item.completedAt || item.releasedAt;
+            infoEl.textContent = [
                 `Alumni: ${item.name || "—"}`,
                 `Educational Level: ${item.educationLevel || "—"}`,
                 `Batch: ${item.batch || "—"}`,
                 `Strand: ${item.strand || "—"}`,
                 `Student ID: ${item.studentId || "—"}`,
                 `Reason: ${item.reason || "—"}`,
-                `Copies: ${Number(item.copies || 1)}`
-            ].join(" · ");
-            details.appendChild(info);
-            if (item.requestNotes) {
-                const notes = document.createElement("p");
-                notes.className = "whitespace-pre-wrap";
-                notes.textContent = `Additional Details: ${item.requestNotes}`;
-                details.appendChild(notes);
-            }
-            if (item.remarks) {
-                const remarks = document.createElement("p");
-                remarks.className = "whitespace-pre-wrap";
-                remarks.textContent = `Registrar remarks: ${item.remarks}`;
-                details.appendChild(remarks);
-            }
-            actions.appendChild(details);
+                `Copies: ${Number(item.copies || 1)}`,
+                item.requestNotes ? `Additional Details: ${item.requestNotes}` : "",
+                item.remarks ? `Registrar remarks: ${item.remarks}` : "",
+                `Release / claim: ${[item.claimWindow, item.claimNotes].filter(Boolean).join(" • ") || "Not set yet."}`,
+                completedAt ? `Completed: ${completedAt}` : ""
+            ].filter(Boolean).join("\n");
+        }
+        const actions = document.getElementById("reprintDetailActions");
+        const role = typeof normalizeRole === "function" ? normalizeRole(currentUser?.role) : currentUser?.role;
+        const isAlumni = role === "alumni";
+        const isRegistrar = role === "staff" || role === "registrar";
+        if (actions) {
+            actions.replaceChildren();
             const addAction = (label, className, callback) => {
                 const button = document.createElement("button");
                 button.type = "button";
@@ -988,18 +1114,23 @@
                 addAction("Cancel Request", "btn btn-danger text-xs", () => cancelDocumentRequest("reprint", item.id));
             }
             if (isRegistrar && item.status === "Pending") {
-                addAction("Approve", "btn btn-success text-xs", () => updateRequestStatus(item.id, "Approved", "reprint"));
-                addAction("Request Information", "btn btn-secondary text-xs", () => updateRequestStatus(item.id, "For Correction", "reprint"));
-                addAction("Reject", "btn btn-danger text-xs", () => updateRequestStatus(item.id, "Rejected", "reprint"));
+                addAction("Approve Request", "btn btn-success text-xs", () => updateRequestStatus(item.id, "Approved", "reprint"));
+                addAction("Return for Correction", "btn btn-secondary text-xs", () => updateRequestStatus(item.id, "For Correction", "reprint"));
+                addAction("Reject Request", "btn btn-danger text-xs", () => updateRequestStatus(item.id, "Rejected", "reprint"));
             } else if (isRegistrar && item.status === "For Correction") {
                 addAction("Return to Pending", "btn btn-secondary text-xs", () => updateRequestStatus(item.id, "Pending", "reprint"));
-                addAction("Reject", "btn btn-danger text-xs", () => updateRequestStatus(item.id, "Rejected", "reprint"));
+                addAction("Reject Request", "btn btn-danger text-xs", () => updateRequestStatus(item.id, "Rejected", "reprint"));
             } else if (isRegistrar && item.status === "Approved") {
                 addAction("Start Processing", "btn btn-primary text-xs", () => updateRequestStatus(item.id, "Processing", "reprint"));
             } else if (isRegistrar && item.status === "Processing") {
-                addAction("Ready for Release", "btn btn-primary text-xs", () => updateRequestStatus(item.id, "Ready for Release", "reprint"));
+                addAction("Mark as Ready", "btn btn-primary text-xs", () => updateRequestStatus(item.id, "Ready for Release", "reprint"));
             } else if (isRegistrar && item.status === "Ready for Release") {
-                addAction("Mark Released", "btn btn-primary text-xs", () => updateRequestStatus(item.id, "Released", "reprint"));
+                addAction("Mark as Claimed", "btn btn-primary text-xs", () => updateRequestStatus(item.id, "Completed", "reprint"));
+            } else if (isRegistrar && documentStatusBucket(item.status) === "Completed") {
+                const note = document.createElement("p");
+                note.className = "text-xs font-semibold text-emerald-700 self-center";
+                note.textContent = "Document claimed — request completed.";
+                actions.appendChild(note);
             }
         }
         if (!silent) switchView("reprint", { detailId: item.id });

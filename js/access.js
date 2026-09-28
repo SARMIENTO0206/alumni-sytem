@@ -174,9 +174,9 @@ function renderDashboardStats() {
     const grid = document.getElementById("dashboardStatsGrid");
     if (!grid) return;
     const rows = documentRequestRows();
-    const pendingCount = rows.filter((r) => ["Pending", "For Correction"].includes(r.status)).length;
-    const processingCount = rows.filter((r) => ["Approved", "Processing", "Ready for Release"].includes(r.status)).length;
-    const completedCount = rows.filter((r) => ["Released", "Completed"].includes(r.status)).length;
+    const pendingCount = rows.filter((r) => documentStatusBucket(r.status) === "Pending").length;
+    const processingCount = rows.filter((r) => ["Processing", "Ready"].includes(documentStatusBucket(r.status))).length;
+    const completedCount = rows.filter((r) => documentStatusBucket(r.status) === "Completed").length;
     const recentBatch = String(new Date().getFullYear());
     const empCount = (alumniList || []).filter((a) => ["Employed", "Self-employed", "Freelance"].includes(a.status)).length;
     const recordsToVerify = (alumniList || []).filter((a) => (a.trackingReviewStatus || "Pending") === "Pending").length;
@@ -1044,7 +1044,7 @@ function renderRequestStatusView() {
     if (!box) return;
     const rows = []
         .concat((transcriptRequests || []).map((r) => ({ kind: "Transcript", id: r.id, name: r.name, status: r.status, date: r.date, extra: r.purpose })))
-        .concat((reprintRequests || []).map((r) => ({ kind: "Certificate Reprint", id: r.id, name: r.name, status: r.status, date: "", extra: r.type })));
+        .concat((reprintRequests || []).map((r) => ({ kind: "Certificate Reprint", id: r.id, name: r.name, status: r.status, date: r.date, extra: r.type })));
     if (!rows.length) {
         box.innerHTML = `<tr><td colspan="5" class="text-center text-slate-400">You have no document requests yet.</td></tr>`;
         return;
@@ -1054,7 +1054,7 @@ function renderRequestStatusView() {
             <td>${escapeHtml(r.kind)} #${escapeHtml(r.id)}</td>
             <td>${escapeHtml(r.extra || "—")}</td>
             <td>${escapeHtml(r.date || "—")}</td>
-            <td><span class="status-badge">${escapeHtml(r.status)}</span></td>
+            <td><span class="status-badge ${documentStatusClass(r.status)}">${escapeHtml(r.status)}</span></td>
             <td>${escapeHtml(r.name)}</td>
         </tr>
     `).join("");

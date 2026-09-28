@@ -26,7 +26,7 @@
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom Design System Stylesheet -->
-    <link rel="stylesheet" href="style.css?v=20260920">
+    <link rel="stylesheet" href="style.css?v=20260928">
 </head>
 
 <body class="min-h-screen flex flex-col relative overflow-x-hidden bg-slate-50">
@@ -561,8 +561,6 @@
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('transcript')" id="registrar-nav-transcript" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i><span>Academic Record Requests</span></button>
                         <button type="button" onclick="switchView('reprint')" id="registrar-nav-reprint" class="sidebar-link"><i class="fa-solid fa-certificate"></i><span>Certificate Reprints</span></button>
-                        <button type="button" onclick="switchView('request-approval')" id="registrar-nav-request-approval" class="sidebar-link"><i class="fa-solid fa-check-double"></i><span>Approval Queue</span></button>
-                        <button type="button" onclick="switchView('release-claiming')" id="registrar-nav-release-claiming" class="sidebar-link"><i class="fa-solid fa-box-open"></i><span>Release & Claiming</span></button>
                     </div>
                 </div>
                 <div class="sidebar-group">
@@ -1158,12 +1156,14 @@
                             </button>
                         </div>
 
-                        <div id="documentRequestOverview" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-                            <div class="rounded-xl bg-amber-50 border border-amber-100 p-4"><p class="text-[10px] uppercase tracking-wider font-bold text-amber-700">Pending</p><p id="documentPendingCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></div>
-                            <div class="rounded-xl bg-blue-50 border border-blue-100 p-4"><p class="text-[10px] uppercase tracking-wider font-bold text-blue-700">Processing</p><p id="documentProcessingCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></div>
-                            <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-4"><p class="text-[10px] uppercase tracking-wider font-bold text-emerald-700">Ready</p><p id="documentReadyCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></div>
-                            <div class="rounded-xl bg-slate-50 border border-slate-200 p-4"><p class="text-[10px] uppercase tracking-wider font-bold text-slate-500">Completed</p><p id="documentCompletedCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></div>
+                        <div id="documentRequestOverview" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                            <button type="button" onclick="setDocumentRequestFilter('transcript', 'Pending')" class="text-left rounded-xl bg-amber-50 border border-amber-100 p-4 hover:border-amber-300 transition"><p class="text-[10px] uppercase tracking-wider font-bold text-amber-700">Pending</p><p id="documentPendingCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></button>
+                            <button type="button" onclick="setDocumentRequestFilter('transcript', 'Processing')" class="text-left rounded-xl bg-blue-50 border border-blue-100 p-4 hover:border-blue-300 transition"><p class="text-[10px] uppercase tracking-wider font-bold text-blue-700">Processing</p><p id="documentProcessingCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></button>
+                            <button type="button" onclick="setDocumentRequestFilter('transcript', 'Ready')" class="text-left rounded-xl bg-emerald-50 border border-emerald-100 p-4 hover:border-emerald-300 transition"><p class="text-[10px] uppercase tracking-wider font-bold text-emerald-700">Ready</p><p id="documentReadyCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></button>
+                            <button type="button" onclick="setDocumentRequestFilter('transcript', 'Completed')" class="text-left rounded-xl bg-slate-50 border border-slate-200 p-4 hover:border-slate-300 transition"><p class="text-[10px] uppercase tracking-wider font-bold text-slate-500">Completed</p><p id="documentCompletedCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></button>
                         </div>
+
+                        <div id="documentRequestTabs" class="hidden flex flex-wrap items-center gap-2 mb-5"></div>
 
                         <div class="data-table-container">
                             <table class="modern-table">
@@ -1190,12 +1190,14 @@
                         </button>
                         <h3 id="transcriptDetailName" class="text-xl font-extrabold text-slate-800">Request</h3>
                         <div class="grid sm:grid-cols-2 gap-3 text-sm">
-                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Date</p><p id="transcriptDetailDate" class="font-semibold text-slate-800">—</p></div>
-                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Status</p><p id="transcriptDetailStatus" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Request #</p><p id="transcriptDetailCode" class="font-semibold text-slate-800 font-mono">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Requested</p><p id="transcriptDetailDate" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Current Status</p><p id="transcriptDetailStatus" class="font-semibold text-slate-800">—</p></div>
                             <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Request Details</p><p id="transcriptDetailPurpose" class="font-semibold text-slate-800 whitespace-pre-wrap">—</p></div>
                             <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Registrar remarks</p><p id="transcriptDetailRemarks" class="font-semibold text-slate-800 whitespace-pre-wrap">—</p></div>
                             <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Release / claim</p><p id="transcriptDetailClaim" class="font-semibold text-slate-800">—</p></div>
                         </div>
+                        <div id="transcriptDetailWorkflow" class="flex flex-wrap items-center gap-2"></div>
                         <div id="transcriptDetailAttachments" class="text-sm space-y-2"></div>
                         <div id="transcriptDetailHistory" class="text-xs space-y-1 text-slate-500"></div>
                         <div id="transcriptDetailActions" class="flex flex-wrap gap-2"></div>
@@ -1208,7 +1210,7 @@
                      VIEW: CERTIFICATE REPRINT REQUESTS
                      ================================================= -->
                 <div id="view-reprint" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6">
+                    <div id="reprintListPanel" class="app-card p-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div>
                                 <h3 class="text-lg font-extrabold text-slate-800">Certificate & Diploma Reprint Requests</h3>
@@ -1220,12 +1222,22 @@
                             </button>
                         </div>
 
-                        <div id="reprintListPanel" class="data-table-container">
+                        <div id="reprintRequestOverview" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                            <button type="button" onclick="setDocumentRequestFilter('reprint', 'Pending')" class="text-left rounded-xl bg-amber-50 border border-amber-100 p-4 hover:border-amber-300 transition"><p class="text-[10px] uppercase tracking-wider font-bold text-amber-700">Pending</p><p id="reprintPendingCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></button>
+                            <button type="button" onclick="setDocumentRequestFilter('reprint', 'Processing')" class="text-left rounded-xl bg-blue-50 border border-blue-100 p-4 hover:border-blue-300 transition"><p class="text-[10px] uppercase tracking-wider font-bold text-blue-700">Processing</p><p id="reprintProcessingCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></button>
+                            <button type="button" onclick="setDocumentRequestFilter('reprint', 'Ready')" class="text-left rounded-xl bg-emerald-50 border border-emerald-100 p-4 hover:border-emerald-300 transition"><p class="text-[10px] uppercase tracking-wider font-bold text-emerald-700">Ready</p><p id="reprintReadyCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></button>
+                            <button type="button" onclick="setDocumentRequestFilter('reprint', 'Completed')" class="text-left rounded-xl bg-slate-50 border border-slate-200 p-4 hover:border-slate-300 transition"><p class="text-[10px] uppercase tracking-wider font-bold text-slate-500">Completed</p><p id="reprintCompletedCount" class="text-xl font-extrabold text-slate-800 mt-1">0</p></button>
+                        </div>
+
+                        <div id="reprintRequestTabs" class="hidden flex flex-wrap items-center gap-2 mb-5"></div>
+
+                        <div class="data-table-container">
                             <table class="modern-table">
                                 <thead>
                                     <tr>
                                         <th>Alumni Name</th>
                                         <th>Certificate Type</th>
+                                        <th>Requested</th>
                                         <th>Status</th>
                                         <th class="text-right">Action</th>
                                     </tr>
@@ -1235,15 +1247,23 @@
                                 </tbody>
                             </table>
                         </div>
-                        <div id="reprintDetailPanel" class="hidden space-y-4 pt-4">
-                            <button type="button" class="text-xs font-bold text-[#801235]" onclick="hideDetailPanels()">Back to list</button>
-                            <h3 id="reprintDetailName" class="text-xl font-extrabold text-slate-800">Request</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                                <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Type</p><p id="reprintDetailType" class="font-semibold text-slate-800">—</p></div>
-                                <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Status</p><p id="reprintDetailStatus" class="font-semibold text-slate-800">—</p></div>
-                            </div>
-                            <div id="reprintDetailActions" class="flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div id="reprintDetailPanel" class="hidden app-card p-6 space-y-4">
+                        <button type="button" onclick="goAppBack()" class="btn btn-secondary text-xs">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Back to Certificate Reprints</span>
+                        </button>
+                        <h3 id="reprintDetailName" class="text-xl font-extrabold text-slate-800">Request</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Request #</p><p id="reprintDetailCode" class="font-semibold text-slate-800 font-mono">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Requested</p><p id="reprintDetailRequested" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Certificate Type</p><p id="reprintDetailType" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50"><p class="text-[10px] font-bold text-slate-400 uppercase">Current Status</p><p id="reprintDetailStatus" class="font-semibold text-slate-800">—</p></div>
+                            <div class="p-3 rounded-xl bg-slate-50 sm:col-span-2"><p class="text-[10px] font-bold text-slate-400 uppercase">Request Details</p><p id="reprintDetailInfo" class="font-semibold text-slate-800 whitespace-pre-wrap">—</p></div>
                         </div>
+                        <div id="reprintDetailWorkflow" class="flex flex-wrap items-center gap-2"></div>
+                        <div id="reprintDetailActions" class="flex flex-wrap gap-2"></div>
                     </div>
                 </div>
 
@@ -2254,52 +2274,6 @@
                         </div>
                         <div id="recordCorrectionList" class="space-y-3">
                             <p class="text-xs text-slate-400">Loading correction requests…</p>
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- =================================================
-                     VIEW: REGISTRAR REQUEST APPROVAL
-                     ================================================= -->
-                <div id="view-request-approval" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 class="text-lg font-extrabold text-slate-800">Request Approval Queue</h3>
-                                <p class="text-xs text-slate-400 font-medium">Review and validate incoming document requests before processing.</p>
-                            </div>
-                        </div>
-                        <div id="approvalRequestsList" class="space-y-3 mt-4">
-                            <!-- Populated dynamically -->
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- =================================================
-                     VIEW: REGISTRAR DOCUMENT PREPARATION
-                     ================================================= -->
-                <div id="view-document-processing" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6">
-                        <h3 class="text-lg font-extrabold text-slate-800 mb-1">Document Preparation Pipeline</h3>
-                        <p class="text-xs text-slate-400 font-medium mb-6">Track print preparation, dry seals, and registrar certifications.</p>
-                        <div id="documentPreparationList">
-                            <!-- Populated dynamically -->
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- =================================================
-                     VIEW: REGISTRAR RELEASE / CLAIMING
-                     ================================================= -->
-                <div id="view-release-claiming" class="hidden space-y-6 fade-in">
-                    <div class="app-card p-6">
-                        <h3 class="text-lg font-extrabold text-slate-800 mb-1">Ready for Pick-Up & Release</h3>
-                        <p class="text-xs text-slate-400 font-medium mb-6">Manage claimed documents and release verification signatures.</p>
-                        <div id="releaseRecordsList" class="space-y-3">
-                            <!-- Populated dynamically -->
                         </div>
                     </div>
                 </div>
@@ -3971,10 +3945,10 @@
     <script src="js/env.js?v=20260920"></script>
     <script src="js/api.js?v=20260926"></script>
     <script src="js/utils.js?v=20260920"></script>
-    <script src="js/auth.js?v=20260920"></script>
-    <script src="js/access.js?v=20260926"></script>
-    <script src="js/navigation.js?v=20260926"></script>
-    <script src="js/records.js?v=20260920"></script>
+    <script src="js/auth.js?v=20260928"></script>
+    <script src="js/access.js?v=20260928"></script>
+    <script src="js/navigation.js?v=20260928"></script>
+    <script src="js/records.js?v=20260928"></script>
     <!-- engagement.js split into focused modules (v20260928) -->
     <script src="js/jobs.js?v=20260928"></script>
     <script src="js/events.js?v=20260928"></script>
@@ -3985,6 +3959,6 @@
     <script src="js/newsletter.js?v=20260928"></script>
     <script src="js/feedback.js?v=20260928"></script>
     <script src="js/chat.js?v=20260928"></script>
-    <script src="js/reports.js?v=20260926"></script>
+    <script src="js/reports.js?v=20260928"></script>
 </body>
 </html>

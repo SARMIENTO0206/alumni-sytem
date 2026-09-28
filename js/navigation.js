@@ -9,7 +9,10 @@
     const APP_VIEWS = [
         "dashboard", "idcard", "database", "profile", "job-opportunities", "transcript", "reprint",
         "tracking", "placement", "events", "reunions", "donor", "newsletter", "feedback",
-        "reports", "verification", "request-approval", "document-processing", "release-claiming",
+        "reports", "verification",
+        /* Legacy document-service routes kept so old links still resolve; they are
+           redirected to Academic Record Requests by LEGACY_DOCUMENT_VIEWS below. */
+        "request-approval", "document-processing", "release-claiming",
         "request-history", "registrar-reports", "academic-records", "users", "settings",
         "announcements", "notifications", "sms", "gmail", "request-status",
         "applications", "unauthorized", "payment", "payment-receipt"
@@ -257,9 +260,6 @@
             if (typeof updateReports === "function") updateReports();
             if (typeof refreshAiStatus === "function") refreshAiStatus();
         }
-        if (viewId === "request-approval" && typeof renderRequestApproval === "function") renderRequestApproval();
-        if (viewId === "document-processing" && typeof renderDocumentPreparation === "function") renderDocumentPreparation();
-        if (viewId === "release-claiming" && typeof renderReleaseClaiming === "function") renderReleaseClaiming();
         if (viewId === "request-history" && typeof renderRequestHistory === "function") renderRequestHistory();
         if (viewId === "registrar-reports" && typeof updateRegistrarReports === "function") updateRegistrarReports();
         if (viewId === "users" && typeof loadUsersView === "function") loadUsersView();
@@ -281,9 +281,24 @@
         if (viewId === "profile" && typeof applyRoleChrome === "function") applyRoleChrome();
     }
 
+    /* The Registrar processes requests inside the request pages themselves, so the
+       retired Approval Queue / Document Preparation / Release & Claiming routes now
+       open Academic Record Requests with the matching status filter applied. */
+    const LEGACY_DOCUMENT_VIEWS = {
+        "request-approval": { viewId: "transcript", filter: "Pending" },
+        "document-processing": { viewId: "transcript", filter: "Processing" },
+        "release-claiming": { viewId: "transcript", filter: "Ready" }
+    };
+
     function switchView(viewId, options) {
         if (options && typeof options !== "object") options = { detailId: options };
         options = options || {};
+
+        const legacy = LEGACY_DOCUMENT_VIEWS[viewId];
+        if (legacy) {
+            if (typeof setDocumentRequestFilter === "function") setDocumentRequestFilter("transcript", legacy.filter);
+            viewId = legacy.viewId;
+        }
 
         if (!isAuthenticated()) {
             goToLoginPage(true);
@@ -420,9 +435,6 @@
                     : "Feedback Management",
             reports: "System Reports & Statistics",
             verification: "Alumni Record Verification",
-            "request-approval": "Request Approval Queue",
-            "document-processing": "Document Preparation",
-            "release-claiming": "Release & Claiming Records",
             "request-history": "Request History Log",
             "registrar-reports": "Registrar Processing Reports",
             "academic-records": "Academic Records",

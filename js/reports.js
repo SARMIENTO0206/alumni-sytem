@@ -496,105 +496,27 @@
         }
     }
 
-    /* Registrar Workflow */
-    function renderRequestApproval() {
-        const box = document.getElementById("approvalRequestsList");
-        if (!box) return;
-        const pending = transcriptRequests.filter(r => ["Pending", "For Correction"].includes(r.status));
-        if (!pending.length) {
-            box.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No pending requests at this time.</div>`;
-            return;
-        }
-        box.innerHTML = pending.map(r => `
-            <div class="p-4 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
-                <div>
-                    <p class="font-extrabold text-slate-800 text-sm">${r.name}</p>
-                    <p class="text-xs text-slate-400">Transcript Request • ${r.purpose || "Official Record"} • ${r.date} • ${r.status}</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    ${r.status === "For Correction"
-                        ? `<span class="text-xs text-amber-700 font-bold">Waiting for alumni correction</span>`
-                        : `<button onclick="updateRequestStatus(${r.id}, 'Approved')" class="btn btn-success text-xs py-1.5 px-3">Approve</button>
-                           <button onclick="updateRequestStatus(${r.id}, 'For Correction')" class="btn btn-secondary text-xs py-1.5 px-3">Return</button>
-                           <button onclick="updateRequestStatus(${r.id}, 'Rejected')" class="btn btn-danger text-xs py-1.5 px-3">Reject</button>`}
-                    <button type="button" onclick="openTranscriptDetails(${r.id})" class="text-xs font-bold text-[#801235]">View</button>
-                </div>
-            </div>
-        `).join("");
-    }
-
-    function renderDocumentPreparation() {
-        const box = document.getElementById("documentPreparationList");
-        if (!box) return;
-        const approvedCount = transcriptRequests.filter(r => r.status === "Approved").length;
-        const pendingCount = transcriptRequests.filter(r => r.status === "Pending").length;
-        const processingCount = transcriptRequests.filter(r => r.status === "Processing").length;
-        box.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="app-card p-5 border-l-4 border-l-amber-500">
-                    <p class="text-xs text-slate-400 font-bold uppercase">Approved for Print</p>
-                    <p class="text-3xl font-extrabold text-slate-800 mt-2">${approvedCount}</p>
-                    <p class="text-[11px] text-slate-400 mt-1">Pending seal & signatures</p>
-                </div>
-                <div class="app-card p-5 border-l-4 border-l-indigo-500">
-                    <p class="text-xs text-slate-400 font-bold uppercase">Registrar Review</p>
-                    <p class="text-3xl font-extrabold text-slate-800 mt-2">${pendingCount}</p>
-                    <p class="text-[11px] text-slate-400 mt-1">Waiting for validation</p>
-                </div>
-                <div class="app-card p-5 border-l-4 border-l-emerald-500">
-                    <p class="text-xs text-slate-400 font-bold uppercase">Processing</p>
-                    <p class="text-3xl font-extrabold text-slate-800 mt-2">${processingCount}</p>
-                    <p class="text-[11px] text-slate-400 mt-1">Document preparation</p>
-                </div>
-            </div>
-            <div class="mt-4 space-y-2">
-                ${transcriptRequests.filter((r) => r.status === "Approved").map((r) => `
-                    <div class="p-3 border border-slate-100 rounded-xl flex items-center justify-between">
-                        <p class="text-sm font-bold">${r.name} • ${r.purpose || "Transcript"}</p>
-                        <button type="button" onclick="updateRequestStatus(${r.id}, 'Processing')" class="btn btn-primary text-xs">Start Processing</button>
-                    </div>
-                `).join("")}
-            </div>
-        `;
-    }
-
-    function renderReleaseClaiming() {
-        const box = document.getElementById("releaseRecordsList");
-        if (!box) return;
-        const ready = transcriptRequests.filter(r => r.status === "Ready for Release" || r.status === "Processing");
-        if (!ready.length) {
-            box.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No documents currently awaiting pick-up.</div>`;
-            return;
-        }
-        box.innerHTML = ready.map(r => `
-            <div class="p-4 border border-slate-200 rounded-xl flex items-center justify-between bg-white">
-                <div>
-                    <p class="font-extrabold text-slate-800 text-sm">${r.name}</p>
-                    <p class="text-xs text-slate-400">${r.status} • ${r.claimWindow || r.delivery || "Registrar window"}</p>
-                </div>
-                ${r.status === "Processing"
-                    ? `<button onclick="updateRequestStatus(${r.id}, 'Ready for Release')" class="btn btn-secondary text-xs py-1.5 px-3">Set Release / Claim Info</button>`
-                    : `<button onclick="updateRequestStatus(${r.id}, 'Released')" class="btn btn-primary text-xs py-1.5 px-3">
-                    <i class="fa-solid fa-box-open mr-1"></i> Mark Released / Claimed
-                </button>`}
-            </div>
-        `).join("");
-    }
-
+    /* Registrar Workflow
+       Approval, preparation and release/claiming are handled by the status
+       filters and actions inside Academic Record Requests / Certificate
+       Reprints, so this page only keeps the completed timeline. */
     function renderRequestHistory() {
         const box = document.getElementById("requestHistoryList");
         if (!box) return;
-        if (!transcriptRequests.length) {
-            box.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No transcript requests yet.</div>`;
+        const rows = []
+            .concat((transcriptRequests || []).map((r) => ({ ...r, kind: "Academic Record" })))
+            .concat((reprintRequests || []).map((r) => ({ ...r, kind: "Certificate Reprint" })));
+        if (!rows.length) {
+            box.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold border border-slate-100 rounded-xl">No document requests yet.</div>`;
             return;
         }
-        box.innerHTML = transcriptRequests.map(r => `
+        box.innerHTML = rows.map(r => `
             <div class="p-4 border border-slate-100 rounded-xl flex items-center justify-between bg-slate-50/60">
                 <div>
-                    <p class="font-bold text-slate-800 text-xs">${r.name}</p>
-                    <p class="text-[11px] text-slate-400">${r.purpose || "Official Record"} • Date: ${r.date}</p>
+                    <p class="font-bold text-slate-800 text-xs">${r.name} • <span class="font-mono font-semibold text-slate-400">${documentRequestCode(r.kind === "Certificate Reprint" ? "reprint" : "transcript", r)}</span></p>
+                    <p class="text-[11px] text-slate-400">${r.kind} • ${r.purpose || r.type || "Official Record"} • Date: ${r.date || "—"}</p>
                 </div>
-                <span class="status-badge ${r.status === 'Released' ? 'status-released' : r.status === 'Approved' ? 'status-approved' : r.status === 'Rejected' ? 'status-rejected' : 'status-pending'}">${r.status}</span>
+                <span class="status-badge ${documentStatusClass(r.status)}">${r.status}</span>
             </div>
         `).join("");
     }
@@ -616,20 +538,21 @@
     }
 
     function updateRegistrarReports() {
+        const allRequests = [].concat(transcriptRequests || [], reprintRequests || []);
         const t = document.getElementById("registrarTranscriptCount");
         if (t) t.textContent = transcriptRequests.length;
 
         const p = document.getElementById("registrarPendingCount");
-        if (p) p.textContent = transcriptRequests.filter(r => r.status === "Pending").length;
+        if (p) p.textContent = allRequests.filter(r => documentStatusBucket(r.status) === "Pending").length;
 
         const reprintsEl = document.getElementById("registrarReprintCount");
         if (reprintsEl) reprintsEl.textContent = String(reprintRequests.length);
 
-        const fulfilled = transcriptRequests.filter(r => r.status === "Released").length;
+        const fulfilled = allRequests.filter(r => documentStatusBucket(r.status) === "Completed").length;
         const rateEl = document.getElementById("registrarFulfillmentRate");
         if (rateEl) {
-            rateEl.textContent = transcriptRequests.length
-                ? Math.round((fulfilled / transcriptRequests.length) * 100) + "%"
+            rateEl.textContent = allRequests.length
+                ? Math.round((fulfilled / allRequests.length) * 100) + "%"
                 : "0%";
         }
     }
@@ -1084,9 +1007,6 @@
         if (typeof renderPlacementLogs === "function") renderPlacementLogs();
         if (typeof renderTranscriptRequests === "function") renderTranscriptRequests();
         if (typeof renderReprintRequests === "function") renderReprintRequests();
-        if (typeof renderRequestApproval === "function") renderRequestApproval();
-        if (typeof renderDocumentPreparation === "function") renderDocumentPreparation();
-        if (typeof renderReleaseClaiming === "function") renderReleaseClaiming();
         if (typeof renderRequestHistory === "function") renderRequestHistory();
         if (typeof renderAcademicRecords === "function") renderAcademicRecords();
         if (typeof updateNotificationBadge === "function") updateNotificationBadge();

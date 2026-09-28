@@ -24,7 +24,7 @@ router.get('/summary', staffOrAdmin, (req, res) => {
     transcriptRequests: {
       total: count('SELECT COUNT(*) AS n FROM transcript_requests'),
       pending: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Pending'"),
-      released: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Released'")
+      completed: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Completed'")
     },
     reprints: count('SELECT COUNT(*) AS n FROM reprints'),
     placements: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status IN ('Employed','Self-employed')"),
@@ -84,7 +84,7 @@ router.get('/dashboard', (req, res) => {
 router.get('/registrar', staffOrAdmin, (req, res) => {
   const pending = db.prepare("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Pending'").get().n;
   const approved = db.prepare("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Approved'").get().n;
-  const released = db.prepare("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Released'").get().n;
+  const completed = db.prepare("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Completed'").get().n;
   const rejected = db.prepare("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Rejected'").get().n;
   const reprintPending = db.prepare("SELECT COUNT(*) AS n FROM reprints WHERE status = 'Pending'").get().n;
 
@@ -92,11 +92,11 @@ router.get('/registrar', staffOrAdmin, (req, res) => {
     verificationStats: db.prepare("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = ''").get().n,
     pendingRequests: pending,
     approvedRequests: approved,
-    releasedRequests: released,
+    completedRequests: completed,
     rejectedRequests: rejected,
     reprintPending,
-    fulfillmentRate: (pending + approved + released + rejected) > 0
-      ? Math.round((released / (pending + approved + released + rejected)) * 100)
+    fulfillmentRate: (pending + approved + completed + rejected) > 0
+      ? Math.round((completed / (pending + approved + completed + rejected)) * 100)
       : 0
   });
 });

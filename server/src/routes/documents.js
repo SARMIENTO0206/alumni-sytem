@@ -31,6 +31,7 @@ const mapTranscript = (r) => ({
   approvedAt: r.approved_at || '',
   processedAt: r.processed_at || '',
   releasedAt: r.released_at || '',
+  completedAt: r.completed_at || '',
   cancelledAt: r.cancelled_at || '',
   correctionNotes: r.correction_notes || '',
   canCancel: ALUMNI_CANCEL_FROM.includes(r.status),
@@ -39,6 +40,7 @@ const mapTranscript = (r) => ({
 
 const mapReprint = (r) => ({
   id: r.id, name: r.name, type: r.type, status: r.status, remarks: r.remarks || '',
+  date: r.date || '',
   educationLevel: r.user_education_level || r.alumni_education_level || '',
   batch: r.user_batch || r.alumni_batch || r.alumni_education_year || '',
   strand: r.user_strand || r.alumni_strand || '',
@@ -51,6 +53,7 @@ const mapReprint = (r) => ({
   approvedAt: r.approved_at || '',
   processedAt: r.processed_at || '',
   releasedAt: r.released_at || '',
+  completedAt: r.completed_at || '',
   cancelledAt: r.cancelled_at || '',
   correctionNotes: r.correction_notes || '',
   canCancel: ALUMNI_CANCEL_FROM.includes(r.status),
@@ -92,10 +95,20 @@ function denyIfNotOwner(req, res, row, label) {
 
 function notifyStatusChange(row, kind, status, remarks) {
   const relatedType = kind === 'Transcript' ? 'transcript' : 'reprint';
-  const subject = `${kind} request ${status}`;
-  const message = remarks
-    ? `Your ${kind.toLowerCase()} request #${row.id} is now ${status}. ${remarks}`
-    : `Your ${kind.toLowerCase()} request #${row.id} is now ${status}.`;
+  const label = kind.toLowerCase();
+  const subject = status === 'Ready for Release'
+    ? `${kind} request ready for release`
+    : status === 'Completed'
+      ? `${kind} request completed`
+      : `${kind} request ${status}`;
+  /* Alumni-facing copy for the two workflow steps the Registrar triggers. */
+  const templates = {
+    'Ready for Release': `Your document is ready for release. ${kind} request #${row.id} can be claimed at the Registrar window — bring a valid ID.`,
+    Completed: `Your ${label} request #${row.id} is completed. The document has been claimed. Thank you.`,
+    Cancelled: `Your ${label} request #${row.id} was cancelled.`
+  };
+  let message = templates[status] || `Your ${label} request #${row.id} is now ${status}.`;
+  if (remarks) message = `${message} ${status === 'Rejected' ? `Reason: ${remarks}` : remarks}`;
   dispatchNotification({
     userId: row.user_id,
     alumniId: row.alumni_id,
@@ -317,7 +330,7 @@ router.post('/transcripts/:id/cancel', (req, res) => {
   if (!ALUMNI_CANCEL_FROM.includes(existing.status)) {
     return res.status(400).json({ error: 'This request can no longer be cancelled. Contact the Registrar.' });
   }
-  if (['Released', 'Cancelled'].includes(existing.status)) {
+  if (['Completed', 'Cancelled'].includes(existing.status)) {
     return res.status(400).json({ error: 'This request cannot be cancelled.' });
   }
   const remarks = String(req.body?.remarks || 'Cancelled by requester.');
@@ -437,8 +450,11 @@ router.post('/reprints', requireRole('alumni'), (req, res) => {
   if (requestNotes.length > 2000) return res.status(400).json({ error: 'Additional details must be 2,000 characters or fewer.' });
   const initialStatus = 'Pending';
   const info = db.prepare(
-    "INSERT INTO reprints (name, type, status, user_id, alumni_id, remarks, copies, reason, request_notes) VALUES (?, ?, ?, ?, ?, '', ?, ?, ?)"
-  ).run(name, type, initialStatus, owner.userId, owner.alumniId, copyCount, reason, requestNotes);
+    "INSERT INTO reprints (name, type, status, user_id, alumni_id, remarks, copies, reason, request_notes, date) VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?)"
+  ).run(
+    name, type, initialStatus, owner.userId, owner.alumniId, copyCount, reason, requestNotes,
+    new Date().toISOString().split('T')[0]
+  );
   const row = db.prepare('SELECT * FROM reprints WHERE id = ?').get(info.lastInsertRowid);
   if (req.body?.attachments) {
     try { saveAttachments('reprint', row.id, req.user.id, req.body.attachments); } catch (err) {
@@ -506,7 +522,7 @@ router.post('/reprints/:id/cancel', (req, res) => {
   if (!ALUMNI_CANCEL_FROM.includes(existing.status)) {
     return res.status(400).json({ error: 'This request can no longer be cancelled. Contact the Registrar.' });
   }
-  if (['Released', 'Cancelled'].includes(existing.status)) {
+  if (['Completed', 'Cancelled'].includes(existing.status)) {
     return res.status(400).json({ error: 'This request cannot be cancelled.' });
   }
   const remarks = String(req.body?.remarks || 'Cancelled by requester.');

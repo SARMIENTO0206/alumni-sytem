@@ -31,9 +31,10 @@ const staff = await login('registrar', 'registrar123');
 const admin = await login('admin', 'admin123');
 
 const created = await req(alumni.token, 'POST', '/api/transcripts', {
-  purpose: 'Board Exam / PRC Application',
+  purpose: 'Employment',
   type: 'Transcript of Records',
-  delivery: 'Pick-up at Registrar Window'
+  delivery: 'Pick-up at Registrar Window',
+  copies: 1
 });
 assert(created.status === 201, `create failed ${created.status} ${created.data?.error}`);
 assert(created.data.request.status === 'Pending', 'new document request must start Pending without requiring payment');
@@ -80,12 +81,17 @@ const ready = await req(staff.token, 'PUT', `/api/transcripts/${id}/status`, {
 assert(ready.status === 200 && ready.data.request.status === 'Ready for Release', 'ready for release failed');
 assert(ready.data.request.claimWindow.includes('Registrar'), 'claim window should be stored');
 
-const released = await req(staff.token, 'PUT', `/api/transcripts/${id}/status`, { status: 'Released' });
-assert(released.status === 200 && released.data.request.status === 'Released', 'released failed');
+const completed = await req(staff.token, 'PUT', `/api/transcripts/${id}/status`, { status: 'Completed' });
+assert(completed.status === 200 && completed.data.request.status === 'Completed', 'marking the claim must complete the request');
+assert(!!completed.data.request.completedAt, 'completed request must stamp completedAt');
+
+const releasedAlias = await req(staff.token, 'PUT', `/api/transcripts/${id}/status`, { status: 'Released' });
+assert(releasedAlias.status === 400, 'the retired Released status must be rejected in favour of Completed');
 
 const cancelable = await req(alumni.token, 'POST', '/api/transcripts', {
   purpose: 'Personal Copy',
-  type: 'Transcript of Records'
+  type: 'Transcript of Records',
+  copies: 1
 });
 const cancelId = cancelable.data.request.id;
 const cancelled = await req(alumni.token, 'POST', `/api/transcripts/${cancelId}/cancel`, { remarks: 'No longer needed.' });
@@ -98,4 +104,4 @@ assert(adminUsers.status === 200, 'admin manages users');
 const staffUsers = await req(staff.token, 'GET', '/api/users');
 assert(staffUsers.status === 403, 'registrar cannot manage all user accounts');
 
-console.log('request workflow ok', { id, cancelId, released: released.data.request.status });
+console.log('request workflow ok', { id, cancelId, completed: completed.data.request.status });

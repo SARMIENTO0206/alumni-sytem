@@ -42,7 +42,7 @@ function stats() {
     notSeeking: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND status = 'Not Currently Seeking'"),
     noTrackingData: count("SELECT COUNT(*) AS n FROM alumni WHERE COALESCE(archived_at, '') = '' AND (status IS NULL OR status = '' OR status = 'No Data')"),
     pendingRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Pending'"),
-    releasedRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Released'"),
+    completedRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Completed'"),
     rejectedRequests: count("SELECT COUNT(*) AS n FROM transcript_requests WHERE status = 'Rejected'"),
     totalRequests: count('SELECT COUNT(*) AS n FROM transcript_requests'),
     reprints: count('SELECT COUNT(*) AS n FROM reprints'),
@@ -248,7 +248,7 @@ router.post('/gmail-auto-reply', async (req, res) => {
   const s = stats();
   const context = [
     `Live figures you may reference when relevant: ${s.alumni} alumni records,`,
-    `${s.pendingRequests} pending transcript requests, ${s.releasedRequests} released,`,
+    `${s.pendingRequests} pending transcript requests, ${s.completedRequests} completed,`,
     `${s.events} upcoming events, ${s.reunions} batch reunions.`
   ].join(' ');
   const senderLine = matchedAlumni
@@ -443,7 +443,7 @@ router.post('/dashboard-insights', async (req, res) => {
       `Graduate outcomes - employed: ${s.employed}, self-employed: ${s.freelance}, seeking employment: ${s.unemployed}, further studies or training: ${s.furtherStudies}, not currently seeking: ${s.notSeeking}, no status data: ${s.noTrackingData}`,
       `Employment rate among alumni with reported status: ${employmentRate}%`,
       `Profile freshness: ${freshness}% (${s.staleProfiles} profiles outside the configured ${s.reminderMonths}-month reminder period)`,
-      `Transcript requests - total: ${s.totalRequests}, pending: ${s.pendingRequests}, released: ${s.releasedRequests}, rejected: ${s.rejectedRequests}`,
+      `Transcript requests - total: ${s.totalRequests}, pending: ${s.pendingRequests}, completed: ${s.completedRequests}, rejected: ${s.rejectedRequests}`,
       `Certificate reprints: ${s.reprints}`,
       `Alumni-reported employment records: ${s.placements}`,
       `Events: ${s.events}, batch reunions: ${s.reunions}`,
@@ -465,7 +465,7 @@ router.post('/dashboard-insights', async (req, res) => {
     observations.push(`All alumni profiles are within the configured ${s.reminderMonths}-month reminder period.`);
   }
   if (s.pendingRequests > 0) observations.push(`${s.pendingRequests} transcript request(s) are pending action by the Registrar.`);
-  if (s.releasedRequests > 0) observations.push(`${s.releasedRequests} document(s) have been released to alumni.`);
+  if (s.completedRequests > 0) observations.push(`${s.completedRequests} document request(s) have been completed (claimed or released) for alumni.`);
   if (s.reprints > 0) observations.push(`${s.reprints} certificate reprint request(s) are on file.`);
   if (s.placements > 0) observations.push(`${s.placements} alumni-reported employment record(s) are on file; this does not indicate school placement.`);
   if (s.reunions > 0) observations.push(`${s.reunions} batch reunion(s) are organized.`);

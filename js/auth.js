@@ -392,15 +392,13 @@
         staff: [
             "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
             "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback",
-            "verification", "academic-records", "request-approval", "document-processing",
-            "release-claiming", "request-history", "registrar-reports", "settings",
+            "verification", "academic-records", "request-history", "registrar-reports", "settings",
             "announcements", "notifications", "sms", "gmail", "unauthorized"
         ],
         registrar: [
             "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
             "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback",
-            "verification", "academic-records", "request-approval", "document-processing",
-            "release-claiming", "request-history", "registrar-reports", "settings",
+            "verification", "academic-records", "request-history", "registrar-reports", "settings",
             "announcements", "notifications", "sms", "gmail", "unauthorized"
         ],
         alumni: [

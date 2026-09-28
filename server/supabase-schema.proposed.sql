@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS public.transcript_requests (
   approved_at TEXT DEFAULT '',
   processed_at TEXT DEFAULT '',
   released_at TEXT DEFAULT '',
+  completed_at TEXT DEFAULT '',
   cancelled_at TEXT DEFAULT '',
   correction_notes TEXT DEFAULT '',
   created_at  TIMESTAMPTZ DEFAULT now()
@@ -117,6 +118,7 @@ ALTER TABLE public.transcript_requests ADD COLUMN IF NOT EXISTS claim_notes TEXT
 ALTER TABLE public.transcript_requests ADD COLUMN IF NOT EXISTS approved_at TEXT DEFAULT '';
 ALTER TABLE public.transcript_requests ADD COLUMN IF NOT EXISTS processed_at TEXT DEFAULT '';
 ALTER TABLE public.transcript_requests ADD COLUMN IF NOT EXISTS released_at TEXT DEFAULT '';
+ALTER TABLE public.transcript_requests ADD COLUMN IF NOT EXISTS completed_at TEXT DEFAULT '';
 ALTER TABLE public.transcript_requests ADD COLUMN IF NOT EXISTS cancelled_at TEXT DEFAULT '';
 ALTER TABLE public.transcript_requests ADD COLUMN IF NOT EXISTS correction_notes TEXT DEFAULT '';
 
@@ -127,6 +129,7 @@ CREATE TABLE IF NOT EXISTS public.reprints (
   name       TEXT DEFAULT '',
   type       TEXT DEFAULT '',
   status     TEXT DEFAULT 'Pending',
+  date       TEXT DEFAULT '',
   remarks    TEXT DEFAULT '',
   copies     INTEGER DEFAULT 1,
   fee_centavos INTEGER DEFAULT 0,
@@ -136,12 +139,14 @@ CREATE TABLE IF NOT EXISTS public.reprints (
   approved_at TEXT DEFAULT '',
   processed_at TEXT DEFAULT '',
   released_at TEXT DEFAULT '',
+  completed_at TEXT DEFAULT '',
   cancelled_at TEXT DEFAULT '',
   correction_notes TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS user_id BIGINT DEFAULT 0;
+ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS date TEXT DEFAULT '';
 ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS remarks TEXT DEFAULT '';
 ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS copies INTEGER DEFAULT 1;
 ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS fee_centavos INTEGER DEFAULT 0;
@@ -151,6 +156,7 @@ ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS claim_notes TEXT DEFAULT ''
 ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS approved_at TEXT DEFAULT '';
 ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS processed_at TEXT DEFAULT '';
 ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS released_at TEXT DEFAULT '';
+ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS completed_at TEXT DEFAULT '';
 ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS cancelled_at TEXT DEFAULT '';
 ALTER TABLE public.reprints ADD COLUMN IF NOT EXISTS correction_notes TEXT DEFAULT '';
 

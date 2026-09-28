@@ -789,14 +789,16 @@ button.stat-card {
 
 .status-employed,
 .status-approved,
-.status-verified {
+.status-verified,
+.status-completed {
   background-color: #ecfdf5;
   color: #047857;
   border: 1px solid #a7f3d0;
 }
 .status-employed::before,
 .status-approved::before,
-.status-verified::before {
+.status-verified::before,
+.status-completed::before {
   background-color: #10b981;
 }
 
@@ -821,23 +823,36 @@ button.stat-card {
 }
 
 .status-freelance,
-.status-released {
+.status-released,
+.status-ready {
   background-color: #eff6ff;
   color: #1d4ed8;
   border: 1px solid #bfdbfe;
 }
 .status-freelance::before,
-.status-released::before {
+.status-released::before,
+.status-ready::before {
   background-color: #3b82f6;
 }
 
-.status-postgrad {
+.status-postgrad,
+.status-processing {
   background-color: #faf5ff;
   color: #6b21a8;
   border: 1px solid #e9d5ff;
 }
-.status-postgrad::before {
+.status-postgrad::before,
+.status-processing::before {
   background-color: #a855f7;
+}
+
+.status-cancelled {
+  background-color: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+.status-cancelled::before {
+  background-color: #94a3b8;
 }
 
 /* =========================================================

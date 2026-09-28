@@ -116,7 +116,8 @@ export function initDb() {
       id     INTEGER PRIMARY KEY AUTOINCREMENT,
       name   TEXT DEFAULT '',
       type   TEXT DEFAULT '',
-      status TEXT DEFAULT 'Pending'
+      status TEXT DEFAULT 'Pending',
+      date   TEXT DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS placements (
@@ -405,8 +406,11 @@ export function initDb() {
   ensureColumn('transcript_requests', 'approved_at', "approved_at TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'processed_at', "processed_at TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'released_at', "released_at TEXT DEFAULT ''");
+  ensureColumn('transcript_requests', 'completed_at', "completed_at TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'cancelled_at', "cancelled_at TEXT DEFAULT ''");
   ensureColumn('transcript_requests', 'correction_notes', "correction_notes TEXT DEFAULT ''");
+  /* Certificate reprints show a "Requested" date like academic record requests. */
+  ensureColumn('reprints', 'date', "date TEXT DEFAULT ''");
   ensureColumn('reprints', 'fee_centavos', 'fee_centavos INTEGER DEFAULT 0');
   ensureColumn('reprints', 'payment_status', "payment_status TEXT DEFAULT ''");
   ensureColumn('reprints', 'copies', 'copies INTEGER DEFAULT 1');
@@ -415,6 +419,7 @@ export function initDb() {
   ensureColumn('reprints', 'approved_at', "approved_at TEXT DEFAULT ''");
   ensureColumn('reprints', 'processed_at', "processed_at TEXT DEFAULT ''");
   ensureColumn('reprints', 'released_at', "released_at TEXT DEFAULT ''");
+  ensureColumn('reprints', 'completed_at', "completed_at TEXT DEFAULT ''");
   ensureColumn('reprints', 'cancelled_at', "cancelled_at TEXT DEFAULT ''");
   ensureColumn('reprints', 'correction_notes', "correction_notes TEXT DEFAULT ''");
   db.exec(`
@@ -426,6 +431,17 @@ export function initDb() {
     SET status = CASE WHEN status = 'Payment Required' THEN 'Pending' ELSE status END,
         fee_centavos = 0,
         payment_status = '';
+    /* One workflow vocabulary across both request pages: the terminal state is
+       Completed (document claimed/released). Cancelled and Rejected stay as
+       separate terminal states and never count as Completed. */
+    UPDATE transcript_requests
+    SET status = 'Completed',
+        completed_at = CASE WHEN completed_at = '' THEN released_at ELSE completed_at END
+    WHERE status = 'Released';
+    UPDATE reprints
+    SET status = 'Completed',
+        completed_at = CASE WHEN completed_at = '' THEN released_at ELSE completed_at END
+    WHERE status = 'Released';
   `);
 
   db.exec(`
