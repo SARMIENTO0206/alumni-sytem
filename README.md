@@ -62,7 +62,7 @@ the header, not the sidebar.
   Document Services · Career & Tracking · Alumni Engagement · Communications ·
   Reports
 - **Alumni (*Alumni Portal*)** — Dashboard · My Graduate Status ·
-  Document Requests · Career Management · Alumni Engagement · Announcements ·
+  Document Requests · Career · Alumni Engagement · Announcements ·
   Settings
 
 ## 🧩 System modules & roles
@@ -72,7 +72,7 @@ the header, not the sidebar.
 | 1 | Alumni Database | Registrar creates/edits/verifies; Admin has export/archive oversight |
 | 2 | Transcript Requests | Alumni submit → Registrar processes → Admin monitors |
 | 3 | Graduate Tracking | Alumni update own status; Registrar verifies; Admin analytics/exports |
-| 4 | Career Management | Alumni report employment; Admin/Registrar manage job opportunities |
+| 4 | Career & Job Opportunities | Admin/Registrar post and manage job listings; Alumni browse them, apply, and track submissions in the Alumni-only **My Applications** menu |
 | 5 | Alumni Events / 6 Batch Reunions / 7 Donor Campaigns | Self-service under their own menus |
 | 8 | Certificate Reprints | Same flow as transcript requests |
 | 9 | Alumni Newsletter | Registrar drafts → Admin approves/publishes → Alumni read |
@@ -93,7 +93,10 @@ document requests are free (no checkout); newsletters go through a
 Registrar-draft → Admin-publish flow with in-app/email/SMS delivery;
 announcements/newsletters support scheduling, expiration, and channel
 selection; graduate tracking covers JHS/SHS outcomes without treating missing
-data as unemployment, and only Alumni can update their own status.
+data as unemployment, and only Alumni can update their own status. Job
+applications are private to the alumnus who submitted them: **My Applications**
+is an Alumni-only menu under *Career*, while Admin/Registrar manage the job
+postings and are alerted through the posting itself.
 
 ## 🛠️ Troubleshooting
 

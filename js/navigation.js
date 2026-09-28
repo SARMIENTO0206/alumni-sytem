@@ -432,7 +432,7 @@
             sms: "SMS",
             gmail: "Gmail / Email",
             "request-status": "Request Status",
-            applications: "Applications / Referrals",
+            applications: "My Applications",
             unauthorized: "Access Denied",
             payment: "Donation Checkout",
             "payment-receipt": "Payment Receipt"

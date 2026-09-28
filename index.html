@@ -531,10 +531,10 @@
                     </div>
                 </div>
                 <div class="sidebar-group">
-                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career Management</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
+                    <button type="button" class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)"><span>Career</span><i class="fa-solid fa-chevron-down sidebar-chevron"></i></button>
                     <div class="sidebar-group-items">
                         <button type="button" onclick="switchView('job-opportunities')" id="alumni-nav-job-opportunities" class="sidebar-link"><i class="fa-solid fa-magnifying-glass-dollar"></i><span>Job Opportunities</span></button>
-                        <button type="button" onclick="switchView('applications')" id="alumni-nav-applications" class="sidebar-link"><i class="fa-solid fa-file-circle-check"></i><span>My Applications / Referrals</span></button>
+                        <button type="button" onclick="switchView('applications')" id="alumni-nav-applications" class="sidebar-link"><i class="fa-solid fa-file-circle-check"></i><span>My Applications</span></button>
                     </div>
                 </div>
                 <div class="sidebar-group">
@@ -1080,7 +1080,7 @@
                     <div id="jobsListPanel" class="app-card p-6 sm:p-8">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div>
-                                <span class="status-badge status-freelance mb-1">Career Management</span>
+                                <span class="status-badge status-freelance mb-1">Career</span>
                                 <h3 class="text-xl font-extrabold text-slate-800">Job Opportunities</h3>
                                 <p class="text-xs text-slate-400 font-medium">All published opportunities are shared with the alumni community.</p>
                             </div>
@@ -2693,10 +2693,11 @@
 
                 <div id="view-applications" class="hidden space-y-6 fade-in">
                     <div class="app-card p-6">
-                        <h3 class="text-lg font-extrabold text-slate-800 mb-4">My Applications / Referrals</h3>
+                        <h3 class="text-lg font-extrabold text-slate-800">My Applications</h3>
+                        <p class="text-xs text-slate-400 font-medium mb-4">Job applications you submitted from Job Opportunities. Admin and Registrar manage the job postings, not these personal records.</p>
                         <div class="data-table-container">
                             <table class="modern-table">
-                                <thead><tr><th>Position</th><th>Company</th><th>Applicant</th><th>Email</th><th>Submitted</th></tr></thead>
+                                <thead><tr><th>Position</th><th>Company</th><th>Applied</th><th>Status</th><th></th></tr></thead>
                                 <tbody id="applicationsTableBody"></tbody>
                             </table>
                         </div>

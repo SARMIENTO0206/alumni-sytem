@@ -150,7 +150,7 @@ function pathFor(topic, role) {
     reprint: 'Document Requests > Certificate Reprints',
     documents: 'Document Requests > Request Status',
     tracking: 'My Graduate Status',
-    jobs: 'Career Management > Job Opportunities',
+    jobs: 'Career > Job Opportunities',
     events: 'Alumni Engagement > Alumni Events',
     reunions: 'Alumni Engagement > Batch Reunions',
     donations: 'Alumni Engagement > Donation Campaigns',
@@ -355,8 +355,8 @@ export function generateConversationalReply({ user, text, language, topic, inten
   if (topic === 'jobs') {
     if (isAlumni(user)) {
       return lang === 'en'
-        ? `Published jobs are in ${pathFor('jobs', role)}. There are currently ${context.own.jobs} published listing(s). You can open a job and apply from that page. Your applications are in Career Management > My Applications / Referrals.`
-        : `Nasa ${pathFor('jobs', role)} ang published jobs. May ${context.own.jobs} published listing ngayon. Pwede kang mag-apply doon. Ang applications mo ay nasa Career Management > My Applications / Referrals.`;
+        ? `Published jobs are in ${pathFor('jobs', role)}. There are currently ${context.own.jobs} published listing(s). You can open a job and apply from that page. Your own submissions are in Career > My Applications.`
+        : `Nasa ${pathFor('jobs', role)} ang published jobs. May ${context.own.jobs} published listing ngayon. Pwede kang mag-apply doon. Ang mga nasubmit mong application ay nasa Career > My Applications.`;
     }
     return lang === 'en'
       ? `Staff and administrators manage job listings in ${pathFor('jobs', role)}. Published jobs are the ones alumni can see.`
@@ -421,7 +421,7 @@ export function buildAssistantSystemPrompt(user, context, language) {
     'AI Chat uses OpenAI only when OPENAI_API_KEY is configured; otherwise use this knowledge.',
     'Never reveal another person\'s records. Alumni may only hear about their own linked records.',
     'Staff cannot manage users, roles, or system-wide settings. Admin can.',
-    'Navigation follows the real sidebar. Admin: Dashboard, Alumni Database, Document Services, Career & Tracking, Alumni Engagement, Communications, Reports & Administration. Registrar: Dashboard, Alumni Database, Document Services, Career & Tracking, Alumni Engagement, Communications, Reports. Alumni: Dashboard, My Graduate Status, Document Requests, Career Management, Alumni Engagement, Announcements, Settings. Single-item groups are shown as plain links, and Profile plus Notifications live in the header. AI Chat Support is the chat bubble and the header AI Assistant button - there is no AI Services menu.',
+    'Navigation follows the real sidebar. Admin: Dashboard, Alumni Database, Document Services, Career & Tracking, Alumni Engagement, Communications, Reports & Administration. Registrar: Dashboard, Alumni Database, Document Services, Career & Tracking, Alumni Engagement, Communications, Reports. Alumni: Dashboard, My Graduate Status, Document Requests, Career, Alumni Engagement, Announcements, Settings. My Applications is an Alumni-only personal record under Career; Admin and Registrar manage the job postings instead. Single-item groups are shown as plain links, and Profile plus Notifications live in the header. AI Chat Support is the chat bubble and the header AI Assistant button - there is no AI Services menu.',
     language !== 'en' ? 'Answer in natural Filipino or Taglish.' : 'Answer in clear English.',
     'If you cannot resolve a personal case from the data, say so and tell the user to contact staff. Do not pretend a ticket was sent.'
   ];

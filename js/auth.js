@@ -387,21 +387,21 @@
             "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
             "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback", "reports",
             "verification", "academic-records", "request-history", "registrar-reports", "users", "settings",
-            "announcements", "notifications", "sms", "gmail", "applications", "unauthorized"
+            "announcements", "notifications", "sms", "gmail", "unauthorized"
         ],
         staff: [
             "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
             "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback",
             "verification", "academic-records", "request-approval", "document-processing",
             "release-claiming", "request-history", "registrar-reports", "settings",
-            "announcements", "notifications", "sms", "gmail", "applications", "unauthorized"
+            "announcements", "notifications", "sms", "gmail", "unauthorized"
         ],
         registrar: [
             "dashboard", "database", "profile", "transcript", "reprint", "tracking", "placement",
             "job-opportunities", "events", "reunions", "donor", "newsletter", "feedback",
             "verification", "academic-records", "request-approval", "document-processing",
             "release-claiming", "request-history", "registrar-reports", "settings",
-            "announcements", "notifications", "sms", "gmail", "applications", "unauthorized"
+            "announcements", "notifications", "sms", "gmail", "unauthorized"
         ],
         alumni: [
             "dashboard", "idcard", "profile", "job-opportunities", "transcript",

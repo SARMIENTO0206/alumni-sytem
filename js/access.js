@@ -930,6 +930,22 @@ async function navigateNotificationTarget(type, relatedId, missing) {
         return true;
     }
     if (kind === "application") {
+        const allowed = typeof allowedViewsFor === "function" ? allowedViewsFor(currentRole()) : [];
+        if (allowed.length && !allowed.includes("applications")) {
+            /* Admin/Registrar manage the posting, not the alumnus personal record. */
+            try {
+                const data = await SAA_API.request("/api/applications");
+                const record = (data.applications || []).find((row) => Number(row.id) === Number(id));
+                if (record && Number(record.job_id)) {
+                    switchView("job-opportunities", { detailId: record.job_id });
+                    if (typeof showJobDetails === "function") await showJobDetails(record.job_id, true);
+                    showToast("Opened the job posting for this application.", "info");
+                    return true;
+                }
+            } catch (e) { /* fall through to the job list */ }
+            switchView("job-opportunities");
+            return true;
+        }
         switchView("applications", { detailId: id });
         return true;
     }
@@ -1039,6 +1055,12 @@ function renderRequestStatusView() {
     `).join("");
 }
 
+/** Opens the job listing an application refers to (My Applications > View). */
+function openJobFromApplication(id) {
+    switchView("job-opportunities", { detailId: id });
+    if (typeof showJobDetails === "function") showJobDetails(id, true);
+}
+
 async function loadApplicationsView() {
     const box = document.getElementById("applicationsTableBody");
     if (!box) return;
@@ -1047,18 +1069,21 @@ async function loadApplicationsView() {
         const rows = data.applications || [];
         applicationsList = rows;
         if (!rows.length) {
-            box.innerHTML = `<tr><td colspan="5" class="text-center text-slate-400">No applications or referrals yet.</td></tr>`;
+            box.innerHTML = `<tr><td colspan="5" class="text-center text-slate-400">You have not submitted any job applications yet.</td></tr>`;
             return;
         }
-        box.innerHTML = rows.map((r) => `
+        box.innerHTML = rows.map((r) => {
+            const jobId = Number(r.job_id) || 0;
+            const listingOpen = jobId > 0 && (jobsList || []).some((job) => Number(job.id) === jobId);
+            return `
             <tr>
                 <td>${escapeHtml(r.title || "—")}</td>
                 <td>${escapeHtml(r.company || "—")}</td>
-                <td>${escapeHtml(r.applicant || "—")}</td>
-                <td>${escapeHtml(r.email || "—")}</td>
                 <td>${escapeHtml(r.created_at || r.createdAt || "—")}</td>
-            </tr>
-        `).join("");
+                <td><span class="status-badge">Submitted</span></td>
+                <td>${listingOpen ? `<button type="button" class="btn btn-secondary text-xs" onclick="openJobFromApplication(${jobId})">View</button>` : `<span class="text-xs text-slate-400">Listing closed</span>`}</td>
+            </tr>`;
+        }).join("");
     } catch (err) {
         box.innerHTML = `<tr><td colspan="5" class="text-center text-rose-600">${escapeHtml(err.message)}</td></tr>`;
     }

@@ -354,6 +354,39 @@ const alumniNotifications = await req(alumni.token, 'GET', '/api/notifications')
 assert(alumniNotifications.data.notifications.some((item) => Number(item.relatedId) === Number(job.data.job.id)), 'selected in-app job notifications are delivered to Alumni');
 const adminJobs = await req(admin.token, 'GET', '/api/jobs');
 assert(adminJobs.data.jobs.some((item) => item.id === job.data.job.id && item.posted_by === registrar.user.name), 'Admin sees all jobs and their authors');
+
+/* My Applications is an Alumni-only personal record; staff manage the postings. */
+const portalJob = await req(registrar.token, 'POST', '/api/jobs', {
+  title: `My Applications Test ${Date.now()}`,
+  company: 'Alumni Portal Employer',
+  location: 'Caloocan City',
+  industry: 'Education',
+  employment_type: 'Full-time',
+  description: 'Applications are submitted inside the alumni portal.',
+  qualifications: 'Any bachelor degree',
+  application_method: 'Portal',
+  application_details: 'Submit through the alumni portal.',
+  status: 'Published',
+  notify_in_app: false,
+  notify_email: false
+});
+assert(portalJob.status === 201 && portalJob.data.job.application_method === 'Portal', 'Registrar can publish a portal-application job');
+const portalApplication = await req(alumni.token, 'POST', `/api/jobs/${portalJob.data.job.id}/apply`, {
+  name: 'Alumni Applicant',
+  email: 'alumni.applicant@example.test',
+  resumeName: 'resume.pdf'
+});
+assert(portalApplication.status === 201 && Number(portalApplication.data.application.job_id) === Number(portalJob.data.job.id), 'Alumni can apply to a published portal job');
+const myApplications = await req(alumni.token, 'GET', '/api/applications');
+assert(myApplications.status === 200 && myApplications.data.applications.some((item) => Number(item.id) === Number(portalApplication.data.application.id)), 'a submitted application appears in My Applications');
+assert(myApplications.data.applications.every((item) => Number(item.user_id) === Number(alumni.user.id)), 'My Applications returns only the logged-in Alumni own records');
+const alumniApplicationNotice = (await req(alumni.token, 'GET', '/api/notifications')).data.notifications
+  .find((item) => item.relatedType === 'application' && Number(item.relatedId) === Number(portalApplication.data.application.id));
+assert(alumniApplicationNotice && alumniApplicationNotice.targetUrl === '/#/applications', 'Alumni application alerts open My Applications');
+const registrarApplicationNotice = (await req(registrar.token, 'GET', '/api/notifications')).data.notifications
+  .find((item) => String(item.subject || '').startsWith('New job application'));
+assert(registrarApplicationNotice && registrarApplicationNotice.relatedType === 'job', 'staff application alerts are linked to the job posting');
+assert(String(registrarApplicationNotice.targetUrl || '').startsWith('/#/jobs'), 'staff application alerts open Job Opportunities instead of the Alumni My Applications page');
 const alumniPostJob = await req(alumni.token, 'POST', '/api/jobs', { title: 'Unauthorized job' });
 assert(alumniPostJob.status === 403, 'alumni cannot publish job opportunities');
 const invalidJobLink = await req(registrar.token, 'POST', '/api/jobs', {

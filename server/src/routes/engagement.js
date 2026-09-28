@@ -1460,11 +1460,13 @@ router.post('/jobs/:id/apply', (req, res) => {
     email: email || req.user.email,
     phone: req.user.contact
   }).catch(() => {});
+  /* Staff manage the posting, not the alumnus personal record: this alert opens
+     the Job Opportunities listing that received the application. */
   dispatchStaffAudience(
     `New job application: ${row.title || 'Position'}`,
     `${applicant} applied for ${row.title || 'a job'}.`,
-    'application',
-    row.id
+    'job',
+    row.job_id
   ).catch(() => {});
   mirror('job_applications', row);
   res.status(201).json({ application: row });
