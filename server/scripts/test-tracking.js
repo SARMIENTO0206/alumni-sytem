@@ -450,4 +450,52 @@ assert(restoreLinkedAccount.status === 200, 'Admin can restore a linked alumni r
 const loginAfterRestore = await login('alumni', 'alumni123');
 assert(loginAfterRestore.user.status === 'Active', 'restoring an alumni record restores its previous account status');
 
+/* Registered email changes are verified: an unverified address never becomes active. */
+/* The archive/restore checks above invalidate the original Alumni session token. */
+const alumniSession = await login('alumni', 'alumni123');
+alumni.token = alumniSession.token;
+const invalidEmailChange = await req(alumni.token, 'POST', '/api/auth/profile/email/request', { email: 'not-an-email' });
+assert(invalidEmailChange.status === 400, 'an invalid email address is rejected before anything is sent');
+const sameEmailChange = await req(registrar.token, 'POST', '/api/auth/profile/email/request', { email: 'registrar@stagnes.edu.ph' });
+assert(sameEmailChange.status === 400, 'requesting the already registered address is rejected');
+const takenEmailChange = await req(alumni.token, 'POST', '/api/auth/profile/email/request', { email: 'registrar@stagnes.edu.ph' });
+assert(takenEmailChange.status === 409, 'an address already registered to another account is rejected');
+const newAlumniEmail = `alumni.verified.${Date.now()}@example.test`;
+const emailChangeRequest = await req(alumni.token, 'POST', '/api/auth/profile/email/request', { email: newAlumniEmail });
+assert(emailChangeRequest.status === 202 && emailChangeRequest.data.pendingEmail === newAlumniEmail, 'a valid new address starts the verification flow');
+assert(/^\d{6}$/.test(String(emailChangeRequest.data.devCode || '')), 'without an SMTP provider the code is returned to the account owner for local testing');
+const profileBeforeEmailVerify = await req(alumni.token, 'GET', '/api/auth/me');
+assert(!profileBeforeEmailVerify.data.user.email, 'the registered email is unchanged until the code is confirmed');
+assert(profileBeforeEmailVerify.data.pendingEmailChange && profileBeforeEmailVerify.data.pendingEmailChange.newEmail === newAlumniEmail, 'the pending email change state is exposed on the profile');
+const directEmailEdit = await req(alumni.token, 'PUT', '/api/auth/profile', { email: newAlumniEmail });
+assert(directEmailEdit.status === 400, 'the registered email cannot be changed by saving the profile form');
+const wrongEmailCode = await req(alumni.token, 'POST', '/api/auth/profile/email/verify', { code: '000000' });
+assert(wrongEmailCode.status === 400, 'an incorrect verification code is rejected');
+const verifiedEmailChange = await req(alumni.token, 'POST', '/api/auth/profile/email/verify', { code: emailChangeRequest.data.devCode });
+assert(verifiedEmailChange.status === 200 && verifiedEmailChange.data.user.email === newAlumniEmail, 'confirming the code activates the new registered email');
+const profileAfterEmailVerify = await req(alumni.token, 'GET', '/api/auth/me');
+assert(profileAfterEmailVerify.data.user.email === newAlumniEmail && !profileAfterEmailVerify.data.pendingEmailChange, 'the pending state clears once the address is verified');
+const secondEmailChange = await req(alumni.token, 'POST', '/api/auth/profile/email/request', { email: `alumni.second.${Date.now()}@example.test` });
+assert(secondEmailChange.status === 202, 'a second verified email change can be started');
+const cancelledEmailChange = await req(alumni.token, 'POST', '/api/auth/profile/email/cancel');
+assert(cancelledEmailChange.status === 200 && cancelledEmailChange.data.cancelled === 1, 'a pending email change can be cancelled');
+const pendingAfterCancel = await req(alumni.token, 'GET', '/api/auth/me');
+assert(!pendingAfterCancel.data.pendingEmailChange && pendingAfterCancel.data.user.email === newAlumniEmail, 'cancelling keeps the verified registered email in place');
+
+/* AI-assisted replies recognise the sender from the registered email. */
+const matchedReply = await req(registrar.token, 'POST', '/api/ai/gmail-auto-reply', {
+  from: newAlumniEmail,
+  subject: 'Transcript request',
+  body: 'Paano po mag-request ng transcript?'
+});
+assert(matchedReply.status === 200 && matchedReply.data.matchedAlumni && matchedReply.data.matchedAlumni.email === newAlumniEmail, 'an inquiry from a registered email is matched to that alumni account');
+assert(matchedReply.data.matchedAlumni.name === alumni.user.name, 'the matched alumni card carries the account name');
+assert(typeof matchedReply.data.matchedAlumni.alumniId === 'string' && Number.isInteger(matchedReply.data.matchedAlumni.pendingRequests), 'the matched alumni card reports the Alumni ID and open requests');
+const unmatchedReply = await req(registrar.token, 'POST', '/api/ai/gmail-auto-reply', {
+  from: `stranger.${Date.now()}@example.test`,
+  subject: 'Inquiry',
+  body: 'Who are you?'
+});
+assert(unmatchedReply.status === 200 && unmatchedReply.data.matchedAlumni === null, 'an unknown sender is not matched to any alumni record');
+
 console.log('Alumni Database, Graduate Tracking, Communications, Career Management, and Newsletter role checks passed.');

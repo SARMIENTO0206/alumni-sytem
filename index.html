@@ -957,12 +957,23 @@
                                     <p id="profileNameHelp" class="hidden text-[10px] text-slate-400 mt-1">Contact the Registrar to request a name correction.</p>
                                 </div>
                                 <div>
-                                    <label class="form-label" for="profileEmail">Email Address</label>
+                                    <label class="form-label" for="profileEmail">Email Address <span class="text-rose-600">*</span></label>
                                     <input id="profileEmail" type="email" class="form-input text-sm" placeholder="e.g. alumni@gmail.com">
+                                    <p class="text-[10px] text-slate-400 mt-1">Announcements, notifications and AI-assisted replies are sent to this address. A change needs email verification before it becomes active.</p>
+                                    <div id="profileEmailPending" class="hidden mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                                        <p class="text-[11px] text-amber-900">Waiting for verification: <b id="profileEmailPendingAddress"></b></p>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <input id="profileEmailCode" inputmode="numeric" maxlength="6" placeholder="6-digit code" class="form-input text-xs w-28">
+                                            <button type="button" onclick="confirmEmailChange()" class="btn btn-primary text-[11px] py-1 px-2.5">Verify</button>
+                                            <button type="button" onclick="cancelEmailChange()" class="btn btn-secondary text-[11px] py-1 px-2.5">Cancel</button>
+                                        </div>
+                                        <p id="profileEmailHint" class="text-[10px] text-amber-700"></p>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="form-label" for="profileContact">Mobile Number</label>
                                     <input id="profileContact" type="text" class="form-input text-sm" placeholder="09XXXXXXXXX or +639XXXXXXXXX">
+                                    <p class="text-[10px] text-slate-400 mt-1">Used as the destination for automated SMS reminders.</p>
                                 </div>
                                 <div>
                                     <label class="form-label" for="profileAddress">Address</label>
@@ -2670,6 +2681,7 @@
                                 <textarea id="aiGmailBody" rows="3" required placeholder="Inbound message body..." class="form-input text-xs"></textarea>
                                 <button type="submit" class="btn btn-secondary text-xs w-full py-2"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Auto-Reply</button>
                             </form>
+                            <div id="aiGmailMatched" class="hidden mt-3 p-3 rounded-lg border border-emerald-200 bg-emerald-50/60 text-[11px] text-emerald-900"></div>
                             <div id="aiGmailReply" class="hidden mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></div>
                         </section>
                         <section>

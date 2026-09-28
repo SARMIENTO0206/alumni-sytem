@@ -593,6 +593,7 @@
     /* Profile Functions */
     async function loadAlumniProfile() {
         let user = currentUser || {};
+        let pendingEmailChange = null;
         let alumni = alumniList.find(a =>
             currentUser && (
                 (currentUser.studentId && a.studentId === currentUser.studentId) ||
@@ -605,6 +606,7 @@
                 const data = await SAA_API.request("/api/auth/me");
                 user = data.user || user;
                 alumni = data.alumni || alumni;
+                pendingEmailChange = data.pendingEmailChange || null;
                 currentUser = Object.assign({}, currentUser || {}, user);
                 sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
             } catch (e) { /* keep last known session user */ }
@@ -617,6 +619,7 @@
         const heading = document.getElementById("profileHeadingName");
         if (heading) heading.textContent = name || "My Profile";
         setVal("profileEmail", user.email || "");
+        renderEmailChangeState(pendingEmailChange);
         setVal("profileContact", user.contact || alumni.contact || "");
         setVal("profileAddress", user.address || alumni.address || "");
         /* Alumni ID = official record ID issued on verification. The account code
@@ -646,15 +649,78 @@
         }
     }
 
-    async function saveAlumniProfile() {
-        const profile = {
-            email: document.getElementById("profileEmail").value.trim(),
-            contact: document.getElementById("profileContact").value.trim(),
-            address: (document.getElementById("profileAddress") || {}).value || "",
-            photoUrl: currentUser.photoUrl || ""
-        };
-        if (!isAlumniRole()) profile.name = document.getElementById("profileName").value.trim() || currentUser.name;
+    /** Shows/hides the verified email-change panel from the API state. */
+    function renderEmailChangeState(pending, hint) {
+        const panel = document.getElementById("profileEmailPending");
+        if (!panel) return;
+        const address = document.getElementById("profileEmailPendingAddress");
+        const hintEl = document.getElementById("profileEmailHint");
+        const code = document.getElementById("profileEmailCode");
+        if (pending && pending.newEmail) {
+            panel.classList.remove("hidden");
+            if (address) address.textContent = pending.newEmail;
+            if (hintEl) hintEl.textContent = hint || "Enter the 6-digit code sent to the new address. Your registered email stays the same until it is confirmed.";
+        } else {
+            panel.classList.add("hidden");
+            if (address) address.textContent = "";
+            if (hintEl) hintEl.textContent = "";
+            if (code) code.value = "";
+        }
+    }
 
+    /** Step 1: ask the server to send a verification code to the new address. */
+    async function requestEmailChange(newEmail) {
+        try {
+            const data = await SAA_API.request("/api/auth/profile/email/request", {
+                method: "POST",
+                body: JSON.stringify({ email: newEmail })
+            });
+            const hint = data.devCode
+                ? `No email provider is configured, so the code is shown here for testing: ${data.devCode}`
+                : "Enter the 6-digit code sent to the new address. Your registered email stays the same until it is confirmed.";
+            renderEmailChangeState({ newEmail: data.pendingEmail }, hint);
+            showToast(data.message || "Verification code sent to the new address.", "info");
+            return true;
+        } catch (err) {
+            showToast(err.message || "Unable to start the email change.", "error");
+            return false;
+        }
+    }
+
+    /** Step 2: confirm the code so the new address becomes the registered email. */
+    async function confirmEmailChange() {
+        const code = (document.getElementById("profileEmailCode") || {}).value || "";
+        if (!/^\d{6}$/.test(code.trim())) {
+            showToast("Enter the 6-digit code sent to the new address.", "error");
+            return;
+        }
+        try {
+            const data = await SAA_API.request("/api/auth/profile/email/verify", {
+                method: "POST",
+                body: JSON.stringify({ code: code.trim() })
+            });
+            currentUser = Object.assign({}, currentUser, data.user || {});
+            sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
+            renderEmailChangeState(null);
+            showToast(data.message || "Email address verified and updated.", "success");
+            if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
+            loadAlumniProfile();
+        } catch (err) {
+            showToast(err.message || "Unable to verify this code.", "error");
+        }
+    }
+
+    async function cancelEmailChange() {
+        try {
+            await SAA_API.request("/api/auth/profile/email/cancel", { method: "POST" });
+        } catch (err) { /* the pending code simply expires */ }
+        renderEmailChangeState(null);
+        showToast("Pending email change cancelled. Your registered email was not changed.", "info");
+        loadAlumniProfile();
+    }
+
+    /** PUT the editable profile fields (the registered email is verified separately). */
+    async function saveProfileDetails(profile) {
         try {
             if (typeof SAA_API === "undefined") throw new Error("The server is offline.");
             const data = await SAA_API.request("/api/auth/profile", {
@@ -670,10 +736,43 @@
             document.getElementById("profileHeadingName").textContent = currentUser.name;
             if (typeof applyRoleChrome === "function") applyRoleChrome();
             showToast("Profile details saved to the database.", "success");
-            loadAlumniProfile();
+            return true;
         } catch (err) {
             showToast(err.message || "Unable to save profile to the database.", "error");
+            return false;
         }
+    }
+
+    async function saveAlumniProfile() {
+        const emailField = document.getElementById("profileEmail");
+        const typedEmail = emailField.value.trim();
+        const currentEmail = String(currentUser.email || "").trim();
+        const profile = {
+            email: currentEmail,
+            contact: document.getElementById("profileContact").value.trim(),
+            address: (document.getElementById("profileAddress") || {}).value || "",
+            photoUrl: currentUser.photoUrl || ""
+        };
+        if (!isAlumniRole()) profile.name = document.getElementById("profileName").value.trim() || currentUser.name;
+
+        /* The registered email is the communication address for announcements,
+           notifications and AI-assisted replies, so it is required. */
+        if (!typedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail)) {
+            showToast("Enter a valid email address so notifications can reach you.", "error");
+            emailField.focus();
+            return;
+        }
+
+        const saved = await saveProfileDetails(profile);
+        if (!saved) return;
+
+        /* A different address is verified first: it never becomes the active
+           registered email just by saving the form. */
+        if (typedEmail.toLowerCase() !== currentEmail.toLowerCase()) {
+            await requestEmailChange(typedEmail);
+            return;
+        }
+        loadAlumniProfile();
     }
 
 /* ------------------------------------------------------------------------- */

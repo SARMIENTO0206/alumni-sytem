@@ -4,7 +4,7 @@ import { createHash, randomInt } from 'node:crypto';
 import { db, createSession, destroySession, destroyUserSessions, generateUserCode, mapUser, mapAlumni, writeAudit, writeLoginLog, linkAlumniAccount } from '../db.js';
 import { isAlumni, requireAuth } from '../auth.js';
 import { normalizePhMobile } from '../phone.js';
-import { sendMail } from '../mail.js';
+import { mailConfig, sendMail } from '../mail.js';
 import { sendSms } from '../sms.js';
 
 const router = Router();
@@ -42,6 +42,32 @@ function passwordPolicyError(password) {
     return 'Password must include an uppercase letter, a lowercase letter, and a number.';
   }
   return '';
+}
+
+/* ---------------------------------------------------------------------------
+ * Registered email changes are verified before they become the active address.
+ * The registered address is the recipient of email notifications and the key the
+ * system matches when an inbound inquiry is answered with AI assistance.
+ * ------------------------------------------------------------------------- */
+const EMAIL_CHANGE_TTL_MINUTES = 30;
+const emailChangeAttempts = new Map();
+
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+/** Pending (unused, unexpired) verified email change for an account. */
+function pendingEmailChangeFor(userId) {
+  const row = db.prepare(
+    `SELECT new_email AS newEmail, expires_at AS expiresAt FROM email_change_requests
+     WHERE user_id = ? AND used_at IS NULL AND expires_at > datetime('now')
+     ORDER BY id DESC`
+  ).get(userId);
+  return row || null;
 }
 
 router.post('/password-reset/request', async (req, res) => {
@@ -275,7 +301,8 @@ router.get('/me', requireAuth, (req, res) => {
   const alumni = user.alumniId
     ? mapAlumni(db.prepare('SELECT * FROM alumni WHERE id = ?').get(user.alumniId))
     : null;
-  res.json({ user, alumni });
+  const pendingEmailChange = pendingEmailChangeFor(req.user.id);
+  res.json({ user, alumni, pendingEmailChange });
 });
 
 /** POST /api/auth/logout - revokes the current session token. */
@@ -285,10 +312,125 @@ router.post('/logout', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+/**
+ * POST /api/auth/profile/email/request - start a verified registered-email change.
+ * The new address receives a one-time code; the registered email only moves after
+ * that code is confirmed, so notifications never go to an unverified address.
+ */
+router.post('/profile/email/request', requireAuth, async (req, res) => {
+  const newEmail = normalizeEmail(req.body?.email);
+  if (!isValidEmail(newEmail)) {
+    return res.status(400).json({ error: 'Enter a valid email address.' });
+  }
+  if (isRateLimited(emailChangeAttempts, String(req.user.id))) {
+    return res.status(429).json({ error: 'Too many verification requests. Please try again later.' });
+  }
+  const current = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  if (!current) return res.status(404).json({ error: 'Account not found.' });
+  if (normalizeEmail(current.email) === newEmail) {
+    return res.status(400).json({ error: 'This is already your registered email address.' });
+  }
+  const taken = db.prepare('SELECT id FROM users WHERE LOWER(email) = ? AND id <> ?').get(newEmail, req.user.id);
+  if (taken) return res.status(409).json({ error: 'This email address is already registered to another account.' });
+
+  db.prepare('UPDATE email_change_requests SET used_at = datetime(?) WHERE user_id = ? AND used_at IS NULL')
+    .run(new Date().toISOString(), req.user.id);
+  const code = String(randomInt(100000, 1000000));
+  const expiresAt = new Date(Date.now() + EMAIL_CHANGE_TTL_MINUTES * 60 * 1000).toISOString();
+  db.prepare(
+    'INSERT INTO email_change_requests (user_id, new_email, code_hash, expires_at) VALUES (?, ?, ?, ?)'
+  ).run(req.user.id, newEmail, hashResetOtp(code), expiresAt);
+
+  const delivery = await sendMail({
+    to: newEmail,
+    subject: 'Confirm your new Alumni Portal email address',
+    text: [
+      `Your email verification code is ${code}.`,
+      `It expires in ${EMAIL_CHANGE_TTL_MINUTES} minutes and can only be used once.`,
+      'Your registered email address stays the same until you confirm this code.'
+    ].join('\n'),
+    userId: req.user.id
+  });
+
+  writeLoginLog({ id: req.user.id, username: req.user.username }, 'email_change_requested');
+  const response = {
+    ok: true,
+    pendingEmail: newEmail,
+    expiresAt,
+    emailConfigured: mailConfig().configured,
+    deliveryStatus: delivery.status,
+    message: 'We sent a verification code to the new address. Your registered email changes only after you confirm it.'
+  };
+  /* Without an SMTP provider the code cannot be delivered, so it is returned to
+     the signed-in account owner only, so the flow stays testable locally. */
+  if (!mailConfig().configured) response.devCode = code;
+  return res.status(202).json(response);
+});
+
+/** POST /api/auth/profile/email/verify - confirm the code and activate the new email. */
+router.post('/profile/email/verify', requireAuth, (req, res) => {
+  const code = String(req.body?.code || '').trim();
+  if (!/^\d{6}$/.test(code)) {
+    return res.status(400).json({ error: 'Enter the 6-digit code sent to the new address.' });
+  }
+  const row = db.prepare(
+    `SELECT * FROM email_change_requests
+     WHERE code_hash = ? AND user_id = ? AND used_at IS NULL AND expires_at > datetime('now')`
+  ).get(hashResetOtp(code), req.user.id);
+  if (!row) return res.status(400).json({ error: 'This verification code is invalid or has expired.' });
+  const taken = db.prepare('SELECT id FROM users WHERE LOWER(email) = ? AND id <> ?')
+    .get(normalizeEmail(row.new_email), req.user.id);
+  if (taken) return res.status(409).json({ error: 'This email address is already registered to another account.' });
+
+  const previous = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  const updated = db.prepare('UPDATE email_change_requests SET used_at = ? WHERE id = ? AND used_at IS NULL')
+    .run(new Date().toISOString(), row.id);
+  if (updated.changes !== 1) return res.status(400).json({ error: 'This verification code is invalid or has expired.' });
+
+  db.prepare('UPDATE users SET email = ? WHERE id = ?').run(row.new_email, req.user.id);
+  const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  if (updatedUser.alumni_id) {
+    db.prepare('UPDATE alumni SET email = ? WHERE id = ?').run(row.new_email, updatedUser.alumni_id);
+  }
+  writeAudit(req.user, 'update', 'email_change', req.user.id, row.new_email);
+  writeLoginLog({ id: req.user.id, username: req.user.username }, 'email_change_verified');
+  if (previous?.email) {
+    sendMail({
+      to: previous.email,
+      subject: 'Your Alumni Portal email address was changed',
+      text: `Hello ${previous.name || 'Alumni'},\n\nYour registered email address was changed to ${row.new_email}. If you did not make this change, contact the Alumni Affairs Office immediately.`,
+      userId: req.user.id
+    }).catch(() => {});
+  }
+  const alumni = updatedUser.alumni_id
+    ? mapAlumni(db.prepare('SELECT * FROM alumni WHERE id = ?').get(updatedUser.alumni_id))
+    : null;
+  return res.json({
+    ok: true,
+    email: row.new_email,
+    user: mapUser(updatedUser),
+    alumni,
+    message: 'Email address verified and updated.'
+  });
+});
+
+/** POST /api/auth/profile/email/cancel - discard a pending verified email change. */
+router.post('/profile/email/cancel', requireAuth, (req, res) => {
+  const info = db.prepare('UPDATE email_change_requests SET used_at = datetime(?) WHERE user_id = ? AND used_at IS NULL')
+    .run(new Date().toISOString(), req.user.id);
+  res.json({ ok: true, cancelled: info.changes });
+});
+
 router.put('/profile', requireAuth, (req, res) => {
   const { name, email, contact, title, photoUrl, address } = req.body || {};
   const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   if (!existing) return res.status(404).json({ error: 'Account not found.' });
+  /* The registered email only moves through the verified email-change flow. */
+  if (normalizeEmail(email ?? existing.email) !== normalizeEmail(existing.email)) {
+    return res.status(400).json({
+      error: 'Changing your email address needs verification. Save your other details, then confirm the new address with the code we send to it.'
+    });
+  }
   const profileName = isAlumni(req.user) ? existing.name : (name ?? existing.name);
   const profileTitle = isAlumni(req.user) ? existing.title : (title ?? existing.title);
   let mobile = existing.contact;
@@ -301,7 +443,7 @@ router.put('/profile', requireAuth, (req, res) => {
     'UPDATE users SET name = ?, email = ?, contact = ?, title = ?, photo_url = ?, address = ? WHERE id = ?'
   ).run(
     profileName,
-    email ?? existing.email,
+    existing.email,
     mobile,
     profileTitle,
     photoUrl ?? existing.photo_url,

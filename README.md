@@ -106,7 +106,10 @@ selection; graduate tracking covers JHS/SHS outcomes without treating missing
 data as unemployment, and only Alumni can update their own status. Job
 applications are private to the alumnus who submitted them: **My Applications**
 is an Alumni-only menu under *Career*, while Admin/Registrar manage the job
-postings and are alerted through the posting itself.
+postings and are alerted through the posting itself. The **registered email** on
+the profile is the address used for email notifications and can only be changed
+after email verification, so an unverified address never receives school mail.
+AI-assisted replies match the sender to that registered address first.
 
 ## 🛠️ Troubleshooting
 
@@ -178,6 +181,8 @@ except `/health` and `/auth/login|register`).
 
 - **Auth / Alumni / Documents:** login, registration, profile, and
   role-restricted record + transcript/reprint/placement endpoints
+- **Registered email (verified contact address):** `POST /auth/profile/email/request`,
+  `POST /auth/profile/email/verify`, `POST /auth/profile/email/cancel`
 - **Tracking:** `GET /tracking`, `GET/PUT /tracking/settings`,
   `PUT /tracking/:id/employment`, `PUT /tracking/:id/review`,
   `POST /tracking/reminders/sweep`
@@ -269,7 +274,7 @@ otherwise a built-in fallback answers from the live database.
 | `GET /api/ai/status` | Active engine (OpenAI vs fallback) |
 | `POST /api/ai/assistant` | AI Chat Support |
 | `POST /api/ai/compose-announcement` | AI-drafted announcement / newsletter / SMS copy (used by the announcement composer, Newsletter AI Compose and the SMS composer) |
-| `POST /api/ai/gmail-auto-reply` | Drafted reply for inbound email |
+| `POST /api/ai/gmail-auto-reply` | Drafted reply for inbound email (sender matched to the registered alumni account) |
 | `POST /api/ai/summarize-survey` | Survey sentiment/themes/recommendations |
 | `POST /api/ai/dashboard-insights` | Narrative insight from live metrics |
 

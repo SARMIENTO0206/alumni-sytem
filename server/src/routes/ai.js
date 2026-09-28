@@ -221,12 +221,45 @@ router.post('/gmail-auto-reply', async (req, res) => {
     return res.status(400).json({ error: 'Both "from" and "body" (the inbound email) are required.' });
   }
 
+  /* Recognise the sender: inbound inquiries are matched against the registered
+     email on the alumni profile so staff see who they are replying to. */
+  const senderEmail = String(from).trim().toLowerCase();
+  const senderUser = db.prepare("SELECT * FROM users WHERE LOWER(email) = ? AND role = 'alumni'").get(senderEmail);
+  const linkedAlumni = senderUser?.alumni_id
+    ? db.prepare('SELECT * FROM alumni WHERE id = ?').get(senderUser.alumni_id)
+    : null;
+  const matchedAlumni = senderUser
+    ? {
+        userId: senderUser.id,
+        name: senderUser.name || linkedAlumni?.name || 'Alumni',
+        userCode: senderUser.user_code || '',
+        alumniId: linkedAlumni?.student_id || '',
+        batch: linkedAlumni?.batch || senderUser.batch || '',
+        program: linkedAlumni?.program || senderUser.program || '',
+        email: senderUser.email || '',
+        pendingRequests: db.prepare(
+          "SELECT COUNT(*) AS n FROM transcript_requests WHERE user_id = ? AND status IN ('Pending','Processing')"
+        ).get(senderUser.id)?.n || 0
+      }
+    : null;
+
   const s = stats();
   const context = [
     `Live figures you may reference when relevant: ${s.alumni} alumni records,`,
     `${s.pendingRequests} pending transcript requests, ${s.releasedRequests} released,`,
     `${s.events} upcoming events, ${s.reunions} batch reunions.`
   ].join(' ');
+  const senderLine = matchedAlumni
+    ? [
+        `The sender is a registered alumnus of this system:`,
+        `Name: ${matchedAlumni.name}`,
+        matchedAlumni.alumniId ? `Alumni ID: ${matchedAlumni.alumniId}` : '',
+        matchedAlumni.batch ? `Batch: ${matchedAlumni.batch}` : '',
+        matchedAlumni.program ? `Program: ${matchedAlumni.program}` : '',
+        `Open requests: ${matchedAlumni.pendingRequests}`,
+        'Address them by name and reference their Alumni ID when it is relevant.'
+      ].filter(Boolean).join('\n')
+    : 'The sender email is not linked to a registered alumni account, so reply with general guidance and ask them to confirm their alumni details.';
 
   const reply = await ask(
     [
@@ -234,6 +267,8 @@ router.post('/gmail-auto-reply', async (req, res) => {
       `From: ${from}`,
       `Subject: ${subject || '(no subject)'}`,
       `Body: ${body}`,
+      '',
+      senderLine,
       '',
       'Write the email reply body only (no subject line). Be courteous and helpful.',
       'If the inquiry concerns an official document, explain the request process and',
@@ -274,6 +309,7 @@ router.post('/gmail-auto-reply', async (req, res) => {
     from,
     subject: `Re: ${subject || 'Alumni Inquiry'}`,
     reply: finalReply,
+    matchedAlumni,
     provider: aiProvider(reply ? 'gmail auto-reply' : 'gmail auto-reply fallback'),
     logged: true
   });

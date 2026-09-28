@@ -929,6 +929,31 @@
         }
     }
 
+    /** Shows whether the inbound sender matched a registered alumni account. */
+    function renderMatchedAlumni(matched) {
+        const box = document.getElementById("aiGmailMatched");
+        if (!box) return;
+        box.classList.remove("hidden");
+        if (!matched) {
+            box.className = "mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-[11px] text-amber-900";
+            box.innerHTML = `<p class="font-bold">No registered alumni matched this sender email.</p>
+                <p class="mt-1">The draft is generic — ask the sender to confirm the email address registered on their alumni profile.</p>`;
+            return;
+        }
+        const bits = [
+            matched.alumniId ? `Alumni ID ${escapeHtml(matched.alumniId)}` : "",
+            matched.batch ? `Batch ${escapeHtml(matched.batch)}` : "",
+            matched.program ? escapeHtml(matched.program) : ""
+        ].filter(Boolean).join(" • ");
+        box.className = "mt-3 p-3 rounded-lg border border-emerald-200 bg-emerald-50/60 text-[11px] text-emerald-900";
+        box.innerHTML = `
+            <p class="font-bold">Matched registered alumni</p>
+            <p class="mt-1 font-semibold">${escapeHtml(matched.name)}</p>
+            ${bits ? `<p>${bits}</p>` : ""}
+            <p class="mt-1">Registered email: ${escapeHtml(matched.email || "—")} · Open requests: ${Number(matched.pendingRequests) || 0}</p>
+        `;
+    }
+
     /** Gmail Auto-Reply: inbound email -> OpenAI -> drafted reply (logged server-side). */
     async function runGmailAutoReply(event) {
         if (event) event.preventDefault();
@@ -947,6 +972,7 @@
         }
 
         showAiOutput("aiGmailReply", `Draft reply - ${data.provider}`, data.reply);
+        renderMatchedAlumni(data.matchedAlumni);
         showToast(`Auto-reply drafted for ${from} and logged to the notification centre.`, "success");
     }
 

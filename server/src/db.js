@@ -50,6 +50,18 @@ export function initDb() {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    /* Verified email change: the registered address only moves after the code
+       sent to the new address is confirmed. */
+    CREATE TABLE IF NOT EXISTS email_change_requests (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL,
+      new_email  TEXT NOT NULL,
+      code_hash  TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at    TEXT DEFAULT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS alumni (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       name         TEXT NOT NULL,
@@ -523,6 +535,7 @@ export function initDb() {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_event_reminders_stage ON event_reminders (event_id, days_before);
 
     CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications (user_id, is_read);
+    CREATE INDEX IF NOT EXISTS idx_email_change_user ON email_change_requests (user_id, used_at);
   `);
 
   /* `payments` is created by the block above, so its columns are migrated only now. */
