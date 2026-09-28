@@ -39,10 +39,6 @@
         return `<span class="status-badge ${JOB_PHASE_BADGES[phase] || "status-cancelled"}">${escapeHtml(phase.toUpperCase())}</span>`;
     }
 
-    function isJobExpired(job) {
-        return jobPhase(job) === "Closed";
-    }
-
     function formatJobDate(iso, style) {
         if (!iso) return "";
         const date = new Date(`${iso}T00:00:00`);
@@ -168,7 +164,7 @@
     }
 
     function jobApplyButton(job) {
-        return `<button type="button" onclick='applyJobOpportunity(${JSON.stringify(String(job.title || ""))}, ${JSON.stringify(String(job.company || ""))})' class="btn btn-primary text-xs">Apply / Record Application</button>`;
+        return `<button type="button" onclick="applyJobOpportunityById(${Number(job.id)})" class="btn btn-primary text-xs">Apply / Record Application</button>`;
     }
 
     /** The primary card action follows the application method. */

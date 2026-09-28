@@ -68,6 +68,16 @@
         openJobApplyModal(jobTitle, company);
     }
 
+    /** Cards pass the job id, so titles with apostrophes can never break the inline handler. */
+    function applyJobOpportunityById(jobId) {
+        const job = (jobsList || []).find((item) => Number(item.id) === Number(jobId));
+        if (!job) {
+            showToast("This job opportunity is no longer available.", "error");
+            return;
+        }
+        applyJobOpportunity(job.title || "", job.company || "");
+    }
+
     function openJobApplyModal(jobTitle, company) {
         document.getElementById("jobApplyTitle").value = jobTitle;
         document.getElementById("jobApplyCompany").value = company;
