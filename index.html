@@ -1106,8 +1106,8 @@
 
                         <div id="jobManagementSummary" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                             <div class="rounded-xl border border-indigo-100 bg-indigo-50 p-3"><p class="text-[10px] uppercase font-bold text-indigo-700">Total Jobs</p><p id="totalJobsCount" class="text-xl font-extrabold text-indigo-800">0</p></div>
-                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3"><p class="text-[10px] uppercase font-bold text-emerald-700">Active</p><p id="activeJobsCount" class="text-xl font-extrabold text-emerald-800">0</p></div>
-                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] uppercase font-bold text-slate-500">Expired</p><p id="inactiveJobsCount" class="text-xl font-extrabold text-slate-700">0</p></div>
+                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3"><p class="text-[10px] uppercase font-bold text-emerald-700">Hiring Now</p><p id="activeJobsCount" class="text-xl font-extrabold text-emerald-800">0</p></div>
+                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] uppercase font-bold text-slate-500">Closed</p><p id="inactiveJobsCount" class="text-xl font-extrabold text-slate-700">0</p></div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
                             <input id="jobsSearchInput" type="search" oninput="renderJobsGrid()" placeholder="Search job title, company, or location..." class="form-input text-xs flex-1">
@@ -1115,9 +1115,10 @@
                             <select id="jobsEmploymentTypeFilter" onchange="renderJobsGrid()" class="form-input text-xs"><option value="">All Employment Types</option></select>
                             <select id="jobsLocationFilter" onchange="renderJobsGrid()" class="form-input text-xs"><option value="">All Locations</option></select>
                             <select id="jobsStatusFilter" onchange="renderJobsGrid()" class="form-input text-xs sm:col-span-2 lg:col-span-1">
-                                <option value="active">Active jobs</option>
+                                <option value="active">Hiring now</option>
+                                <option value="upcoming">Upcoming</option>
+                                <option value="closed">Closed</option>
                                 <option value="all">All statuses</option>
-                                <option value="expired">Expired</option>
                                 <option value="draft">Draft</option>
                                 <option value="archived">Archived</option>
                             </select>
@@ -1126,15 +1127,52 @@
                             <div class="col-span-full text-center py-10 text-slate-400 font-semibold">No job opportunities yet.</div>
                         </div>
                     </div>
-                    <div id="jobDetailPanel" class="hidden app-card p-6 space-y-4">
+                    <div id="jobDetailPanel" class="hidden app-card p-6 space-y-5">
                         <button type="button" onclick="goAppBack()" class="btn btn-secondary text-xs">
                             <i class="fa-solid fa-arrow-left"></i>
                             <span>Back to Jobs</span>
                         </button>
-                        <h3 id="jobDetailTitle" class="text-xl font-extrabold text-slate-800">Job</h3>
-                        <p id="jobDetailCompany" class="text-sm font-semibold text-[#801235]"></p>
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <h3 id="jobDetailTitle" class="text-xl font-extrabold text-slate-800">Job</h3>
+                                <p id="jobDetailCompany" class="text-sm font-semibold text-[#801235]"></p>
+                            </div>
+                            <span id="jobDetailPhase" class="status-badge status-cancelled">CLOSED</span>
+                        </div>
                         <p id="jobDetailMeta" class="text-sm text-slate-500"></p>
-                        <p id="jobDetailDescription" class="text-sm text-slate-600 whitespace-pre-wrap"></p>
+
+                        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                            <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Job Information</p>
+                            <dl id="jobDetailInfoList" class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs"></dl>
+                        </div>
+
+                        <div class="rounded-xl border border-slate-200 p-4">
+                            <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Location</p>
+                            <p id="jobDetailLocation" class="text-sm text-slate-700 mt-1">—</p>
+                            <div id="jobDetailLocationActions" class="mt-2 flex flex-wrap gap-2"></div>
+                        </div>
+
+                        <div class="rounded-xl border border-slate-200 p-4">
+                            <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Hiring / Application Schedule</p>
+                            <p id="jobDetailSchedule" class="text-sm text-slate-700 mt-1">—</p>
+                            <p id="jobDetailWalkInTime" class="text-sm text-slate-700"></p>
+                        </div>
+
+                        <div>
+                            <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Job Description</p>
+                            <p id="jobDetailDescription" class="text-sm text-slate-600 whitespace-pre-wrap mt-1"></p>
+                        </div>
+
+                        <div id="jobDetailQualificationsSection" class="hidden">
+                            <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Qualifications</p>
+                            <ul id="jobDetailQualifications" class="mt-1 space-y-1 text-sm text-slate-600 list-disc pl-5"></ul>
+                        </div>
+
+                        <div class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+                            <p class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">How to Apply</p>
+                            <div id="jobDetailHowToApply" class="mt-1.5 text-sm text-slate-700 space-y-1"></div>
+                        </div>
+
                         <div id="jobDetailActions" class="flex flex-wrap gap-2"></div>
                     </div>
                 </div>
@@ -3550,20 +3588,78 @@
                 </div>
                 <div>
                     <label class="form-label" for="newJobQualifications">Qualifications</label>
-                    <textarea id="newJobQualifications" rows="2" placeholder="Optional qualifications and experience" class="form-textarea text-xs"></textarea>
+                    <textarea id="newJobQualifications" rows="3" placeholder="One qualification per line (shown as bullets)&#10;SHS Graduate&#10;Fresh graduates are welcome" class="form-textarea text-xs"></textarea>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="form-label" for="newJobApplicationMethod">Application Method</label>
-                        <select id="newJobApplicationMethod" onchange="updateJobApplicationInput()" required class="form-input text-xs">
-                            <option value="">Select method</option><option value="Link">Application link</option><option value="Email">Email</option><option value="Contact Information">Contact information</option><option value="Portal">Apply through portal (legacy)</option>
-                        </select>
+                        <label class="form-label" for="newJobOpenTo">Open To</label>
+                        <input type="text" id="newJobOpenTo" placeholder="e.g. SHS Graduates" class="form-input text-xs">
                     </div>
                     <div>
-                        <label class="form-label" for="newJobApplicationDetails">Application Link / Email / Contact</label>
-                        <input type="text" id="newJobApplicationDetails" placeholder="Required link, email, or contact details" class="form-input text-xs">
+                        <label class="form-label" for="newJobPreferredStrand">Preferred Strand</label>
+                        <input type="text" id="newJobPreferredStrand" placeholder="e.g. Any Strand / ABM Graduate" class="form-input text-xs">
                     </div>
                 </div>
+                <fieldset class="rounded-xl border border-slate-200 p-3 space-y-3">
+                    <legend class="form-label px-1">Application Method</legend>
+                    <select id="newJobApplicationMethod" onchange="updateJobApplicationInput()" required class="form-input text-xs">
+                        <option value="">Select method</option>
+                        <option value="Walk-in">Walk-in</option>
+                        <option value="Online">Online Application</option>
+                        <option value="Email">Email Application</option>
+                        <option value="Contact Employer">Contact Employer</option>
+                        <optgroup label="Legacy listings">
+                            <option value="Link">Application link (legacy)</option>
+                            <option value="Contact Information">Contact information (legacy)</option>
+                            <option value="Portal">Apply through the portal (legacy)</option>
+                        </optgroup>
+                    </select>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label" for="newJobApplicationStart">Hiring / Application Start Date</label>
+                            <input type="date" id="newJobApplicationStart" class="form-input text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label" for="newJobDeadline">Hiring / Application End Date (Deadline)</label>
+                            <input type="date" id="newJobDeadline" class="form-input text-xs">
+                        </div>
+                    </div>
+
+                    <div id="jobWalkInFields" class="hidden space-y-3 rounded-xl border border-dashed border-slate-300 p-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label" for="newJobWalkInTimeStart">Available Time From</label>
+                                <input type="time" id="newJobWalkInTimeStart" class="form-input text-xs">
+                            </div>
+                            <div>
+                                <label class="form-label" for="newJobWalkInTimeEnd">Available Time To</label>
+                                <input type="time" id="newJobWalkInTimeEnd" class="form-input text-xs">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label" for="newJobVenue">Application Venue</label>
+                            <input type="text" id="newJobVenue" placeholder="e.g. Teleperformance Recruitment Hub" class="form-input text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label" for="newJobAddress">Address</label>
+                            <input type="text" id="newJobAddress" placeholder="e.g. SM Fairview, Quezon City" class="form-input text-xs">
+                        </div>
+                        <div>
+                            <label class="form-label" for="newJobBring">What to Bring</label>
+                            <textarea id="newJobBring" rows="2" placeholder="One item per line (shown as bullets)&#10;Updated Resume&#10;Valid ID" class="form-textarea text-xs"></textarea>
+                        </div>
+                        <div>
+                            <label class="form-label" for="newJobMapLink">Google Maps Link</label>
+                            <input type="url" id="newJobMapLink" placeholder="https://maps.app.goo.gl/..." class="form-input text-xs">
+                        </div>
+                    </div>
+
+                    <div id="jobApplicationDetailsFields">
+                        <label class="form-label" id="newJobApplicationDetailsLabel" for="newJobApplicationDetails">Application Link / Email / Contact</label>
+                        <input type="text" id="newJobApplicationDetails" placeholder="Required link, email, or contact details" class="form-input text-xs">
+                    </div>
+                </fieldset>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="form-label" for="newJobDeadline">Application Deadline</label>

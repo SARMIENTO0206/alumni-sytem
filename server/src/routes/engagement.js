@@ -19,6 +19,11 @@ const parseJson = (str, fallback) => {
   try { return JSON.parse(str || '[]'); } catch (e) { return fallback; }
 };
 
+const JOB_APPLICATION_METHODS = ['Walk-in', 'Online', 'Email', 'Contact Employer'];
+/* Legacy method names stay valid so listings posted before these fields existed keep working. */
+const JOB_LEGACY_METHODS = ['Portal', 'Link', 'Contact Information'];
+const WALK_IN_METHOD = 'Walk-in';
+
 function validateJobInput(input, existing = {}) {
   const field = (key) => String(input[key] ?? existing[key] ?? '').trim();
   const title = field('title');
@@ -33,26 +38,70 @@ function validateJobInput(input, existing = {}) {
     return { error: 'Choose Draft, Published, or Archived for the job status.' };
   }
   const applicationMethod = field('application_method') || 'Portal';
-  if (!['Portal', 'Link', 'Email', 'Contact Information'].includes(applicationMethod)) {
+  if (![...JOB_APPLICATION_METHODS, ...JOB_LEGACY_METHODS].includes(applicationMethod)) {
     return { error: 'Choose a valid application method.' };
   }
-  if (applicationMethod !== 'Portal' && !field('application_details')) {
-    return { error: 'Application details are required for the selected method.' };
-  }
-  if (applicationMethod === 'Email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field('application_details'))) {
-    return { error: 'Enter a valid employer email address.' };
-  }
-  const deadline = field('deadline');
-  if (deadline && !isValidIsoDate(deadline)) return { error: 'Enter a valid application deadline.' };
   const applicationDetails = field('application_details');
-  if (applicationMethod === 'Link' && applicationDetails) {
+  if (applicationDetails.length > 1000) return { error: 'Application details must be 1,000 characters or fewer.' };
+
+  /* Hiring schedule: the start date is when applications open and the deadline is the
+     last day to apply. Both are optional, but they must agree when both are given. */
+  const applicationStart = field('application_start');
+  const deadline = field('deadline');
+  if (applicationStart && !isValidIsoDate(applicationStart)) return { error: 'Enter a valid application start date.' };
+  if (deadline && !isValidIsoDate(deadline)) return { error: 'Enter a valid application deadline.' };
+  if (applicationStart && deadline && deadline < applicationStart) {
+    return { error: 'The application deadline must be on or after the start date.' };
+  }
+  const walkInTimeStart = field('walk_in_time_start');
+  const walkInTimeEnd = field('walk_in_time_end');
+  const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+  if (walkInTimeStart && !timePattern.test(walkInTimeStart)) return { error: 'Enter a valid walk-in start time.' };
+  if (walkInTimeEnd && !timePattern.test(walkInTimeEnd)) return { error: 'Enter a valid walk-in end time.' };
+  if (walkInTimeStart && walkInTimeEnd && walkInTimeEnd <= walkInTimeStart) {
+    return { error: 'The walk-in end time must be later than the walk-in start time.' };
+  }
+
+  const applicationVenue = field('application_venue');
+  const applicationAddress = field('application_address');
+  const applicationBring = field('application_bring');
+  const mapLink = field('map_link');
+  const openTo = field('open_to');
+  const preferredStrand = field('preferred_strand');
+  if (applicationVenue.length > 160) return { error: 'Application venue must be 160 characters or fewer.' };
+  if (applicationAddress.length > 240) return { error: 'Application address must be 240 characters or fewer.' };
+  if (applicationBring.length > 500) return { error: 'What to bring must be 500 characters or fewer.' };
+  if (openTo.length > 80) return { error: 'Open-to must be 80 characters or fewer.' };
+  if (preferredStrand.length > 80) return { error: 'Preferred strand must be 80 characters or fewer.' };
+
+  if (applicationMethod === WALK_IN_METHOD) {
+    /* Walk-in applicants report in person, so when and where cannot be blank. */
+    if (!applicationStart) return { error: 'Walk-in listings need a hiring start date.' };
+    if (!deadline) return { error: 'Walk-in listings need an application deadline.' };
+    if (!applicationVenue) return { error: 'Enter the walk-in application venue.' };
+    if (!applicationAddress) return { error: 'Enter the walk-in application address.' };
+  }
+  if (mapLink) {
+    try {
+      if (new URL(mapLink).protocol !== 'https:') throw new Error();
+    } catch {
+      return { error: 'The map link must be a valid HTTPS URL.' };
+    }
+  }
+  if (applicationMethod === 'Online' || applicationMethod === 'Link') {
+    if (!applicationDetails) return { error: 'An application link is required for online applications.' };
     try {
       if (new URL(applicationDetails).protocol !== 'https:') throw new Error();
     } catch {
       return { error: 'Application links must use a valid HTTPS URL.' };
     }
   }
-  if (applicationDetails.length > 1000) return { error: 'Application details must be 1,000 characters or fewer.' };
+  if (applicationMethod === 'Email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicationDetails)) {
+    return { error: 'Enter a valid employer email address.' };
+  }
+  if ((applicationMethod === 'Contact Employer' || applicationMethod === 'Contact Information') && !applicationDetails) {
+    return { error: 'Enter the employer contact number or contact instructions.' };
+  }
   const notification = (key, fallback) => input[key] === undefined
     ? Boolean(Number(existing[key] ?? Number(fallback)))
     : input[key] === true;
@@ -70,13 +119,56 @@ function validateJobInput(input, existing = {}) {
       field('qualifications'),
       applicationMethod,
       applicationDetails,
-      deadline
+      deadline,
+      applicationStart,
+      walkInTimeStart,
+      walkInTimeEnd,
+      applicationVenue,
+      applicationAddress,
+      applicationBring,
+      mapLink,
+      openTo,
+      preferredStrand
     ]
   };
 }
 
+/** Published listings run through Upcoming → Hiring Now → Closed, derived from the dates. */
+function jobPhase(job) {
+  const status = job.status || 'Published';
+  if (status !== 'Published') return status;
+  const today = new Date().toISOString().slice(0, 10);
+  const start = String(job.application_start || '');
+  if (start && today < start) return 'Upcoming';
+  const deadline = String(job.deadline || '');
+  if (deadline && today > deadline) return 'Closed';
+  return 'Hiring Now';
+}
+
+function daysBetween(fromIso, toIso) {
+  const from = Date.parse(`${fromIso}T00:00:00Z`);
+  const to = Date.parse(`${toIso}T00:00:00Z`);
+  if (Number.isNaN(from) || Number.isNaN(to)) return null;
+  return Math.round((to - from) / 86400000);
+}
+
+/** Adds the derived hiring phase so clients never have to guess from the raw dates. */
+function decorateJob(job) {
+  if (!job) return job;
+  const today = new Date().toISOString().slice(0, 10);
+  const phase = jobPhase(job);
+  const start = String(job.application_start || '');
+  const deadline = String(job.deadline || '');
+  const daysLeft = phase === 'Upcoming' && start
+    ? daysBetween(today, start)
+    : phase === 'Hiring Now' && deadline
+      ? daysBetween(today, deadline)
+      : null;
+  return { ...job, application_phase: phase, days_left: daysLeft };
+}
+
 function jobIsExpired(job) {
-  return Boolean(job.deadline && job.deadline < new Date().toISOString().slice(0, 10));
+  return jobPhase(job) === 'Closed';
 }
 
 function isValidIsoDate(value) {
@@ -1342,6 +1434,8 @@ router.put('/feedback/:id', requireRole('admin', 'staff'), (req, res) => {
 
 /* --------------------------- Job opportunities ---------------------------- */
 
+const JOB_PHASE_ORDER = { 'Hiring Now': 0, Upcoming: 1, Closed: 2, Draft: 3, Archived: 4 };
+
 router.get('/jobs', (req, res) => {
   const rows = db.prepare(`
     SELECT j.*, COALESCE(u.name, j.created_by_name, 'Legacy posting') AS posted_by,
@@ -1350,10 +1444,14 @@ router.get('/jobs', (req, res) => {
     LEFT JOIN users u ON u.id = j.created_by
     ORDER BY j.id DESC
   `).all();
+  /* Alumni see every published listing, including Closed ones, so "hiring pa ba?"
+     is answered by the phase badge instead of by the listing disappearing. */
   const visible = (isAdmin(req.user) || isStaff(req.user))
     ? rows
-    : rows.filter((job) => job.status === 'Published' && !jobIsExpired(job));
-  res.json({ jobs: visible });
+    : rows.filter((job) => (job.status || 'Published') === 'Published');
+  const jobs = visible.map(decorateJob)
+    .sort((a, b) => (JOB_PHASE_ORDER[a.application_phase] ?? 9) - (JOB_PHASE_ORDER[b.application_phase] ?? 9) || b.id - a.id);
+  res.json({ jobs });
 });
 
 router.post('/jobs', requireRole('admin', 'staff'), async (req, res) => {
@@ -1362,9 +1460,11 @@ router.post('/jobs', requireRole('admin', 'staff'), async (req, res) => {
   const info = db.prepare(
     `INSERT INTO job_opportunities
       (title, company, location, description, status, industry, employment_type, qualifications,
-       application_method, application_details, deadline, created_by, created_by_name, created_by_role,
+       application_method, application_details, deadline, application_start, walk_in_time_start,
+       walk_in_time_end, application_venue, application_address, application_bring, map_link,
+       open_to, preferred_strand, created_by, created_by_name, created_by_role,
        notify_in_app, notify_email)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     ...validated.values,
     Number(req.user.id),
@@ -1394,7 +1494,7 @@ router.post('/jobs', requireRole('admin', 'staff'), async (req, res) => {
     }
   }
   mirror('job_opportunities', created);
-  res.status(201).json({ job: created, notificationRequested: Boolean(created.status === 'Published' && (validated.notifyInApp || validated.notifyEmail)), notificationResult, notificationError });
+  res.status(201).json({ job: decorateJob(created), notificationRequested: Boolean(created.status === 'Published' && (validated.notifyInApp || validated.notifyEmail)), notificationResult, notificationError });
 });
 
 router.get('/jobs/:id', (req, res) => {
@@ -1404,10 +1504,10 @@ router.get('/jobs/:id', (req, res) => {
     FROM job_opportunities j LEFT JOIN users u ON u.id = j.created_by WHERE j.id = ?
   `).get(Number(req.params.id));
   if (!job) return res.status(404).json({ error: 'Job opportunity not found.' });
-  if ((job.status !== 'Published' || jobIsExpired(job)) && !isAdmin(req.user) && !isStaff(req.user)) {
+  if ((job.status || 'Published') !== 'Published' && !isAdmin(req.user) && !isStaff(req.user)) {
     return res.status(403).json({ error: 'This job opportunity is not available.' });
   }
-  res.json({ job });
+  res.json({ job: decorateJob(job) });
 });
 
 router.get('/applications', (req, res) => {
@@ -1423,12 +1523,11 @@ router.get('/applications', (req, res) => {
 router.post('/jobs/:id/apply', (req, res) => {
   const jobId = Number(req.params.id) || 0;
   const job = jobId ? db.prepare('SELECT * FROM job_opportunities WHERE id = ?').get(jobId) : null;
-  if (!job || job.status !== 'Published' || jobIsExpired(job)) {
+  if (!job || (job.status || 'Published') !== 'Published' || jobIsExpired(job)) {
     return res.status(404).json({ error: 'This job opportunity is no longer available.' });
   }
-  if (job.application_method && job.application_method !== 'Portal') {
-    return res.status(400).json({ error: 'Apply directly using the employer application details on the job listing.' });
-  }
+  /* "Apply / Record Application" is the alumnus's own record of applying, so it works
+     for every application method - walk-in, online, email or employer contact. */
   const { name, email, resumeName, title, company } = req.body || {};
   const applicant = String(name || req.user?.name || '').trim();
   if (!applicant) return res.status(400).json({ error: 'Applicant name is required.' });
@@ -1479,7 +1578,9 @@ router.put('/jobs/:id', requireRole('admin', 'staff'), async (req, res) => {
   db.prepare(
     `UPDATE job_opportunities SET title = ?, company = ?, location = ?, description = ?, status = ?,
        industry = ?, employment_type = ?, qualifications = ?, application_method = ?,
-       application_details = ?, deadline = ?, notify_in_app = ?, notify_email = ?
+       application_details = ?, deadline = ?, application_start = ?, walk_in_time_start = ?,
+       walk_in_time_end = ?, application_venue = ?, application_address = ?, application_bring = ?,
+       map_link = ?, open_to = ?, preferred_strand = ?, notify_in_app = ?, notify_email = ?
      WHERE id = ?`
   ).run(...validated.values, validated.notifyInApp ? 1 : 0, validated.notifyEmail ? 1 : 0, id);
   const job = db.prepare(`
@@ -1505,7 +1606,7 @@ router.put('/jobs/:id', requireRole('admin', 'staff'), async (req, res) => {
     }
   }
   mirrorUpdate('job_opportunities', job);
-  res.json({ job, notificationRequested: Boolean(job.status === 'Published' && existing.status !== 'Published' && (validated.notifyInApp || validated.notifyEmail)), notificationResult, notificationError });
+  res.json({ job: decorateJob(job), notificationRequested: Boolean(job.status === 'Published' && existing.status !== 'Published' && (validated.notifyInApp || validated.notifyEmail)), notificationResult, notificationError });
 });
 
 router.delete('/jobs/:id', requireRole('admin'), (req, res) => {

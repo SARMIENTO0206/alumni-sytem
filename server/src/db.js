@@ -358,6 +358,16 @@ export function initDb() {
   ensureColumn('job_opportunities', 'created_by_role', "created_by_role TEXT DEFAULT ''");
   ensureColumn('job_opportunities', 'notify_in_app', 'notify_in_app INTEGER DEFAULT 1');
   ensureColumn('job_opportunities', 'notify_email', 'notify_email INTEGER DEFAULT 0');
+  /* Hiring schedule + walk-in details: alumni must see WHEN, WHERE and WHAT TO BRING. */
+  ensureColumn('job_opportunities', 'application_start', "application_start TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'walk_in_time_start', "walk_in_time_start TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'walk_in_time_end', "walk_in_time_end TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'application_venue', "application_venue TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'application_address', "application_address TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'application_bring', "application_bring TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'map_link', "map_link TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'open_to', "open_to TEXT DEFAULT ''");
+  ensureColumn('job_opportunities', 'preferred_strand', "preferred_strand TEXT DEFAULT ''");
   ensureColumn('newsletters', 'title', "title TEXT DEFAULT ''");
   ensureColumn('newsletters', 'status', "status TEXT DEFAULT 'Published'");
   ensureColumn('newsletters', 'created_by', 'created_by INTEGER DEFAULT 0');

@@ -201,7 +201,16 @@
             document.getElementById("newJobQualifications").value = job.qualifications || "";
             document.getElementById("newJobApplicationMethod").value = job.application_method || "Portal";
             document.getElementById("newJobApplicationDetails").value = job.application_details || "";
+            document.getElementById("newJobApplicationStart").value = job.application_start || "";
             document.getElementById("newJobDeadline").value = job.deadline || "";
+            document.getElementById("newJobWalkInTimeStart").value = job.walk_in_time_start || "";
+            document.getElementById("newJobWalkInTimeEnd").value = job.walk_in_time_end || "";
+            document.getElementById("newJobVenue").value = job.application_venue || "";
+            document.getElementById("newJobAddress").value = job.application_address || "";
+            document.getElementById("newJobBring").value = job.application_bring || "";
+            document.getElementById("newJobMapLink").value = job.map_link || "";
+            document.getElementById("newJobOpenTo").value = job.open_to || "";
+            document.getElementById("newJobPreferredStrand").value = job.preferred_strand || "";
             document.getElementById("newJobStatus").value = job.status || "Published";
             document.getElementById("newJobNotifyInApp").checked = Number(job.notify_in_app ?? 1) === 1;
             document.getElementById("newJobNotifyEmail").checked = Number(job.notify_email || 0) === 1;
@@ -210,16 +219,42 @@
         document.getElementById("addJobOpportunityModal").classList.add("active");
     }
 
+    /** The application method decides which fields the poster has to fill in. */
     function updateJobApplicationInput() {
         const method = document.getElementById("newJobApplicationMethod")?.value || "";
+        const detailsWrap = document.getElementById("jobApplicationDetailsFields");
         const details = document.getElementById("newJobApplicationDetails");
-        if (!details) return;
-        details.required = method !== "" && method !== "Portal";
-        details.type = method === "Email" ? "email" : "text";
-        details.placeholder = method === "Link" ? "https://example.com/apply"
-            : method === "Email" ? "careers@example.com"
-                : method === "Contact Information" ? "Phone number or contact instructions"
-                    : "Application details";
+        const detailsLabel = document.getElementById("newJobApplicationDetailsLabel");
+        const walkInFields = document.getElementById("jobWalkInFields");
+        const isWalkIn = method === "Walk-in";
+        const needsDetails = ["Online", "Link", "Email", "Contact Employer", "Contact Information"].includes(method);
+
+        if (walkInFields) walkInFields.classList.toggle("hidden", !isWalkIn);
+        if (detailsWrap) detailsWrap.classList.toggle("hidden", isWalkIn);
+        if (details) {
+            /* Never leave a hidden field required - the browser cannot focus it. */
+            details.required = needsDetails;
+            details.type = method === "Email" ? "email" : ["Online", "Link"].includes(method) ? "url" : "text";
+            details.placeholder = ["Online", "Link"].includes(method) ? "https://example.com/apply"
+                : method === "Email" ? "careers@example.com"
+                    : ["Contact Employer", "Contact Information"].includes(method) ? "Mobile / landline number or contact instructions"
+                        : "Application details";
+        }
+        if (detailsLabel) {
+            detailsLabel.textContent = ["Online", "Link"].includes(method) ? "Application Link"
+                : method === "Email" ? "Employer Email Address"
+                    : ["Contact Employer", "Contact Information"].includes(method) ? "Contact Number / Instructions"
+                        : "Application Link / Email / Contact";
+        }
+
+        const venue = document.getElementById("newJobVenue");
+        const address = document.getElementById("newJobAddress");
+        const start = document.getElementById("newJobApplicationStart");
+        const deadline = document.getElementById("newJobDeadline");
+        if (venue) venue.required = isWalkIn;
+        if (address) address.required = isWalkIn;
+        if (start) start.required = isWalkIn;
+        if (deadline) deadline.required = isWalkIn;
     }
 
     function editJobOpportunity(jobId) {
@@ -274,6 +309,15 @@
             application_method: document.getElementById("newJobApplicationMethod").value,
             application_details: document.getElementById("newJobApplicationDetails").value.trim(),
             deadline: document.getElementById("newJobDeadline").value,
+            application_start: document.getElementById("newJobApplicationStart").value,
+            walk_in_time_start: document.getElementById("newJobWalkInTimeStart").value,
+            walk_in_time_end: document.getElementById("newJobWalkInTimeEnd").value,
+            application_venue: document.getElementById("newJobVenue").value.trim(),
+            application_address: document.getElementById("newJobAddress").value.trim(),
+            application_bring: document.getElementById("newJobBring").value.trim(),
+            map_link: document.getElementById("newJobMapLink").value.trim(),
+            open_to: document.getElementById("newJobOpenTo").value.trim(),
+            preferred_strand: document.getElementById("newJobPreferredStrand").value.trim(),
             status: document.getElementById("newJobStatus").value,
             notify_in_app: document.getElementById("newJobNotifyInApp").checked,
             notify_email: document.getElementById("newJobNotifyEmail").checked

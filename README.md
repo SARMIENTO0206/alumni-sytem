@@ -90,7 +90,7 @@ merged into these tabs; the old hashes (`#/request-approval`,
 | 1 | Alumni Database | Registrar creates/edits/verifies; Admin has export/archive oversight |
 | 2 | Transcript Requests | Alumni submit → Registrar processes (Pending → Processing → Ready for Release → Completed) → Admin monitors |
 | 3 | Graduate Tracking | Alumni update own status; Registrar verifies; Admin analytics/exports |
-| 4 | Career & Job Opportunities | Admin/Registrar post and manage job listings; Alumni browse them, apply, and track submissions in the Alumni-only **My Applications** menu |
+| 4 | Career & Job Opportunities | Admin/Registrar post and manage job listings (application method + hiring window); Alumni browse `Upcoming` / `Hiring Now` / `Closed` listings, apply, and track submissions in the Alumni-only **My Applications** menu |
 | 5 | Alumni Events / 6 Batch Reunions / 7 Donor Campaigns | Self-service under their own menus |
 | 8 | Certificate Reprints | Same flow as transcript requests |
 | 9 | Alumni Newsletter | Registrar drafts → Admin approves/publishes → Alumni read |
@@ -135,6 +135,34 @@ alumni raise a **Request Academic Record Correction**, and only the
 Registrar/Admin can change the record and close the request. The alumni sidebar
 shows **Account & Security** (own preferences and password) — system-level
 Settings stays Admin-only.
+
+### 💼 Job Opportunities — hiring window & how to apply
+
+Every job card answers *"hiring pa ba, kailan, saan, at ano ang dadalhin?"*
+before the alumnus opens the listing:
+
+- **Derived phase.** `status` stays `Draft`/`Published`/`Archived` (staff
+  control), while the phase everyone sees is computed from the application
+  window: `Upcoming` (before the start date) → `Hiring Now` (start → deadline) →
+  `Closed` (after the deadline). `GET /jobs` returns `application_phase` and
+  `days_left`, so the API and the UI never disagree.
+- **Application Method** (required) drives the instructions: `Walk-in`
+  (start/end dates, available time, venue, address, what to bring and an optional
+  Google Maps link → **Get Directions**), `Online` (HTTPS link → **Apply
+  Online**), `Email` (employer address → **Send Email** with a pre-filled
+  `Application - <job title>` subject) and `Contact Employer` (number or
+  instructions, always labelled). The older `Link`, `Contact Information` and
+  `Portal` values stay valid, so listings posted before these fields existed keep
+  working.
+- **Card = quick facts; details = the full picture.** The card shows company,
+  📍 location, 💼 employment type, 🎓 open-to, the hiring schedule and how to
+  apply. **View Details** opens *Job Information*, *Location* (+ Get Directions),
+  the hiring schedule, the description, qualifications as bullets and the full
+  *How to Apply* block.
+- **Apply / Record Application** works for every method — it records the
+  alumnus's own submission in *My Applications* (Alumni see only their own).
+- Published listings stay visible to Alumni in every phase with `Closed` sorted
+  last, so a badge — not a disappearing card — tells them hiring has ended.
 
 ## 🛠️ Troubleshooting
 
@@ -216,6 +244,12 @@ except `/health` and `/auth/login|register`).
   `PUT /tracking/:id/employment`, `PUT /tracking/:id/review`,
   `POST /tracking/reminders/sweep`
 - **Engagement:** events, reunions, donations, newsletters, feedback, jobs, announcements
+- **Job Opportunities:** `GET/POST /jobs`, `GET/PUT/DELETE /jobs/:id`,
+  `POST /jobs/:id/apply`. The payload carries `application_method`,
+  `application_start`, `deadline`, `walk_in_time_start|end`,
+  `application_venue`, `application_address`, `application_bring`, `map_link`,
+  `open_to` and `preferred_strand`, and reads back the derived
+  `application_phase` (`Upcoming` / `Hiring Now` / `Closed`) plus `days_left`
 - **Announcements:** `GET/POST /announcements`, `GET /announcements/:id`,
   `GET /announcements/:id/deliveries` (per-channel delivery report; Admin/Staff)
 - **Event reminders (automated SMS flow):** `GET /events/reminders` (schedule,
