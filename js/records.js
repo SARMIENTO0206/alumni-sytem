@@ -412,6 +412,68 @@
         }
     }
 
+    /* ---------------- Academic record correction requests (Registrar) ---------------- */
+
+    async function loadRecordCorrections() {
+        const box = document.getElementById("recordCorrectionList");
+        if (!box) return;
+        if (!isStaffRole()) {
+            box.innerHTML = `<p class="text-xs text-slate-400">Registrar access required.</p>`;
+            return;
+        }
+        try {
+            const data = await SAA_API.request("/api/alumni/corrections");
+            const rows = (data.corrections || []).filter((row) => row.status === "Pending");
+            if (!rows.length) {
+                box.innerHTML = `<p class="text-xs text-slate-400">No pending correction requests.</p>`;
+                return;
+            }
+            box.innerHTML = rows.map((row) => `
+                <div class="p-4 rounded-xl border border-amber-200 bg-amber-50/60">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-xs font-extrabold text-slate-800">${escapeHtml(row.alumniName || "Alumni")}</p>
+                            <p class="text-[11px] text-slate-500">${escapeHtml(row.alumniCode || "No Alumni ID yet")} • ${escapeHtml(row.field)}</p>
+                            <p class="text-[11px] text-slate-600 mt-1">${escapeHtml(row.message)}</p>
+                            <p class="text-[10px] text-slate-400 mt-1">Requested ${escapeHtml(row.createdAt || "")}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-secondary text-[11px] py-1 px-2.5" onclick="editAlumniModal(${Number(row.alumniId)})">Open Record</button>
+                            <button type="button" class="btn btn-primary text-[11px] py-1 px-2.5" onclick="resolveRecordCorrection(${Number(row.id)}, 'Resolved')">Mark Resolved</button>
+                            <button type="button" class="btn btn-secondary text-[11px] py-1 px-2.5 text-rose-700" onclick="resolveRecordCorrection(${Number(row.id)}, 'Declined')">Decline</button>
+                        </div>
+                    </div>
+                </div>
+            `).join("");
+        } catch (err) {
+            box.innerHTML = `<p class="text-xs text-rose-600">${escapeHtml(err.message)}</p>`;
+        }
+    }
+
+    /** Closes a correction request; the Registrar edits the record itself in the database view. */
+    async function resolveRecordCorrection(id, outcome) {
+        const isDeclined = outcome === "Declined";
+        const note = window.prompt(
+            isDeclined
+                ? "Why is this correction declined? The alumnus will see this note."
+                : "Optional note for the alumnus (for example what was updated):"
+        ) || "";
+        if (isDeclined && !note.trim()) {
+            showToast("A short reason is required to decline a correction request.", "error");
+            return;
+        }
+        try {
+            await SAA_API.request(`/api/alumni/corrections/${id}/resolve`, {
+                method: "POST",
+                body: JSON.stringify({ status: outcome, note: note.trim() })
+            });
+            showToast(`Correction request marked ${outcome.toLowerCase()}.`, "success");
+            loadRecordCorrections();
+        } catch (err) {
+            showToast(err.message || "Unable to update the correction request.", "error");
+        }
+    }
+
     async function verifyAlumniRecord(id) {
         if (!isStaffRole()) return;
         try {

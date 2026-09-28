@@ -548,7 +548,7 @@
                     </div>
                 </div>
                 <button type="button" onclick="switchView('announcements')" id="alumni-nav-announcements" class="sidebar-link"><i class="fa-solid fa-bullhorn"></i><span>Announcements</span></button>
-                <button type="button" onclick="switchView('settings')" id="alumni-nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
+                <button type="button" onclick="switchView('settings')" id="alumni-nav-settings" class="sidebar-link"><i class="fa-solid fa-shield-halved"></i><span>Account &amp; Security</span></button>
             </div>
 
             <!-- STAFF SIDEBAR LINKS -->
@@ -942,10 +942,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <button onclick="saveAlumniProfile()" class="btn btn-primary text-xs px-4 py-2">
-                                <i class="fa-solid fa-floppy-disk"></i>
-                                <span>Save Changes</span>
-                            </button>
                         </div>
 
                         <section id="profilePersonalSection" class="mt-6">
@@ -959,7 +955,8 @@
                                 <div>
                                     <label class="form-label" for="profileEmail">Email Address <span class="text-rose-600">*</span></label>
                                     <input id="profileEmail" type="email" class="form-input text-sm" placeholder="e.g. alumni@gmail.com">
-                                    <p class="text-[10px] text-slate-400 mt-1">Announcements, notifications and AI-assisted replies are sent to this address. A change needs email verification before it becomes active.</p>
+                                    <p id="profileEmailVerified" class="hidden text-[10px] text-emerald-700 mt-1"><i class="fa-solid fa-circle-check mr-1"></i>Verified</p>
+                                    <p class="text-[10px] text-slate-400 mt-1">Used for announcements, notifications, and email communications from the Academy.</p>
                                     <div id="profileEmailPending" class="hidden mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
                                         <p class="text-[11px] text-amber-900">Waiting for verification: <b id="profileEmailPendingAddress"></b></p>
                                         <div class="flex flex-wrap items-center gap-2">
@@ -973,7 +970,7 @@
                                 <div>
                                     <label class="form-label" for="profileContact">Mobile Number</label>
                                     <input id="profileContact" type="text" class="form-input text-sm" placeholder="09XXXXXXXXX or +639XXXXXXXXX">
-                                    <p class="text-[10px] text-slate-400 mt-1">Used as the destination for automated SMS reminders.</p>
+                                    <p class="text-[10px] text-slate-400 mt-1">Used for automated SMS reminders and request status notifications.</p>
                                 </div>
                                 <div>
                                     <label class="form-label" for="profileAddress">Address</label>
@@ -983,26 +980,34 @@
                         </section>
 
                         <section id="profileAcademicSection" class="hidden mt-6 pt-6 border-t border-slate-100">
-                            <h4 class="font-extrabold text-slate-800 text-sm mb-1">Academic Information</h4>
-                            <p class="text-xs text-emerald-700 mb-4"><i class="fa-solid fa-lock mr-1"></i>Verified by Registrar</p>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h4 class="font-extrabold text-slate-800 text-sm mb-1">Academic Information</h4>
+                                    <p class="text-xs text-emerald-700"><i class="fa-solid fa-lock mr-1"></i>Verified by Registrar &mdash; read-only</p>
+                                </div>
+                                <button type="button" onclick="openRecordCorrectionModal()" class="btn btn-secondary text-[11px] py-1.5 px-3">
+                                    <i class="fa-solid fa-pen-to-square mr-1"></i> Request Academic Record Correction
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
                                 <div id="profileAlumniIdentity">
-                                    <label class="form-label" for="profileAlumniId">Alumni ID</label>
-                                    <input id="profileAlumniId" type="text" class="form-input text-sm bg-slate-50" readonly>
+                                    <label class="form-label" for="profileAlumniId">Alumni ID <i class="fa-solid fa-lock text-slate-400" title="Issued by the system after verification"></i></label>
+                                    <input id="profileAlumniId" type="text" class="form-input text-sm bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed" placeholder="Issued after Registrar verification" readonly>
                                 </div>
                                 <div>
-                                    <label class="form-label" for="profileBatch">Batch Year</label>
-                                    <input id="profileBatch" type="text" class="form-input text-sm bg-slate-50" readonly>
+                                    <label class="form-label" for="profileBatch">Batch Year <i class="fa-solid fa-lock text-slate-400"></i></label>
+                                    <input id="profileBatch" type="text" class="form-input text-sm bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed" readonly>
                                 </div>
                                 <div>
-                                    <label class="form-label" for="profileProgram">Program / Course Graduated</label>
-                                    <input id="profileProgram" type="text" class="form-input text-sm bg-slate-50" readonly>
+                                    <label class="form-label" for="profileProgram">Program / Course Graduated <i class="fa-solid fa-lock text-slate-400"></i></label>
+                                    <input id="profileProgram" type="text" class="form-input text-sm bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed" readonly>
                                 </div>
                                 <div>
-                                    <label class="form-label" for="profileTrack">Strand / Track</label>
-                                    <input id="profileTrack" type="text" class="form-input text-sm bg-slate-50" readonly>
+                                    <label class="form-label" for="profileTrack">Strand / Track <i class="fa-solid fa-lock text-slate-400"></i></label>
+                                    <input id="profileTrack" type="text" class="form-input text-sm bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed" readonly>
                                 </div>
                             </div>
+                            <div id="profileCorrectionStatus" class="hidden mt-4"></div>
                         </section>
 
                         <section id="profileStaffSection" class="hidden mt-6 pt-6 border-t border-slate-100">
@@ -1059,7 +1064,7 @@
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <button type="button" onclick="downloadAttachedResume()" class="btn btn-secondary text-xs py-1 px-2.5 font-bold">
-                                        <i class="fa-solid fa-download"></i> Download
+                                        <i class="fa-solid fa-eye"></i> View
                                     </button>
                                     <button type="button" onclick="triggerResumeUpload()" class="btn btn-secondary text-xs py-1 px-2.5 font-bold">
                                         <i class="fa-solid fa-rotate"></i> Replace
@@ -2236,6 +2241,21 @@
                             <!-- Populated dynamically -->
                         </div>
                     </div>
+
+                    <div class="app-card p-6 sm:p-8 max-w-3xl mx-auto">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-extrabold text-slate-800">Academic Record Correction Requests</h3>
+                                <p class="text-xs text-slate-400 font-medium">Alumni-submitted corrections to verified academic data. Update the record in the Alumni Database, then close the request.</p>
+                            </div>
+                        </div>
+                        <div id="recordCorrectionList" class="space-y-3">
+                            <p class="text-xs text-slate-400">Loading correction requests…</p>
+                        </div>
+                    </div>
                 </div>
 
 
@@ -2417,7 +2437,7 @@
 
                 <div id="view-settings" class="hidden space-y-6 fade-in">
                     <div class="app-card p-6">
-                        <h3 class="text-lg font-extrabold text-slate-800 mb-4">Settings</h3>
+                        <h3 class="text-lg font-extrabold text-slate-800 mb-4" id="settingsHeading">Settings</h3>
                         <div class="flex flex-wrap gap-2 mb-6">
                             <button type="button" data-settings-tab="general" class="btn btn-primary text-xs" onclick="showSettingsTab('general')">General</button>
                             <button type="button" data-settings-tab="communications" class="btn btn-secondary text-xs" onclick="showSettingsTab('communications')">Communications</button>
@@ -3117,6 +3137,39 @@
                     <div id="stubQRCode" class="w-12 h-12 bg-white p-1 rounded border"></div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Request Academic Record Correction Modal -->
+    <div id="recordCorrectionModal" class="modal-backdrop">
+        <div class="modal-box p-6">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                <h3 class="font-extrabold text-slate-800 text-base">Request Academic Record Correction</h3>
+                <button onclick="closeRecordCorrectionModal()" title="Close correction request modal" aria-label="Close correction request modal" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">Verified academic data can only be changed by the Registrar. Send the details and the Registrar will review your school record.</p>
+            <form onsubmit="submitRecordCorrection(event)" class="space-y-3">
+                <div>
+                    <label class="form-label" for="correctionField">Field to correct</label>
+                    <select id="correctionField" class="form-select text-sm">
+                        <option>Alumni ID</option>
+                        <option>Batch Year</option>
+                        <option>Program / Course</option>
+                        <option>Strand / Track</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label" for="correctionMessage">What needs to be corrected? *</label>
+                    <textarea id="correctionMessage" rows="3" maxlength="1000" required placeholder="e.g. My strand should be ABM, not STEM." class="form-textarea text-sm"></textarea>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeRecordCorrectionModal()" class="btn btn-secondary text-xs">Cancel</button>
+                    <button type="submit" class="btn btn-primary text-xs">Send to Registrar</button>
+                </div>
+            </form>
         </div>
     </div>
 

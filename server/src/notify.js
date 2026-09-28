@@ -26,6 +26,12 @@ export function notificationTarget(relatedType, relatedId, extras = {}) {
   if (type === 'newsletter') {
     return { view: 'newsletter', url: '/#/newsletter' };
   }
+  if (type === 'alumni' || type === 'record-correction') {
+    return { view: 'verification', url: '/#/verification' };
+  }
+  if (type === 'profile') {
+    return { view: 'profile', url: '/#/profile' };
+  }
   if (type === 'survey' || type === 'feedback') {
     return { view: 'feedback', url: id ? `/#/surveys/${id}` : '/#/surveys' };
   }

@@ -353,6 +353,10 @@ function openSecuritySettings() {
 
 async function loadSettingsView() {
     const allowed = settingsSectionsForRole(currentRole());
+    /* Admin manages system-wide settings; every other role only manages their own
+       account preferences and security. */
+    const heading = document.getElementById("settingsHeading");
+    if (heading) heading.textContent = isAdminRole() ? "Settings" : "Account & Security";
     document.querySelectorAll("[data-settings-tab]").forEach((btn) => {
         btn.classList.toggle("hidden", !allowed.includes(btn.getAttribute("data-settings-tab")));
     });

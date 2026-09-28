@@ -246,6 +246,7 @@
         }
         if (viewId === "placement" && typeof renderPlacementLogs === "function") renderPlacementLogs();
         if (viewId === "job-opportunities" && typeof renderJobsGrid === "function") renderJobsGrid();
+        if (viewId === "verification" && typeof loadRecordCorrections === "function") loadRecordCorrections();
         if (viewId === "events" && typeof renderEventsGrid === "function") renderEventsGrid();
         if (viewId === "reunions" && typeof renderReunionsGrid === "function") renderReunionsGrid();
         if (viewId === "newsletter" && typeof renderNewsletterArchive === "function") renderNewsletterArchive();
@@ -631,6 +632,29 @@
         setVal("profileBatch", user.batch || alumni.batch || "");
         setVal("profileProgram", user.program || alumni.program || "");
         setVal("profileTrack", user.strand || user.track || alumni.strand || alumni.track || "");
+
+        if (isAlumniRole()) {
+            /* Verified contact email indicator. */
+            const verifiedEl = document.getElementById("profileEmailVerified");
+            if (verifiedEl) verifiedEl.classList.toggle("hidden", !String(user.email || "").trim());
+
+            /* Header identity: official Alumni ID, batch and verification state. */
+            const officialId = String(alumni.studentId || "").trim();
+            const verified = String(alumni.verificationStatus || "").trim() === "Verified";
+            const profileMeta = document.getElementById("profileRoleMeta");
+            if (profileMeta) {
+                profileMeta.classList.remove("hidden");
+                profileMeta.innerHTML = `
+                    <p><span class="font-bold text-slate-600">Alumni ID:</span> ${officialId ? escapeHtml(officialId) : "Pending Registrar verification"}</p>
+                    <p><span class="font-bold text-slate-600">Batch:</span> ${escapeHtml(String(alumni.batch || user.batch || "—"))}</p>
+                    <p><span class="font-bold text-slate-600">Status:</span> ${verified ? "Verified Alumni" : "Pending Verification"}</p>
+                `;
+            }
+            const profileBadge = document.querySelector("#view-profile .status-badge");
+            if (profileBadge) profileBadge.textContent = verified ? "Verified Alumni" : "Pending Verification";
+
+            loadMyCorrectionRequests();
+        }
         ["profileEmployment", "profileCompany", "profileJobTitle"].forEach((id, index) => {
             const el = document.getElementById(id);
             if (el) el.textContent = [alumni.status, alumni.company, alumni.title || alumni.jobTitle][index] || "—";
@@ -717,6 +741,69 @@
         renderEmailChangeState(null);
         showToast("Pending email change cancelled. Your registered email was not changed.", "info");
         loadAlumniProfile();
+    }
+
+    /* ------------------ Academic record correction requests ------------------ */
+
+    function openRecordCorrectionModal() {
+        const modal = document.getElementById("recordCorrectionModal");
+        if (modal) modal.classList.add("active");
+    }
+
+    function closeRecordCorrectionModal() {
+        const modal = document.getElementById("recordCorrectionModal");
+        if (modal) modal.classList.remove("active");
+    }
+
+    /** Shows the alumnus their own pending/closed correction requests. */
+    async function loadMyCorrectionRequests() {
+        const box = document.getElementById("profileCorrectionStatus");
+        if (!box) return;
+        try {
+            const data = await SAA_API.request("/api/alumni/corrections");
+            const rows = (data.corrections || []).slice(0, 3);
+            if (!rows.length) {
+                box.classList.add("hidden");
+                box.innerHTML = "";
+                return;
+            }
+            box.classList.remove("hidden");
+            box.innerHTML = rows.map((row) => `
+                <div class="p-3 rounded-xl border ${row.status === "Pending" ? "border-amber-200 bg-amber-50/60" : "border-slate-200 bg-slate-50"}">
+                    <p class="text-[11px] font-bold text-slate-700">${escapeHtml(row.field)} — ${escapeHtml(row.status)}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(row.message)}</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Sent ${escapeHtml(row.createdAt || "")}${row.resolvedBy ? ` • Reviewed by ${escapeHtml(row.resolvedBy)}` : ""}${row.resolution ? ` • ${escapeHtml(row.resolution)}` : ""}</p>
+                </div>
+            `).join("");
+        } catch (err) {
+            box.classList.add("hidden");
+        }
+    }
+
+    async function submitRecordCorrection(event) {
+        event.preventDefault();
+        const field = (document.getElementById("correctionField") || {}).value || "";
+        const message = ((document.getElementById("correctionMessage") || {}).value || "").trim();
+        if (!message) {
+            showToast("Describe the correction you need.", "error");
+            return;
+        }
+        try {
+            const data = await SAA_API.request("/api/auth/me");
+            const recordId = Number((data.user || {}).alumniId) || 0;
+            if (!recordId) throw new Error("Your alumni record is still being linked. Please try again after verification.");
+            await SAA_API.request(`/api/alumni/${recordId}/correction-request`, {
+                method: "POST",
+                body: JSON.stringify({ field, message })
+            });
+            event.target.reset();
+            closeRecordCorrectionModal();
+            showToast("Correction request sent to the Registrar. Verified data stays unchanged until it is approved.", "success");
+            loadMyCorrectionRequests();
+            if (SAA_API.refreshAllData) await SAA_API.refreshAllData();
+        } catch (err) {
+            showToast(err.message || "Unable to send the correction request.", "error");
+        }
     }
 
     /** PUT the editable profile fields (the registered email is verified separately). */

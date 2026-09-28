@@ -109,7 +109,12 @@ is an Alumni-only menu under *Career*, while Admin/Registrar manage the job
 postings and are alerted through the posting itself. The **registered email** on
 the profile is the address used for email notifications and can only be changed
 after email verification, so an unverified address never receives school mail.
-AI-assisted replies match the sender to that registered address first.
+AI-assisted replies match the sender to that registered address first. Verified
+academic data (Alumni ID, batch, program, strand) is read-only in the profile:
+alumni raise a **Request Academic Record Correction**, and only the
+Registrar/Admin can change the record and close the request. The alumni sidebar
+shows **Account & Security** (own preferences and password) — system-level
+Settings stays Admin-only.
 
 ## 🛠️ Troubleshooting
 
@@ -183,6 +188,8 @@ except `/health` and `/auth/login|register`).
   role-restricted record + transcript/reprint/placement endpoints
 - **Registered email (verified contact address):** `POST /auth/profile/email/request`,
   `POST /auth/profile/email/verify`, `POST /auth/profile/email/cancel`
+- **Academic record corrections (Registrar-owned data):** `GET /alumni/corrections`,
+  `POST /alumni/:id/correction-request`, `POST /alumni/corrections/:id/resolve`
 - **Tracking:** `GET /tracking`, `GET/PUT /tracking/settings`,
   `PUT /tracking/:id/employment`, `PUT /tracking/:id/review`,
   `POST /tracking/reminders/sweep`

@@ -62,6 +62,21 @@ export function initDb() {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    /* Academic record corrections requested by alumni; the Registrar reviews them
+       and remains the only role that can change verified academic data. */
+    CREATE TABLE IF NOT EXISTS record_corrections (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      alumni_id   INTEGER NOT NULL,
+      user_id     INTEGER DEFAULT 0,
+      field       TEXT DEFAULT '',
+      message     TEXT DEFAULT '',
+      status      TEXT DEFAULT 'Pending',
+      resolution  TEXT DEFAULT '',
+      resolved_by TEXT DEFAULT '',
+      resolved_at TEXT DEFAULT '',
+      created_at  TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS alumni (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       name         TEXT NOT NULL,
@@ -536,6 +551,7 @@ export function initDb() {
 
     CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications (user_id, is_read);
     CREATE INDEX IF NOT EXISTS idx_email_change_user ON email_change_requests (user_id, used_at);
+    CREATE INDEX IF NOT EXISTS idx_record_corrections ON record_corrections (status, id);
   `);
 
   /* `payments` is created by the block above, so its columns are migrated only now. */
@@ -829,6 +845,8 @@ function targetUrlFor(relatedType, relatedId, paid) {
   if (type === 'job') return id ? `/#/jobs/${id}` : '/#/jobs';
   if (type === 'announcement') return id ? `/#/announcements/${id}` : '/#/announcements';
   if (type === 'newsletter') return '/#/newsletter';
+  if (type === 'alumni' || type === 'record-correction') return '/#/verification';
+  if (type === 'profile') return '/#/profile';
   if (type === 'survey' || type === 'feedback') return id ? `/#/surveys/${id}` : '/#/surveys';
   if (type === 'payment') return paid ? (id ? `/#/payment-receipt/${id}` : '/#/donor-campaigns') : (id ? `/#/payment/${id}` : '/#/donor-campaigns');
   if (type === 'application') return '/#/applications';

@@ -454,32 +454,46 @@ assert(loginAfterRestore.user.status === 'Active', 'restoring an alumni record r
 /* The archive/restore checks above invalidate the original Alumni session token. */
 const alumniSession = await login('alumni', 'alumni123');
 alumni.token = alumniSession.token;
-const invalidEmailChange = await req(alumni.token, 'POST', '/api/auth/profile/email/request', { email: 'not-an-email' });
+/* A throwaway account keeps repeated test runs clear of the email-change rate limit. */
+const emailTestUser = `emailchange.${Date.now()}`;
+const emailTestEmail = `emailchange.start.${Date.now()}@example.test`;
+const createdEmailAccount = await req(admin.token, 'POST', '/api/users', {
+  username: emailTestUser,
+  password: 'Verify123',
+  name: `Email Change Test ${Date.now()}`,
+  role: 'alumni',
+  email: emailTestEmail,
+  status: 'Active'
+});
+assert(createdEmailAccount.status === 201, 'Admin can create an Alumni account for the email-change flow');
+const emailSession = await login(emailTestUser, 'Verify123');
+const emailToken = emailSession.token;
+const invalidEmailChange = await req(emailToken, 'POST', '/api/auth/profile/email/request', { email: 'not-an-email' });
 assert(invalidEmailChange.status === 400, 'an invalid email address is rejected before anything is sent');
-const sameEmailChange = await req(registrar.token, 'POST', '/api/auth/profile/email/request', { email: 'registrar@stagnes.edu.ph' });
+const sameEmailChange = await req(emailToken, 'POST', '/api/auth/profile/email/request', { email: emailTestEmail });
 assert(sameEmailChange.status === 400, 'requesting the already registered address is rejected');
-const takenEmailChange = await req(alumni.token, 'POST', '/api/auth/profile/email/request', { email: 'registrar@stagnes.edu.ph' });
+const takenEmailChange = await req(emailToken, 'POST', '/api/auth/profile/email/request', { email: 'registrar@stagnes.edu.ph' });
 assert(takenEmailChange.status === 409, 'an address already registered to another account is rejected');
 const newAlumniEmail = `alumni.verified.${Date.now()}@example.test`;
-const emailChangeRequest = await req(alumni.token, 'POST', '/api/auth/profile/email/request', { email: newAlumniEmail });
+const emailChangeRequest = await req(emailToken, 'POST', '/api/auth/profile/email/request', { email: newAlumniEmail });
 assert(emailChangeRequest.status === 202 && emailChangeRequest.data.pendingEmail === newAlumniEmail, 'a valid new address starts the verification flow');
 assert(/^\d{6}$/.test(String(emailChangeRequest.data.devCode || '')), 'without an SMTP provider the code is returned to the account owner for local testing');
-const profileBeforeEmailVerify = await req(alumni.token, 'GET', '/api/auth/me');
-assert(!profileBeforeEmailVerify.data.user.email, 'the registered email is unchanged until the code is confirmed');
+const profileBeforeEmailVerify = await req(emailToken, 'GET', '/api/auth/me');
+assert(String(profileBeforeEmailVerify.data.user.email || '').toLowerCase() === emailTestEmail.toLowerCase(), 'the registered email is unchanged until the code is confirmed');
 assert(profileBeforeEmailVerify.data.pendingEmailChange && profileBeforeEmailVerify.data.pendingEmailChange.newEmail === newAlumniEmail, 'the pending email change state is exposed on the profile');
-const directEmailEdit = await req(alumni.token, 'PUT', '/api/auth/profile', { email: newAlumniEmail });
+const directEmailEdit = await req(emailToken, 'PUT', '/api/auth/profile', { email: newAlumniEmail });
 assert(directEmailEdit.status === 400, 'the registered email cannot be changed by saving the profile form');
-const wrongEmailCode = await req(alumni.token, 'POST', '/api/auth/profile/email/verify', { code: '000000' });
+const wrongEmailCode = await req(emailToken, 'POST', '/api/auth/profile/email/verify', { code: '000000' });
 assert(wrongEmailCode.status === 400, 'an incorrect verification code is rejected');
-const verifiedEmailChange = await req(alumni.token, 'POST', '/api/auth/profile/email/verify', { code: emailChangeRequest.data.devCode });
+const verifiedEmailChange = await req(emailToken, 'POST', '/api/auth/profile/email/verify', { code: emailChangeRequest.data.devCode });
 assert(verifiedEmailChange.status === 200 && verifiedEmailChange.data.user.email === newAlumniEmail, 'confirming the code activates the new registered email');
-const profileAfterEmailVerify = await req(alumni.token, 'GET', '/api/auth/me');
+const profileAfterEmailVerify = await req(emailToken, 'GET', '/api/auth/me');
 assert(profileAfterEmailVerify.data.user.email === newAlumniEmail && !profileAfterEmailVerify.data.pendingEmailChange, 'the pending state clears once the address is verified');
-const secondEmailChange = await req(alumni.token, 'POST', '/api/auth/profile/email/request', { email: `alumni.second.${Date.now()}@example.test` });
+const secondEmailChange = await req(emailToken, 'POST', '/api/auth/profile/email/request', { email: `alumni.second.${Date.now()}@example.test` });
 assert(secondEmailChange.status === 202, 'a second verified email change can be started');
-const cancelledEmailChange = await req(alumni.token, 'POST', '/api/auth/profile/email/cancel');
+const cancelledEmailChange = await req(emailToken, 'POST', '/api/auth/profile/email/cancel');
 assert(cancelledEmailChange.status === 200 && cancelledEmailChange.data.cancelled === 1, 'a pending email change can be cancelled');
-const pendingAfterCancel = await req(alumni.token, 'GET', '/api/auth/me');
+const pendingAfterCancel = await req(emailToken, 'GET', '/api/auth/me');
 assert(!pendingAfterCancel.data.pendingEmailChange && pendingAfterCancel.data.user.email === newAlumniEmail, 'cancelling keeps the verified registered email in place');
 
 /* AI-assisted replies recognise the sender from the registered email. */
@@ -489,7 +503,7 @@ const matchedReply = await req(registrar.token, 'POST', '/api/ai/gmail-auto-repl
   body: 'Paano po mag-request ng transcript?'
 });
 assert(matchedReply.status === 200 && matchedReply.data.matchedAlumni && matchedReply.data.matchedAlumni.email === newAlumniEmail, 'an inquiry from a registered email is matched to that alumni account');
-assert(matchedReply.data.matchedAlumni.name === alumni.user.name, 'the matched alumni card carries the account name');
+assert(matchedReply.data.matchedAlumni.name === createdEmailAccount.data.user.name, 'the matched alumni card carries the account name');
 assert(typeof matchedReply.data.matchedAlumni.alumniId === 'string' && Number.isInteger(matchedReply.data.matchedAlumni.pendingRequests), 'the matched alumni card reports the Alumni ID and open requests');
 const unmatchedReply = await req(registrar.token, 'POST', '/api/ai/gmail-auto-reply', {
   from: `stranger.${Date.now()}@example.test`,
@@ -497,5 +511,48 @@ const unmatchedReply = await req(registrar.token, 'POST', '/api/ai/gmail-auto-re
   body: 'Who are you?'
 });
 assert(unmatchedReply.status === 200 && unmatchedReply.data.matchedAlumni === null, 'an unknown sender is not matched to any alumni record');
+await req(admin.token, 'DELETE', `/api/users/${createdEmailAccount.data.user.id}`);
+
+/* Academic data stays Registrar-owned: alumni request corrections, staff decide. */
+const alumniMe = await req(alumni.token, 'GET', '/api/auth/me');
+const ownRecordId = Number(alumniMe.data.user.alumniId) || 0;
+assert(ownRecordId > 0, 'the Alumni account is linked to an alumni record');
+/* Close any request left pending by an earlier run so the flow stays repeatable. */
+const pendingBefore = (await req(registrar.token, 'GET', '/api/alumni/corrections')).data.corrections
+  .filter((row) => row.status === 'Pending' && Number(row.userId) === Number(alumni.user.id));
+for (const row of pendingBefore) {
+  await req(registrar.token, 'POST', `/api/alumni/corrections/${row.id}/resolve`, { status: 'Resolved', note: 'Cleared before a new test request.' });
+}
+const alumniIndex = await req(registrar.token, 'GET', '/api/alumni');
+const foreignRecord = (alumniIndex.data.alumni || []).find((row) => row.name !== alumni.user.name && !row.archivedAt);
+const invalidCorrectionField = await req(alumni.token, 'POST', `/api/alumni/${ownRecordId}/correction-request`, { field: 'Salary', message: 'Wrong field' });
+assert(invalidCorrectionField.status === 400, 'only the documented academic fields can be corrected');
+const emptyCorrectionMessage = await req(alumni.token, 'POST', `/api/alumni/${ownRecordId}/correction-request`, { field: 'Batch Year', message: '   ' });
+assert(emptyCorrectionMessage.status === 400, 'a correction request needs a description');
+if (foreignRecord) {
+  const foreignCorrection = await req(alumni.token, 'POST', `/api/alumni/${foreignRecord.id}/correction-request`, { field: 'Batch Year', message: 'Not my record' });
+  assert(foreignCorrection.status === 403, 'Alumni cannot request corrections on another alumni record');
+}
+const correctionRequest = await req(alumni.token, 'POST', `/api/alumni/${ownRecordId}/correction-request`, { field: 'Strand / Track', message: 'My strand should be ABM instead of STEM.' });
+assert(correctionRequest.status === 201 && correctionRequest.data.correction.status === 'Pending', 'Alumni can request an academic record correction');
+const duplicateCorrection = await req(alumni.token, 'POST', `/api/alumni/${ownRecordId}/correction-request`, { field: 'Batch Year', message: 'Second request' });
+assert(duplicateCorrection.status === 409, 'only one correction request may wait for the Registrar at a time');
+const myCorrections = await req(alumni.token, 'GET', '/api/alumni/corrections');
+assert(myCorrections.status === 200 && myCorrections.data.corrections.some((row) => Number(row.id) === Number(correctionRequest.data.correction.id)), 'the alumnus sees their own correction request');
+const staffCorrections = await req(registrar.token, 'GET', '/api/alumni/corrections');
+assert(staffCorrections.status === 200 && staffCorrections.data.corrections.some((row) => Number(row.id) === Number(correctionRequest.data.correction.id)), 'the Registrar queue lists the pending correction request');
+const registrarCorrectionNotice = (await req(registrar.token, 'GET', '/api/notifications')).data.notifications
+  .find((item) => String(item.subject || '').startsWith('Academic record correction'));
+assert(registrarCorrectionNotice && registrarCorrectionNotice.targetUrl === '/#/verification', 'correction alerts open Alumni Record Verification');
+const declinedWithoutNote = await req(registrar.token, 'POST', `/api/alumni/corrections/${correctionRequest.data.correction.id}/resolve`, { status: 'Declined', note: '' });
+assert(declinedWithoutNote.status === 400, 'declining a correction requires a reason');
+const declinedCorrection = await req(registrar.token, 'POST', `/api/alumni/corrections/${correctionRequest.data.correction.id}/resolve`, { status: 'Declined', note: 'School record shows STEM for this batch.' });
+assert(declinedCorrection.status === 200 && declinedCorrection.data.correction.status === 'Declined', 'the Registrar can close a correction request with a note');
+const closedCorrection = await req(alumni.token, 'GET', '/api/alumni/corrections');
+const resolvedRow = closedCorrection.data.corrections.find((row) => Number(row.id) === Number(correctionRequest.data.correction.id));
+assert(resolvedRow && resolvedRow.status === 'Declined' && resolvedRow.resolution === 'School record shows STEM for this batch.', 'the alumnus sees the Registrar decision and note');
+const secondCorrectionAllowed = await req(alumni.token, 'POST', `/api/alumni/${ownRecordId}/correction-request`, { field: 'Alumni ID', message: 'Please check the sequence number.' });
+assert(secondCorrectionAllowed.status === 201, 'a new correction request is allowed after the previous one is closed');
+await req(registrar.token, 'POST', `/api/alumni/corrections/${secondCorrectionAllowed.data.correction.id}/resolve`, { status: 'Resolved' });
 
 console.log('Alumni Database, Graduate Tracking, Communications, Career Management, and Newsletter role checks passed.');

@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { db, mapAlumni, writeAudit } from '../db.js';
-import { isAdmin, isAlumni, ownsAlumniRecord, requireRole } from '../auth.js';
+import { isAdmin, isAlumni, isStaff, ownsAlumniRecord, requireRole } from '../auth.js';
 import { mirror, mirrorUpdate } from '../sync-supabase.js';
+import { dispatchNotification, dispatchStaffAudience } from '../notify.js';
 import { normalizePhMobile } from '../phone.js';
 
 const router = Router();
@@ -48,6 +49,128 @@ router.get('/', (req, res) => {
 });
 
 /** GET /api/alumni/:id - single alumni record. */
+/* ---------------------- Academic record corrections ------------------------
+ * Verified academic data (Alumni ID, batch, program, strand) is owned by the
+ * Registrar. Alumni request a correction, the Registrar/Admin reviews the
+ * request, and the verified record is only changed by staff.
+ * -------------------------------------------------------------------------- */
+
+const CORRECTION_FIELDS = ['Alumni ID', 'Batch Year', 'Program / Course', 'Strand / Track', 'Other'];
+
+function mapCorrection(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    alumniId: row.alumni_id,
+    userId: row.user_id,
+    field: row.field,
+    message: row.message,
+    status: row.status,
+    resolution: row.resolution,
+    resolvedBy: row.resolved_by,
+    resolvedAt: row.resolved_at,
+    createdAt: row.created_at,
+    alumniName: row.alumni_name || '',
+    alumniCode: row.alumni_code || ''
+  };
+}
+
+/** GET /api/alumni/corrections - own requests for Alumni, all requests for staff. */
+router.get('/corrections', (req, res) => {
+  const rows = db.prepare(`
+    SELECT c.*, COALESCE(a.name, '') AS alumni_name, COALESCE(a.student_id, '') AS alumni_code
+    FROM record_corrections c
+    LEFT JOIN alumni a ON a.id = c.alumni_id
+    ORDER BY c.id DESC
+    LIMIT 100
+  `).all();
+  if (isAlumni(req.user)) {
+    const own = rows.filter((row) => Number(row.user_id) === Number(req.user.id)
+      || ownsAlumniRecord(req.user, { id: row.alumni_id, user_id: row.user_id }));
+    return res.json({ corrections: own.map(mapCorrection) });
+  }
+  if (!isAdmin(req.user) && !isStaff(req.user)) {
+    return res.status(403).json({ error: 'You do not have permission to view record corrections.' });
+  }
+  res.json({ corrections: rows.map(mapCorrection) });
+});
+
+/** POST /api/alumni/:id/correction-request - the alumnus asks the Registrar to fix academic data. */
+router.post('/:id/correction-request', async (req, res) => {
+  const id = Number(req.params.id);
+  const record = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
+  if (!record || record.archived_at) return res.status(404).json({ error: 'Alumni record not found.' });
+  if (!isAlumni(req.user) || !ownsAlumniRecord(req.user, record)) {
+    return res.status(403).json({ error: 'Only the alumnus who owns this record can request a correction.' });
+  }
+  const field = String(req.body?.field || '').trim();
+  const message = String(req.body?.message || '').trim();
+  if (!CORRECTION_FIELDS.includes(field)) {
+    return res.status(400).json({ error: 'Choose the academic field that needs correction.' });
+  }
+  if (!message) return res.status(400).json({ error: 'Describe the correction you need.' });
+  if (message.length > 1000) {
+    return res.status(400).json({ error: 'Keep the correction request under 1,000 characters.' });
+  }
+  const pending = db.prepare("SELECT id FROM record_corrections WHERE alumni_id = ? AND status = 'Pending'").get(id);
+  if (pending) {
+    return res.status(409).json({ error: 'You already have a correction request waiting for the Registrar.' });
+  }
+  const info = db.prepare(
+    'INSERT INTO record_corrections (alumni_id, user_id, field, message) VALUES (?, ?, ?, ?)'
+  ).run(id, req.user.id, field, message);
+  const row = db.prepare('SELECT * FROM record_corrections WHERE id = ?').get(info.lastInsertRowid);
+  writeAudit(req.user, 'create', 'record_correction', row.id, `${field}: ${record.name}`);
+  dispatchStaffAudience(
+    `Academic record correction: ${record.name}`,
+    `${req.user.name || 'An alumnus'} requested a correction on ${field}. Review the verified school record in Alumni Record Verification.`,
+    'alumni',
+    id
+  ).catch(() => {});
+  dispatchNotification({
+    userId: req.user.id,
+    recipient: req.user.email || req.user.name,
+    channel: 'SYSTEM',
+    subject: 'Correction request received',
+    message: `Your ${field} correction request was sent to the Registrar for review. Academic data stays unchanged until it is approved.`,
+    relatedType: 'profile',
+    relatedId: row.id
+  }).catch(() => {});
+  res.status(201).json({ correction: mapCorrection(row) });
+});
+
+/** POST /api/alumni/corrections/:id/resolve - Registrar/Admin close the request. */
+router.post('/corrections/:id/resolve', requireRole('staff', 'admin'), (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM record_corrections WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: 'Correction request not found.' });
+  if (row.status !== 'Pending') return res.status(409).json({ error: 'This correction request is already closed.' });
+  const outcome = String(req.body?.status || 'Resolved');
+  if (!['Resolved', 'Declined'].includes(outcome)) {
+    return res.status(400).json({ error: 'Choose Resolved or Declined.' });
+  }
+  const note = String(req.body?.note || '').trim();
+  if (outcome === 'Declined' && !note) {
+    return res.status(400).json({ error: 'Explain why the correction was declined.' });
+  }
+  db.prepare('UPDATE record_corrections SET status = ?, resolution = ?, resolved_by = ?, resolved_at = ? WHERE id = ?')
+    .run(outcome, note, req.user.name || req.user.username, new Date().toISOString(), id);
+  const updated = db.prepare('SELECT * FROM record_corrections WHERE id = ?').get(id);
+  writeAudit(req.user, 'update', 'record_correction', id, `${outcome}: ${row.field}`);
+  if (row.user_id) {
+    dispatchNotification({
+      userId: row.user_id,
+      recipient: '',
+      channel: 'SYSTEM',
+      subject: `Correction request ${outcome.toLowerCase()}`,
+      message: note || `The Registrar marked your ${row.field} correction request as ${outcome.toLowerCase()}.`,
+      relatedType: 'profile',
+      relatedId: id
+    }).catch(() => {});
+  }
+  res.json({ correction: mapCorrection(updated) });
+});
+
 router.get('/:id', (req, res) => {
   const row = db.prepare(`
     SELECT a.*, u.education_level AS education_level, u.strand AS strand, u.track AS track
