@@ -1276,7 +1276,7 @@
                     <div class="app-card p-6 sm:p-8">
                         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                             <div>
-                                <span class="status-badge status-approved mb-2">JHS & SHS Alumni Outcomes</span>
+                                <span class="status-badge status-approved mb-2">SHS Alumni Outcomes</span>
                                 <h3 class="text-xl font-extrabold text-slate-800" id="trackingPageHeading">Graduate Tracking</h3>
                                 <p class="text-xs text-slate-500 font-medium mt-1" id="trackingPageDescription">Monitor education pathways and employment outcomes reported by alumni.</p>
                             </div>
@@ -1302,7 +1302,7 @@
                             <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tracked Alumni</p>
                                 <p class="text-2xl font-extrabold text-slate-800 mt-1" id="kpiEmployedRate">0</p>
-                                <p class="text-[10px] text-slate-500 font-semibold mt-0.5">JHS & SHS records</p>
+                                <p class="text-[10px] text-slate-500 font-semibold mt-0.5">SHS alumni records</p>
                             </div>
                             <div class="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Currently Employed</p>
@@ -1332,9 +1332,7 @@
                             <div>
                                 <label class="form-label" for="trackingEducationLevelFilter">Educational Level</label>
                                 <select id="trackingEducationLevelFilter" class="form-select text-xs">
-                                    <option value="">All Levels</option>
-                                    <option value="JHS">JHS</option>
-                                    <option value="SHS">SHS</option>
+                                    <option value="SHS" selected>Senior High School (SHS)</option>
                                 </select>
                             </div>
                             <div>
@@ -1397,7 +1395,7 @@
                         <div class="flex items-center justify-between mb-4">
                             <div>
                                 <h3 class="font-extrabold text-slate-800 text-base">Post-SHS Pathways</h3>
-                                <p class="text-xs text-slate-500 mt-1">SHS graduates only; JHS alumni are excluded from this chart.</p>
+                                <p class="text-xs text-slate-500 mt-1">Education and career pathways of Senior High School graduates.</p>
                             </div>
                         </div>
                         <div class="h-64 relative"><canvas id="postShsPathwaysChart"></canvas></div>
@@ -1760,7 +1758,7 @@
                             <label class="sr-only" for="donationSearch">Search donations</label>
                             <input id="donationSearch" type="search" placeholder="Search donor or student ID" class="form-input text-xs">
                             <label class="sr-only" for="donationLevelFilter">Filter by educational level</label>
-                            <select id="donationLevelFilter" class="form-select text-xs"><option value="">All Levels</option><option value="JHS">JHS</option><option value="SHS">SHS</option></select>
+                            <select id="donationLevelFilter" class="form-select text-xs"><option value="">All Levels</option><option value="SHS">Senior High School (SHS)</option></select>
                             <label id="donationStatusFilterLabel" class="sr-only" for="donationStatusFilter">Filter by payment status</label>
                             <select id="donationStatusFilter" class="form-select text-xs"><option value="">All Payment Statuses</option><option value="verified">Verified</option><option value="pending">Pending</option><option value="recorded">Recorded</option></select>
                         </div>
@@ -2891,19 +2889,11 @@
                     <div>
                         <label class="form-label" for="regEducationLevel">Educational Level *</label>
                         <select id="regEducationLevel" required onchange="updateRegistrationEducationFields()" class="form-select text-xs">
-                            <option value="">Select educational level</option>
-                            <option value="JHS">Junior High School</option>
-                            <option value="SHS">Senior High School</option>
+                            <option value="SHS" selected>Senior High School (SHS)</option>
                         </select>
                     </div>
-                    <div id="regJhsFields" class="hidden">
-                        <label class="form-label" for="regGradeCompleted">Grade / Level Completed *</label>
-                        <select id="regGradeCompleted" class="form-select text-xs">
-                            <option value="">Select completed level</option>
-                            <option value="Grade 10">Grade 10</option>
-                        </select>
-                    </div>
-                    <div id="regShsFields" class="hidden">
+                    <div id="regJhsFields" class="hidden"></div>
+                    <div id="regShsFields">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="form-label" for="regTrack">SHS Track *</label>
@@ -3422,9 +3412,7 @@
                         <div>
                             <label class="form-label" for="reunionEducationLevel">Educational Level <span class="text-rose-600">*</span></label>
                             <select id="reunionEducationLevel" required class="form-select text-xs" onchange="updateReunionTargetOptions()">
-                                <option value="">Select level...</option>
-                                <option value="JHS">Junior High School</option>
-                                <option value="SHS">Senior High School</option>
+                                <option value="SHS" selected>Senior High School (SHS)</option>
                             </select>
                         </div>
                         <div>
@@ -3434,7 +3422,7 @@
                             </select>
                         </div>
                     </div>
-                    <div id="reunionStrandField" hidden>
+                    <div id="reunionStrandField">
                         <label class="form-label" for="reunionStrand">SHS Strand</label>
                         <select id="reunionStrand" class="form-select text-xs" onchange="updateReunionTargetPreview()">
                             <option value="">All Strands</option>

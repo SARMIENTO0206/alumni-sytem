@@ -207,8 +207,8 @@ router.post('/register', (req, res) => {
   if (!batch || !educationLevel || !email) {
     return res.status(400).json({ error: 'Graduation year, educational level and email are required.' });
   }
-  if (!['JHS', 'SHS'].includes(educationLevel)) {
-    return res.status(400).json({ error: 'Select Junior High School or Senior High School.' });
+  if (educationLevel !== 'SHS') {
+    return res.status(400).json({ error: 'Registrations are open for Senior High School graduates only.' });
   }
   const allowedStrands = {
     Academic: ['STEM', 'ABM', 'HUMSS', 'GAS'],
@@ -216,16 +216,7 @@ router.post('/register', (req, res) => {
     Sports: ['Sports Track'],
     'Arts and Design': ['Arts and Design']
   };
-  if (educationLevel === 'JHS' && gradeCompleted !== 'Grade 10') {
-    return res.status(400).json({ error: 'Select Grade 10 as the completed JHS level.' });
-  }
-  if (educationLevel === 'JHS' && (track || strand)) {
-    return res.status(400).json({ error: 'JHS registrations must not include an SHS track or strand.' });
-  }
-  if (educationLevel === 'SHS' && gradeCompleted) {
-    return res.status(400).json({ error: 'SHS registrations must not include a JHS grade level.' });
-  }
-  if (educationLevel === 'SHS' && !allowedStrands[track]?.includes(strand)) {
+  if (!allowedStrands[track]?.includes(strand)) {
     return res.status(400).json({ error: 'Select a valid SHS track and strand combination.' });
   }
   const graduationYear = Number(batch);
@@ -273,13 +264,13 @@ router.post('/register', (req, res) => {
     avatar,
     normalizedStudentId,
     batch || String(new Date().getFullYear()),
-    educationLevel === 'JHS' ? gradeCompleted : strand,
+    strand || '',
     email || '',
     mobile,
     'St. Agnes Academy of Caloocan',
-    educationLevel,
-    educationLevel === 'JHS' ? gradeCompleted : '',
-    educationLevel === 'SHS' ? track : '',
+    'SHS',
+    '',
+    track || '',
     strand || '',
     lrn || '',
     address || '',

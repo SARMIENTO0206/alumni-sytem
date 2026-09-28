@@ -1,4 +1,4 @@
-﻿/* reunions - Batch Reunions - Planning, Reminders */
+/* reunions - Batch Reunions - Planning, Reminders */
 /* Split from engagement.js lines 456-823 */
 
     /* Reunions */
@@ -55,7 +55,7 @@
                 <div>
                     <span class="status-badge ${isDraft ? 'status-freelance' : 'status-postgrad'} mb-2">${isDraft ? "Draft" : "Batch Reunion"}</span>
                     <h4 class="font-extrabold text-slate-800 text-sm">${r.title || r.batch}</h4>
-                    <p class="text-xs text-slate-400 mt-1">${r.educationLevel === "JHS" ? "Junior High School" : r.educationLevel === "SHS" ? "Senior High School" : ""}${batchYear ? ` · Batch ${batchYear}` : ""}${r.strand ? ` · ${r.strand}` : ""}</p>
+                    <p class="text-xs text-slate-400 mt-1">${r.educationLevel === "SHS" ? "Senior High School" : ""}${batchYear ? ` · Batch ${batchYear}` : ""}${r.strand ? ` · ${r.strand}` : ""}</p>
                     <p class="text-xs text-slate-500 mt-2"><b>Date:</b> ${formatReunionDate(r.date)}${r.startTime ? ` · ${r.startTime}${r.endTime ? `–${r.endTime}` : ""}` : ""}</p>
                     <p class="text-xs text-slate-500 mt-1"><b>Venue:</b> ${r.venue}</p>
                     ${r.description ? `<p class="text-xs text-slate-500 mt-2 whitespace-pre-wrap">${r.description}</p>` : ""}
@@ -148,8 +148,7 @@
         const batchSelect = document.getElementById("reunionBatch");
         const strandField = document.getElementById("reunionStrandField");
         const strandSelect = document.getElementById("reunionStrand");
-        strandField.hidden = educationLevel !== "SHS";
-        if (educationLevel !== "SHS") strandSelect.value = "";
+        strandField.hidden = false;
         batchSelect.replaceChildren(new Option(educationLevel ? "Loading batches..." : "Select level first...", ""));
         batchSelect.disabled = true;
         reunionTargetCounts = { eligible: 0, withEmail: 0, withMobile: 0 };
@@ -181,7 +180,7 @@
         const educationLevel = document.getElementById("reunionEducationLevel").value;
         const batchYear = document.getElementById("reunionBatch").value;
         const strand = document.getElementById("reunionStrand").value;
-        const levelLabel = educationLevel === "JHS" ? "Junior High School" : educationLevel === "SHS" ? "Senior High School" : "";
+        const levelLabel = "Senior High School";
         document.getElementById("reunionTargetSummary").textContent = batchYear
             ? `${levelLabel} · Batch ${batchYear}${strand ? ` · ${strand}` : " · All Strands"}`
             : "Choose an educational level and batch to preview recipients.";

@@ -125,23 +125,13 @@
     }
 
     function updateRegistrationEducationFields() {
-        const level = document.getElementById("regEducationLevel").value;
-        const jhsFields = document.getElementById("regJhsFields");
         const shsFields = document.getElementById("regShsFields");
-        const gradeSelect = document.getElementById("regGradeCompleted");
         const trackSelect = document.getElementById("regTrack");
         const strandSelect = document.getElementById("regStrand");
 
-        jhsFields.classList.toggle("hidden", level !== "JHS");
-        shsFields.classList.toggle("hidden", level !== "SHS");
-        gradeSelect.required = level === "JHS";
-        trackSelect.required = level === "SHS";
-        strandSelect.required = level === "SHS";
-        if (level !== "JHS") gradeSelect.value = "";
-        if (level !== "SHS") {
-            trackSelect.value = "";
-            updateRegistrationStrands();
-        }
+        if (shsFields) shsFields.classList.remove("hidden");
+        if (trackSelect) trackSelect.required = true;
+        if (strandSelect) strandSelect.required = true;
     }
 
     async function handleRegisterAlumni(event) {
@@ -155,10 +145,10 @@
         const email = document.getElementById("regEmail").value.trim();
         const contact = document.getElementById("regContact").value.trim();
         const school = document.getElementById("regSchool").value.trim();
-        const educationLevel = document.getElementById("regEducationLevel").value;
-        const gradeCompleted = educationLevel === "JHS" ? document.getElementById("regGradeCompleted").value : "";
+        const educationLevel = "SHS";
+        const gradeCompleted = "";
         const track = document.getElementById("regTrack").value;
-        const strand = educationLevel === "SHS" ? document.getElementById("regStrand").value.trim() : "";
+        const strand = document.getElementById("regStrand").value.trim();
         const lrn = document.getElementById("regLrn").value.trim();
         const address = document.getElementById("regAddress").value.trim();
         const consent = document.getElementById("regConsent").checked;
@@ -174,7 +164,7 @@
             if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
                 const data = await SAA_API.request("/api/auth/register", {
                     method: "POST",
-                    body: JSON.stringify({ username, password, name, studentId, batch, email, contact, school, educationLevel, gradeCompleted, track: educationLevel === "SHS" ? track : "", strand, lrn, address, consent })
+                    body: JSON.stringify({ username, password, name, studentId, batch, email, contact, school, educationLevel: "SHS", gradeCompleted: "", track, strand, lrn, address, consent })
                 });
                 event.target.hidden = true;
                 document.getElementById("registrationSubmitted").classList.remove("hidden");

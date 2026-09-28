@@ -70,18 +70,17 @@
         const level = document.getElementById("trackingEducationLevelFilter")?.value || "";
         const wrap = document.getElementById("trackingStrandFilterWrap");
         const strand = document.getElementById("trackingStrandFilter");
-        const disabled = level !== "SHS";
-        if (wrap) wrap.classList.toggle("opacity-50", disabled);
+        const disabled = false;
+        if (wrap) wrap.classList.remove("opacity-50");
         if (strand) {
-            strand.disabled = disabled;
-            if (disabled) strand.value = "";
+            strand.disabled = false;
         }
     }
 
     function applyTrackingFilters() {
-        const level = document.getElementById("trackingEducationLevelFilter")?.value || "";
+        const level = "SHS";
         const batch = document.getElementById("trackingBatchFilter")?.value || "";
-        const strand = level === "SHS" ? (document.getElementById("trackingStrandFilter")?.value || "") : "";
+        const strand = document.getElementById("trackingStrandFilter")?.value || "";
         activeTrackingFilters = { educationLevel: level, batch, strand };
         updateTrackingKPIs();
         renderTrackingCharts();
@@ -620,8 +619,8 @@
             const pathwayCanvas = document.getElementById("postShsPathwaysChart");
             const pathwaySection = document.getElementById("postShsPathwaysSection");
             const rows = trackingAlumni();
-            const showPathways = activeTrackingFilters.educationLevel !== "JHS";
-            if (pathwaySection) pathwaySection.classList.toggle("hidden", !showPathways);
+            const showPathways = true;
+            if (pathwaySection) pathwaySection.classList.remove("hidden");
 
             if (pieCanvas) {
                 if (empChartInstance) empChartInstance.destroy();
@@ -788,7 +787,7 @@
         } else {
             if (viewTitle && isTrackingView) viewTitle.textContent = "Graduate Tracking Analytics";
             if (title) title.textContent = "Graduate Tracking Analytics";
-            if (description) description.textContent = "Monitor JHS and SHS education pathways and employment outcomes.";
+            if (description) description.textContent = "Monitor SHS education pathways and employment outcomes.";
         }
         const educationFilter = document.getElementById("trackingEducationLevelFilter");
         if (educationFilter && !educationFilter.dataset.listenerAttached) {

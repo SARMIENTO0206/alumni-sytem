@@ -1,4 +1,4 @@
-﻿/* feedback - Surveys and Feedback Module */
+/* feedback - Surveys and Feedback Module */
 /* Split from engagement.js lines 2082-2488 */
 
     let feedbackResponses = [];
@@ -106,9 +106,7 @@
         selectedFeedbackResponseId = response.id;
         const educationLevel = response.educationLevel === "SHS"
             ? "Senior High School"
-            : response.educationLevel === "JHS"
-                ? "Junior High School"
-                : response.educationLevel || "—";
+            : response.educationLevel || "—";
         const details = [
             ["Submitted By", response.isAnonymous ? "Anonymous" : (response.name || "Alumni")],
             ["Educational Level", response.isAnonymous ? "—" : educationLevel],

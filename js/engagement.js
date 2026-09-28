@@ -507,7 +507,7 @@
                 <div>
                     <span class="status-badge ${isDraft ? 'status-freelance' : 'status-postgrad'} mb-2">${isDraft ? "Draft" : "Batch Reunion"}</span>
                     <h4 class="font-extrabold text-slate-800 text-sm">${r.title || r.batch}</h4>
-                    <p class="text-xs text-slate-400 mt-1">${r.educationLevel === "JHS" ? "Junior High School" : r.educationLevel === "SHS" ? "Senior High School" : ""}${batchYear ? ` · Batch ${batchYear}` : ""}${r.strand ? ` · ${r.strand}` : ""}</p>
+                    <p class="text-xs text-slate-400 mt-1">${r.educationLevel === "SHS" ? "Senior High School" : ""}${batchYear ? ` · Batch ${batchYear}` : ""}${r.strand ? ` · ${r.strand}` : ""}</p>
                     <p class="text-xs text-slate-500 mt-2"><b>Date:</b> ${formatReunionDate(r.date)}${r.startTime ? ` · ${r.startTime}${r.endTime ? `–${r.endTime}` : ""}` : ""}</p>
                     <p class="text-xs text-slate-500 mt-1"><b>Venue:</b> ${r.venue}</p>
                     ${r.description ? `<p class="text-xs text-slate-500 mt-2 whitespace-pre-wrap">${r.description}</p>` : ""}
@@ -633,7 +633,7 @@
         const educationLevel = document.getElementById("reunionEducationLevel").value;
         const batchYear = document.getElementById("reunionBatch").value;
         const strand = document.getElementById("reunionStrand").value;
-        const levelLabel = educationLevel === "JHS" ? "Junior High School" : educationLevel === "SHS" ? "Senior High School" : "";
+        const levelLabel = "Senior High School";
         document.getElementById("reunionTargetSummary").textContent = batchYear
             ? `${levelLabel} · Batch ${batchYear}${strand ? ` · ${strand}` : " · All Strands"}`
             : "Choose an educational level and batch to preview recipients.";
@@ -2184,9 +2184,7 @@
         selectedFeedbackResponseId = response.id;
         const educationLevel = response.educationLevel === "SHS"
             ? "Senior High School"
-            : response.educationLevel === "JHS"
-                ? "Junior High School"
-                : response.educationLevel || "—";
+            : response.educationLevel || "—";
         const details = [
             ["Submitted By", response.isAnonymous ? "Anonymous" : (response.name || "Alumni")],
             ["Educational Level", response.isAnonymous ? "—" : educationLevel],

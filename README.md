@@ -14,7 +14,7 @@ devices must clone this repo and run `npm start` in `server/`.
 | Database | SQLite via Node's built-in `node:sqlite` |
 | Auth | bcrypt password hashing + bearer session tokens |
 | AI | OpenAI API (`gpt-4o-mini`) with a built-in fallback engine (works without a key) |
-| Reports | JHS/SHS graduate outcome analytics and CSV exports |
+| Reports | SHS graduate outcome analytics and CSV exports |
 
 ## 📁 Project structure
 
@@ -122,7 +122,7 @@ the record already has one);
 document requests are free (no checkout); newsletters go through a
 Registrar-draft → Admin-publish flow with in-app/email/SMS delivery;
 announcements/newsletters support scheduling, expiration, and channel
-selection; graduate tracking covers JHS/SHS outcomes without treating missing
+selection; graduate tracking covers SHS outcomes without treating missing
 data as unemployment, and only Alumni can update their own status. Job
 applications are private to the alumnus who submitted them: **My Applications**
 is an Alumni-only menu under *Career*, while Admin/Registrar manage the job

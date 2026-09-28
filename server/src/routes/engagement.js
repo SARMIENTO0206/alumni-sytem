@@ -525,33 +525,31 @@ router.get('/reunions', (req, res) => {
 });
 
 router.get('/reunions/target-options', requireRole('admin', 'staff'), (req, res) => {
-  const educationLevel = String(req.query.educationLevel || '');
-  if (!['JHS', 'SHS'].includes(educationLevel)) {
-    return res.status(400).json({ error: 'Select Junior High School or Senior High School.' });
+  const educationLevel = String(req.query.educationLevel || 'SHS');
+  if (educationLevel && educationLevel !== 'SHS') {
+    return res.status(400).json({ error: 'Reunions are organized for Senior High School alumni.' });
   }
   const batchRows = db.prepare(
     `SELECT DISTINCT batch FROM users
-     WHERE role = 'alumni' AND status = 'Active' AND education_level = ?
+     WHERE role = 'alumni' AND status = 'Active' AND education_level = 'SHS'
        AND batch GLOB '[0-9][0-9][0-9][0-9]'
      ORDER BY CAST(batch AS INTEGER) DESC`
-  ).all(educationLevel);
+  ).all();
   const years = batchRows.map((row) => row.batch);
-  const strands = educationLevel === 'SHS'
-    ? [...new Set([
-      'STEM', 'ABM', 'HUMSS', 'GAS', 'TVL',
-      ...db.prepare(
-        `SELECT DISTINCT strand FROM users
-         WHERE role = 'alumni' AND status = 'Active' AND education_level = 'SHS'
-           AND TRIM(strand) != ''
-         ORDER BY strand`
-      ).all().map((row) => row.strand)
-    ])]
-    : [];
+  const strands = [...new Set([
+    'STEM', 'ABM', 'HUMSS', 'GAS', 'TVL',
+    ...db.prepare(
+      `SELECT DISTINCT strand FROM users
+       WHERE role = 'alumni' AND status = 'Active' AND education_level = 'SHS'
+         AND TRIM(strand) != ''
+       ORDER BY strand`
+    ).all().map((row) => row.strand)
+  ])];
 
   const batchYear = String(req.query.batchYear || '');
   const strand = String(req.query.strand || '');
   const selectedBatchIsValid = !batchYear || years.includes(batchYear);
-  const selectedStrandIsValid = !strand || (educationLevel === 'SHS' && strands.includes(strand));
+  const selectedStrandIsValid = !strand || strands.includes(strand);
   if (!selectedBatchIsValid || !selectedStrandIsValid) {
     return res.status(400).json({ error: 'Select a valid target batch and strand.' });
   }
@@ -592,10 +590,10 @@ router.post('/reunions', requireRole('admin', 'staff'), async (req, res) => {
   }
   let audience = [];
   if (status === 'Published') {
-    if (!title || !['JHS', 'SHS'].includes(educationLevel) ||
+    if (!title || (educationLevel && educationLevel !== 'SHS') ||
         !/^\d{4}$/.test(batchYear) || Number(batchYear) < 1960 ||
         Number(batchYear) > new Date().getFullYear()) {
-      return res.status(400).json({ error: 'Enter a reunion title, education level, and valid target batch year.' });
+      return res.status(400).json({ error: 'Enter a reunion title and valid target batch year.' });
     }
     if (!isValidIsoDate(date)) {
       return res.status(400).json({ error: 'Select a valid reunion date.' });
