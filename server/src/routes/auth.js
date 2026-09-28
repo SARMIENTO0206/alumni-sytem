@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { createHash, randomInt } from 'node:crypto';
+import { createHash, createHmac, randomInt } from 'node:crypto';
 import { db, createSession, destroySession, destroyUserSessions, generateUserCode, mapUser, mapAlumni, writeAudit, writeLoginLog, linkAlumniAccount } from '../db.js';
 import { isAlumni, requireAuth } from '../auth.js';
 import { normalizePhMobile } from '../phone.js';
@@ -16,6 +16,12 @@ const RESET_MAX_ATTEMPTS = 5;
 
 function hashResetOtp(otp) {
   return createHash('sha256').update(String(otp)).digest('hex');
+}
+
+function hashRegistrationOtp(email, otp) {
+  return createHmac('sha256', process.env.REGISTRATION_OTP_SECRET || '')
+    .update(`${email}:${otp}`)
+    .digest('hex');
 }
 
 function isRateLimited(store, key) {
@@ -194,18 +200,77 @@ router.post('/login', (req, res) => {
   return res.json({ token, user });
 });
 
-/** POST /api/auth/register - self-registration for alumni (bcrypt-hashes the password). */
-router.post('/register', (req, res) => {
+/** POST /api/auth/send-otp - send a persistent, single-use registration code. */
+router.post('/send-otp', async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  if (!/^[^\s@]+@gmail\.com$/.test(email)) {
+    return res.status(400).json({ error: 'Enter a valid personal Gmail address.' });
+  }
+  if (!process.env.REGISTRATION_OTP_SECRET || !mailConfig().configured) {
+    return res.status(503).json({ error: 'Email verification is not configured. Please contact the system administrator.' });
+  }
+
+  try {
+    db.exec('BEGIN IMMEDIATE');
+    const registered = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(email);
+    if (registered) {
+      db.exec('ROLLBACK');
+      return res.status(409).json({ error: 'This email address is already registered.' });
+    }
+
+    const now = Date.now();
+    const previous = db.prepare('SELECT sent_at FROM registration_otps WHERE email = ?').get(email);
+    const elapsed = previous ? now - Date.parse(previous.sent_at) : Infinity;
+    if (elapsed < 60_000) {
+      db.exec('ROLLBACK');
+      return res.status(429).json({ error: `Please wait ${Math.ceil((60_000 - elapsed) / 1000)} seconds before requesting another code.` });
+    }
+
+    const otp = String(randomInt(100000, 1000000));
+    const otpHash = hashRegistrationOtp(email, otp);
+    const sentAt = new Date(now).toISOString();
+    const expiresAt = new Date(now + 5 * 60_000).toISOString();
+    db.prepare(
+      `INSERT INTO registration_otps (email, otp_hash, expires_at, sent_at, attempts)
+       VALUES (?, ?, ?, ?, 0)
+       ON CONFLICT(email) DO UPDATE SET otp_hash = excluded.otp_hash,
+         expires_at = excluded.expires_at, sent_at = excluded.sent_at, attempts = 0`
+    ).run(email, otpHash, expiresAt, sentAt);
+    db.exec('COMMIT');
+
+    const delivery = await sendMail({
+      to: email,
+      subject: 'Alumni System - Registration OTP Code',
+      text: `Your Alumni System registration verification code is ${otp}. It expires in 5 minutes. If you did not request this code, you can ignore this email.`,
+      html: `<div style="margin:0;padding:32px 16px;background:#f3f4f6;font-family:Arial,sans-serif;color:#1f2937"><div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden"><div style="padding:24px 28px;background:#801235;color:#ffffff"><p style="margin:0;font-size:12px;letter-spacing:1px;text-transform:uppercase">Alumni Management System</p><h1 style="margin:10px 0 0;font-size:22px">Verify your email</h1></div><div style="padding:28px"><p style="margin:0 0 18px;line-height:1.6">Use this one-time code to continue your alumni registration:</p><div style="padding:16px;text-align:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:32px;font-weight:700;letter-spacing:8px;color:#801235">${otp}</div><p style="margin:20px 0 0;line-height:1.6">This code expires in <strong>5 minutes</strong> and can only be used once. If you did not request it, you can ignore this email.</p><p style="margin:24px 0 0;color:#6b7280;font-size:12px">Please do not share this code with anyone.</p></div></div></div>`
+    });
+
+    if (!delivery.sent) {
+      db.prepare('DELETE FROM registration_otps WHERE email = ? AND otp_hash = ?').run(email, otpHash);
+      console.error('[auth] Registration OTP email was not accepted:', delivery.reason);
+      return res.status(503).json({ error: 'Unable to send the verification email. Check the address or try again later.' });
+    }
+    return res.json({ ok: true, message: 'A verification code was sent to your Gmail address.' });
+  } catch (err) {
+    try { db.exec('ROLLBACK'); } catch { /* transaction may already be closed */ }
+    console.error('[auth] Registration OTP request failed:', err.message);
+    return res.status(500).json({ error: 'Unable to send a verification code right now.' });
+  }
+});
+
+/** POST /api/auth/register-alumni - create an account only after email OTP verification. */
+async function registerAlumni(req, res) {
   const {
-    username, password, name, studentId, batch, email, contact, educationLevel, gradeCompleted, track, strand, lrn, address, consent
+    username, password, name, studentId, batch, contact, educationLevel, track, strand, lrn, address, consent, otp
   } = req.body || {};
+  const email = normalizeEmail(req.body?.email);
 
   if (!username || !password || !name) {
     return res.status(400).json({ error: 'Username, password and full name are required.' });
   }
   const normalizedStudentId = String(studentId || '').trim();
   if (!batch || !educationLevel || !email) {
-    return res.status(400).json({ error: 'Graduation year, educational level and email are required.' });
+    return res.status(400).json({ error: 'Graduation year, educational level and Gmail address are required.' });
   }
   if (educationLevel !== 'SHS') {
     return res.status(400).json({ error: 'Registrations are open for Senior High School graduates only.' });
@@ -223,8 +288,11 @@ router.post('/register', (req, res) => {
   if (!Number.isInteger(graduationYear) || graduationYear < 1960 || graduationYear > new Date().getFullYear()) {
     return res.status(400).json({ error: 'Enter a valid graduation year.' });
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
-    return res.status(400).json({ error: 'Enter a valid email address.' });
+  if (!/^[^\s@]+@gmail\.com$/.test(email)) {
+    return res.status(400).json({ error: 'Enter a valid personal Gmail address.' });
+  }
+  if (!/^\d{6}$/.test(String(otp || '').trim())) {
+    return res.status(400).json({ error: 'Enter the 6-digit verification code sent to your Gmail address.' });
   }
   if (consent !== true) {
     return res.status(400).json({ error: 'Please accept the privacy consent before submitting.' });
@@ -233,17 +301,10 @@ router.post('/register', (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
   }
 
-  const exists = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(String(username).trim());
-  if (exists) return res.status(409).json({ error: 'Username already exists. Please pick a unique username.' });
-
   const avatar = String(name).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   /* The school record number is optional: the official Alumni ID is issued by
      the Registrar verification step, not self-declared at registration. */
   if (normalizedStudentId) {
-    const duplicateStudentId = db.prepare(
-      `SELECT id FROM users WHERE LOWER(student_id) = LOWER(?) AND TRIM(student_id) != ''`
-    ).get(normalizedStudentId);
-    if (duplicateStudentId) return res.status(409).json({ error: 'This school record number is already associated with an account. Contact the Registrar if you need help.' });
   }
 
   let mobile = '';
@@ -253,29 +314,80 @@ router.post('/register', (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 
-  const info = db.prepare(
-    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status, school, education_level, grade_completed, track, strand, lrn, address, user_code)
-     VALUES (?, ?, 'alumni', ?, ?, ?, ?, ?, ?, '', ?, ?, 'Pending Verification', ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    String(username).trim(),
-    bcrypt.hashSync(String(password), 10),
-    name,
-    `Alumni (Batch ${batch || new Date().getFullYear()})`,
-    avatar,
-    normalizedStudentId,
-    batch || String(new Date().getFullYear()),
-    strand || '',
-    email || '',
-    mobile,
-    'St. Agnes Academy of Caloocan',
-    'SHS',
-    '',
-    track || '',
-    strand || '',
-    lrn || '',
-    address || '',
-    generateUserCode('alumni')
-  );
+  let info;
+  try {
+    db.exec('BEGIN IMMEDIATE');
+    const code = db.prepare('SELECT otp_hash, expires_at, attempts FROM registration_otps WHERE email = ?').get(email);
+    if (!code || Date.parse(code.expires_at) <= Date.now()) {
+      if (code) db.prepare('UPDATE registration_otps SET otp_hash = \'\', attempts = 3 WHERE email = ?').run(email);
+      db.exec('COMMIT');
+      return res.status(400).json({ error: 'This verification code is invalid or has expired. Request a new code.' });
+    }
+    if (code.attempts >= 3) {
+      db.exec('COMMIT');
+      return res.status(400).json({ error: 'Too many incorrect attempts. Request a new verification code.' });
+    }
+    if (hashRegistrationOtp(email, String(otp).trim()) !== code.otp_hash) {
+      const attempts = code.attempts + 1;
+      if (attempts >= 3) db.prepare('UPDATE registration_otps SET otp_hash = \'\', attempts = 3 WHERE email = ?').run(email);
+      else db.prepare('UPDATE registration_otps SET attempts = ? WHERE email = ?').run(attempts, email);
+      db.exec('COMMIT');
+      return res.status(400).json({ error: attempts >= 3
+        ? 'Too many incorrect attempts. Request a new verification code.'
+        : `Incorrect verification code. ${3 - attempts} attempt${3 - attempts === 1 ? '' : 's'} remaining.` });
+    }
+
+    const exists = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(String(username).trim());
+    if (exists) {
+      db.exec('ROLLBACK');
+      return res.status(409).json({ error: 'Username already exists. Please pick a unique username.' });
+    }
+    const existingEmail = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(email);
+    if (existingEmail) {
+      db.prepare('DELETE FROM registration_otps WHERE email = ?').run(email);
+      db.exec('COMMIT');
+      return res.status(409).json({ error: 'This email address is already registered.' });
+    }
+    if (normalizedStudentId) {
+      const duplicateStudentId = db.prepare(
+        `SELECT id FROM users WHERE LOWER(student_id) = LOWER(?) AND TRIM(student_id) != ''`
+      ).get(normalizedStudentId);
+      if (duplicateStudentId) {
+        db.exec('ROLLBACK');
+        return res.status(409).json({ error: 'This school record number is already associated with an account. Contact the Registrar if you need help.' });
+      }
+    }
+
+    info = db.prepare(
+      `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status, school, education_level, grade_completed, track, strand, lrn, address, user_code)
+       VALUES (?, ?, 'alumni', ?, ?, ?, ?, ?, ?, '', ?, ?, 'Pending Verification', ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      String(username).trim(),
+      bcrypt.hashSync(String(password), 10),
+      name,
+      `Alumni (Batch ${batch || new Date().getFullYear()})`,
+      avatar,
+      normalizedStudentId,
+      batch || String(new Date().getFullYear()),
+      strand || '',
+      email,
+      mobile,
+      'St. Agnes Academy of Caloocan',
+      'SHS',
+      '',
+      track || '',
+      strand || '',
+      lrn || '',
+      address || '',
+      generateUserCode('alumni')
+    );
+    db.prepare('DELETE FROM registration_otps WHERE email = ?').run(email);
+    db.exec('COMMIT');
+  } catch (err) {
+    try { db.exec('ROLLBACK'); } catch { /* transaction may already be closed */ }
+    console.error('[auth] Alumni registration failed:', err.message);
+    return res.status(500).json({ error: 'Unable to complete registration right now.' });
+  }
 
   const user = mapUser(db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid));
   return res.status(201).json({
@@ -283,7 +395,10 @@ router.post('/register', (req, res) => {
     pendingVerification: true,
     message: 'Your registration was submitted and is pending Registrar verification.'
   });
-});
+}
+
+router.post('/register-alumni', registerAlumni);
+router.post('/register', registerAlumni);
 
 /** GET /api/auth/me - current authenticated user. */
 router.get('/me', requireAuth, (req, res) => {

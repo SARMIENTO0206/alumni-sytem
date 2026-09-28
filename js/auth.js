@@ -84,6 +84,7 @@
         const form = document.querySelector("#selfRegisterModal form");
         form.reset();
         form.hidden = false;
+        resetRegistrationOtpStep();
         document.getElementById("registrationSubmitted").classList.add("hidden");
         document.getElementById("regSchool").value = "St. Agnes Academy of Caloocan";
         populateRegistrationYears();
@@ -94,6 +95,8 @@
 
     function closeSelfRegisterModal() {
         document.getElementById("selfRegisterModal").classList.remove("active");
+        if (registrationOtpCooldownTimer) clearInterval(registrationOtpCooldownTimer);
+        registrationOtpCooldownTimer = null;
     }
 
     function populateRegistrationYears() {
@@ -134,6 +137,91 @@
         if (strandSelect) strandSelect.required = true;
     }
 
+    let registrationOtpCooldownTimer = null;
+
+    function resetRegistrationOtpStep() {
+        if (registrationOtpCooldownTimer) clearInterval(registrationOtpCooldownTimer);
+        registrationOtpCooldownTimer = null;
+        const otpStep = document.getElementById("regOtpStep");
+        const otpInput = document.getElementById("regOtp");
+        const emailInput = document.getElementById("regEmail");
+        const submitLabel = document.getElementById("regSubmitLabel");
+        const resendButton = document.getElementById("regResendButton");
+        if (otpStep) otpStep.classList.add("hidden");
+        if (otpInput) {
+            otpInput.required = false;
+            otpInput.value = "";
+        }
+        if (emailInput) emailInput.disabled = false;
+        if (submitLabel) submitLabel.textContent = "Send verification code";
+        if (resendButton) {
+            resendButton.disabled = true;
+            resendButton.textContent = "Resend code";
+        }
+        const form = document.querySelector("#selfRegisterModal form");
+        if (form) form.dataset.otpSent = "false";
+    }
+
+    function startRegistrationOtpCooldown(seconds = 60) {
+        const resendButton = document.getElementById("regResendButton");
+        if (!resendButton) return;
+        if (registrationOtpCooldownTimer) clearInterval(registrationOtpCooldownTimer);
+        let remaining = seconds;
+        const update = () => {
+            resendButton.disabled = remaining > 0;
+            resendButton.textContent = remaining > 0 ? `Resend code in ${remaining}s` : "Resend code";
+            if (remaining <= 0) {
+                clearInterval(registrationOtpCooldownTimer);
+                registrationOtpCooldownTimer = null;
+            }
+            remaining -= 1;
+        };
+        update();
+        registrationOtpCooldownTimer = setInterval(update, 1000);
+    }
+
+    async function requestRegistrationOtp(email) {
+        let data;
+        try {
+            data = await SAA_API.request("/api/auth/send-otp", {
+                method: "POST",
+                body: JSON.stringify({ email })
+            });
+        } catch (err) {
+            if (err.status === 429) {
+                revealRegistrationOtpStep(email);
+                const waitMatch = String(err.message || "").match(/wait\s+(\d+)\s+seconds?/i);
+                if (waitMatch) startRegistrationOtpCooldown(Number(waitMatch[1]));
+            }
+            throw err;
+        }
+        revealRegistrationOtpStep(email);
+        startRegistrationOtpCooldown();
+        showToast(data.message || "Verification code sent.", "success");
+    }
+
+    function revealRegistrationOtpStep(email) {
+        const form = document.querySelector("#selfRegisterModal form");
+        if (form) form.dataset.otpSent = "true";
+        document.getElementById("regEmail").disabled = true;
+        document.getElementById("regOtpStep").classList.remove("hidden");
+        document.getElementById("regOtp").required = true;
+        document.getElementById("regOtpDestination").textContent = email;
+        document.getElementById("regSubmitLabel").textContent = "Complete registration";
+    }
+
+    async function resendRegistrationOtp() {
+        const email = document.getElementById("regEmail").value.trim();
+        const button = document.getElementById("regResendButton");
+        button.disabled = true;
+        try {
+            await requestRegistrationOtp(email);
+        } catch (err) {
+            if (err.status !== 429) button.disabled = false;
+            showToast(err.message || "Unable to resend the code.", "error");
+        }
+    }
+
     async function handleRegisterAlumni(event) {
         event.preventDefault();
         const name = document.getElementById("regName").value.trim();
@@ -159,12 +247,35 @@
             return;
         }
 
-        /* Primary path: register through the backend - the password is bcrypt-hashed server-side. */
+        const form = event.target;
+        const submitButton = document.getElementById("regSubmitButton");
+        const submitLabel = document.getElementById("regSubmitLabel");
+        if (form.dataset.otpSent !== "true") {
+            if (typeof SAA_API === "undefined" || !(await SAA_API.health())) {
+                showToast("The server is unavailable. Registration requires a live account.", "error");
+                return;
+            }
+            submitButton.disabled = true;
+            submitLabel.textContent = "Sending code...";
+            try {
+                await requestRegistrationOtp(email);
+            } catch (err) {
+                showToast(err.message || "Unable to send a verification code.", "error");
+            } finally {
+                submitButton.disabled = false;
+                if (form.dataset.otpSent !== "true") submitLabel.textContent = "Send verification code";
+            }
+            return;
+        }
+
+        /* Registration is only submitted with the code delivered to this Gmail address. */
         try {
             if (typeof SAA_API !== "undefined" && (await SAA_API.health())) {
-                const data = await SAA_API.request("/api/auth/register", {
+                submitButton.disabled = true;
+                submitLabel.textContent = "Submitting...";
+                const data = await SAA_API.request("/api/auth/register-alumni", {
                     method: "POST",
-                    body: JSON.stringify({ username, password, name, studentId, batch, email, contact, school, educationLevel: "SHS", gradeCompleted: "", track, strand, lrn, address, consent })
+                    body: JSON.stringify({ username, password, name, studentId, batch, email, contact, school, educationLevel: "SHS", gradeCompleted: "", track, strand, lrn, address, consent, otp: document.getElementById("regOtp").value.trim() })
                 });
                 event.target.hidden = true;
                 document.getElementById("registrationSubmitted").classList.remove("hidden");
@@ -173,6 +284,9 @@
         } catch (err) {
             showToast(err.message || "Registration failed. Please try again.", "error");
             return;
+        } finally {
+            submitButton.disabled = false;
+            if (form.dataset.otpSent === "true") submitLabel.textContent = "Complete registration";
         }
 
         showToast("The server is unavailable. Registration requires a live account.", "error");

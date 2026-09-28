@@ -50,6 +50,14 @@ export function initDb() {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS registration_otps (
+      email TEXT PRIMARY KEY,
+      otp_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      sent_at TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0
+    );
+
     /* Verified email change: the registered address only moves after the code
        sent to the new address is confirmed. */
     CREATE TABLE IF NOT EXISTS email_change_requests (

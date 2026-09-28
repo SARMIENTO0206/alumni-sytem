@@ -2912,8 +2912,8 @@
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="form-label" for="regEmail">Email Address *</label>
-                            <input type="email" id="regEmail" required autocomplete="email" placeholder="e.g. juan@email.com" class="form-input text-xs">
+                            <label class="form-label" for="regEmail">Personal Gmail Address *</label>
+                            <input type="email" id="regEmail" required autocomplete="email" pattern="[^@\s]+@gmail\.com" placeholder="e.g. juan@gmail.com" class="form-input text-xs">
                         </div>
                         <div>
                             <label class="form-label" for="regContact">Contact Number</label>
@@ -3001,10 +3001,20 @@
                     <span>I consent to the school processing the information I provided to verify my alumni record.</span>
                 </label>
 
+                <section id="regOtpStep" class="hidden space-y-2 border-t border-slate-100 pt-3">
+                    <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Email Verification</h4>
+                    <label class="form-label" for="regOtp">6-digit verification code</label>
+                    <input type="text" id="regOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" class="form-input text-xs" placeholder="Enter the code from your email">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-[10px] text-slate-500">Code sent to <span id="regOtpDestination" class="font-semibold"></span>. It expires in 5 minutes.</p>
+                        <button id="regResendButton" type="button" onclick="resendRegistrationOtp()" disabled class="shrink-0 text-[10px] font-bold text-brand-magenta disabled:text-slate-400">Resend code</button>
+                    </div>
+                </section>
+
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeSelfRegisterModal()" class="btn btn-secondary text-xs">Cancel</button>
-                    <button type="submit" class="btn btn-primary text-xs">
-                        <i class="fa-solid fa-paper-plane mr-1"></i> Submit for Verification
+                    <button id="regSubmitButton" type="submit" class="btn btn-primary text-xs">
+                        <i class="fa-solid fa-paper-plane mr-1"></i> <span id="regSubmitLabel">Send verification code</span>
                     </button>
                 </div>
             </form>
@@ -4029,7 +4039,7 @@
     <script src="js/env.js?v=20260920"></script>
     <script src="js/api.js?v=20260926"></script>
     <script src="js/utils.js?v=20260920"></script>
-    <script src="js/auth.js?v=20260928"></script>
+    <script src="js/auth.js?v=20260929"></script>
     <script src="js/access.js?v=20260928"></script>
     <script src="js/navigation.js?v=20260928"></script>
     <script src="js/records.js?v=20260928"></script>
