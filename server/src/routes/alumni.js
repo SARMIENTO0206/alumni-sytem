@@ -61,6 +61,22 @@ router.get('/:id', (req, res) => {
   res.json({ alumni: mapAlumni(row) });
 });
 
+/**
+ * Official Alumni ID, issued by the system on verification:
+ *   SAA-<graduation year>-<sequence>   e.g. SAA-2026-0025
+ * Only alumni records carry this ID - staff and admin accounts use user_code.
+ */
+function issueAlumniId(batch) {
+  const year = /^\d{4}$/.test(String(batch || '').trim()) ? String(batch).trim() : String(new Date().getFullYear());
+  const rows = db.prepare('SELECT student_id FROM alumni WHERE student_id LIKE ?').all(`SAA-${year}-%`);
+  let highest = 0;
+  for (const row of rows) {
+    const match = String(row.student_id || '').match(/(\d+)\s*$/);
+    if (match) highest = Math.max(highest, Number(match[1]));
+  }
+  return `SAA-${year}-${String(highest + 1).padStart(4, '0')}`;
+}
+
 /** POST /api/alumni - Registrar creates an alumni record for verification. */
 router.post('/', requireRole('staff'), (req, res) => {
   const { name, batch, program, status, company, title, contact, studentId } = req.body || {};
@@ -68,20 +84,22 @@ router.post('/', requireRole('staff'), (req, res) => {
   let mobile = '';
   try { mobile = normalizePhMobile(contact); } catch (err) { return res.status(400).json({ error: err.message }); }
 
-  const generatedStudentId = studentId || `SAA-${batch || new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  /* The school record number is optional. The official Alumni ID is issued when
+     the Registrar verifies the record, so it is never typed by hand here. */
+  const schoolRecordNo = String(studentId || '').trim();
   const duplicate = db.prepare(
     'SELECT id FROM alumni WHERE LOWER(name) = LOWER(?) AND batch = ?'
   ).get(name, batch || '');
   if (duplicate) return res.status(409).json({ error: 'An alumni record with this name and batch already exists.' });
-  if (studentId && db.prepare('SELECT id FROM alumni WHERE LOWER(student_id) = LOWER(?)').get(studentId)) {
-    return res.status(409).json({ error: 'This Student / Alumni ID is already assigned to another record.' });
+  if (schoolRecordNo && db.prepare('SELECT id FROM alumni WHERE LOWER(student_id) = LOWER(?)').get(schoolRecordNo)) {
+    return res.status(409).json({ error: 'This school record number is already assigned to another record.' });
   }
   const info = db.prepare(
     `INSERT INTO alumni (name, batch, program, status, company, job_title, contact, relevance, time_to_first, location, student_id, last_updated, verification_status)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'Not Related', '', 'Local', ?, ?, 'Pending Verification')`
   ).run(
     name, batch || '', program || '', status || 'No Data', company || '', title || '',
-    mobile, generatedStudentId,
+    mobile, schoolRecordNo,
     (status && status !== 'No Data' ? new Date().toISOString().split('T')[0] : '')
   );
 
@@ -99,6 +117,10 @@ router.put('/:id', requireRole('staff'), (req, res) => {
   if (existing.archived_at) return res.status(409).json({ error: 'Archived alumni records must be restored before editing.' });
 
   const { name, batch, program, status, company, title, contact, relevance, timeToFirst, location, studentId } = req.body || {};
+  if (existing.verification_status === 'Verified' && studentId !== undefined
+      && String(studentId).trim() && String(studentId).trim() !== String(existing.student_id || '')) {
+    return res.status(409).json({ error: 'The Alumni ID is issued by the system and cannot be edited after verification.' });
+  }
   let mobile = existing.contact;
   try { mobile = contact === undefined ? existing.contact : normalizePhMobile(contact); } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -138,9 +160,12 @@ router.post('/:id/verify', requireRole('staff'), (req, res) => {
   }
 
   const verifiedAt = new Date().toISOString();
+  /* Verification mints the official Alumni ID when the record does not carry a
+     school-issued one, exactly like the Alumni Portal flow documents. */
+  const alumniId = String(existing.student_id || '').trim() || issueAlumniId(existing.batch);
   db.prepare(
-    `UPDATE alumni SET verification_status = 'Verified', verified_by = ?, verified_at = ? WHERE id = ?`
-  ).run(req.user.name || req.user.username, verifiedAt, id);
+    `UPDATE alumni SET verification_status = 'Verified', verified_by = ?, verified_at = ?, student_id = ? WHERE id = ?`
+  ).run(req.user.name || req.user.username, verifiedAt, alumniId, id);
   const row = db.prepare('SELECT * FROM alumni WHERE id = ?').get(id);
   writeAudit(req.user, 'verify', 'alumni', id, row.name);
   mirrorUpdate('alumni', row);

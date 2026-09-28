@@ -87,8 +87,18 @@ submit/process requests. **Registrar** — alumni
 records, request review/processing, announcements, SMS/email, reports.
 **Alumni** — own profile/status, digital ID, requests, jobs, events, surveys.
 
+**Identifiers.** Every account carries one **account code** that identifies the
+account itself — `ADM-0001` (Administrator), `REG-0001` (Registrar/Staff),
+`ALU-0001` (Alumni account). The profile shows it as *Admin ID* or *Staff ID*.
+The official **Alumni ID** (`SAA-<graduation year>-<sequence>`, e.g.
+`SAA-2026-0025`) belongs to the alumni *record* only: the system issues it when
+the Registrar verifies the record, it is read-only afterwards, and staff or
+admin accounts never carry one.
+
 Key business rules: alumni records are archived (never deleted); new manual
-records stay **Pending Verification** until the Registrar verifies them;
+records stay **Pending Verification** until the Registrar verifies them, and that
+verification issues the official Alumni ID (a school-issued number is kept when
+the record already has one);
 document requests are free (no checkout); newsletters go through a
 Registrar-draft → Admin-publish flow with in-app/email/SMS delivery;
 announcements/newsletters support scheduling, expiration, and channel

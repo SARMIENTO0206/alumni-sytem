@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { db, mapUser, writeAudit } from '../db.js';
+import { db, generateUserCode, mapUser, userCodePrefix, writeAudit } from '../db.js';
 import { requireRole } from '../auth.js';
 
 const router = Router();
@@ -26,9 +26,12 @@ router.post('/', requireRole('admin'), (req, res) => {
   if (exists) return res.status(409).json({ error: 'Username already exists.' });
 
   const avatar = String(name).split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  /* Admin/Registrar accounts get an account code (ADM-/REG-); only alumni
+     accounts keep a school record number here - the official Alumni ID is
+     issued on the alumni record after Registrar verification. */
   const info = db.prepare(
-    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?)`
+    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status, user_code)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?)`
   ).run(
     String(username).trim(),
     bcrypt.hashSync(String(password), 10),
@@ -36,12 +39,13 @@ router.post('/', requireRole('admin'), (req, res) => {
     name,
     title || (nextRole === 'admin' ? 'System Administrator' : nextRole === 'staff' ? 'Staff' : 'Alumni'),
     avatar,
-    studentId || '',
-    batch || '',
+    nextRole === 'alumni' ? (studentId || '') : '',
+    nextRole === 'alumni' ? (batch || '') : '',
     program || '',
     email || '',
     contact || '',
-    ALLOWED_STATUS.includes(status) ? status : 'Active'
+    ALLOWED_STATUS.includes(status) ? status : 'Active',
+    generateUserCode(nextRole)
   );
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
   writeAudit(req.user, 'create', 'users', row.id, row.username);
@@ -54,18 +58,22 @@ router.put('/:id', requireRole('admin'), (req, res) => {
   if (!existing) return res.status(404).json({ error: 'User account not found.' });
   const { name, role, email, contact, title, studentId, batch, program, status, password } = req.body || {};
   const nextRole = role && ALLOWED_ROLES.includes(role) ? role : existing.role === 'registrar' ? 'staff' : existing.role;
+  /* The account code always matches the role family (ADM / REG / ALU). */
+  const currentCode = String(existing.user_code || '');
+  const nextUserCode = currentCode.startsWith(`${userCodePrefix(nextRole)}-`) ? currentCode : generateUserCode(nextRole);
   db.prepare(
-    `UPDATE users SET name = ?, role = ?, email = ?, contact = ?, title = ?, student_id = ?, batch = ?, program = ?, status = ? WHERE id = ?`
+    `UPDATE users SET name = ?, role = ?, email = ?, contact = ?, title = ?, student_id = ?, batch = ?, program = ?, status = ?, user_code = ? WHERE id = ?`
   ).run(
     name ?? existing.name,
     nextRole,
     email ?? existing.email,
     contact ?? existing.contact,
     title ?? existing.title,
-    studentId ?? existing.student_id,
-    batch ?? existing.batch,
+    nextRole === 'alumni' ? (studentId ?? existing.student_id) : '',
+    nextRole === 'alumni' ? (batch ?? existing.batch) : '',
     program ?? existing.program,
     ALLOWED_STATUS.includes(status) ? status : (existing.status || 'Active'),
+    nextUserCode,
     id
   );
   if (password && String(password).length >= 6) {

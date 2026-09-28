@@ -998,7 +998,7 @@
                             <h4 class="font-extrabold text-slate-800 text-sm mb-3">Staff Information</h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
-                                    <label class="form-label" for="profileStaffId">Staff/System ID</label>
+                                    <label class="form-label" for="profileStaffId" id="profileStaffIdLabel">Staff ID</label>
                                     <input id="profileStaffId" type="text" class="form-input text-sm bg-slate-50" readonly>
                                 </div>
                                 <div>
@@ -2911,8 +2911,9 @@
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="form-label" for="regStudentId">Student ID Number *</label>
-                            <input type="text" id="regStudentId" required placeholder="e.g. SAA-2023-0188" class="form-input text-xs">
+                            <label class="form-label" for="regStudentId">School Student Number <span class="font-normal text-slate-400">(optional)</span></label>
+                            <input type="text" id="regStudentId" placeholder="e.g. 2015-0188" class="form-input text-xs">
+                            <p class="mt-1 text-[10px] text-slate-400">Your official Alumni ID (SAA-YYYY-NNNN) is issued by the Registrar after verification.</p>
                         </div>
                         <div>
                             <label class="form-label" for="regBatch">Graduation Year *</label>
@@ -3133,8 +3134,9 @@
                         <input type="number" id="newAlumniBatch" required min="1950" max="2030" placeholder="e.g. 2024" class="form-input text-xs">
                     </div>
                     <div>
-                        <label class="form-label" for="newAlumniStudentId">Student / Alumni ID</label>
-                        <input type="text" id="newAlumniStudentId" placeholder="School record ID" class="form-input text-xs">
+                        <label class="form-label" for="newAlumniStudentId">School Record No. <span class="font-normal text-slate-400">(optional)</span></label>
+                        <input type="text" id="newAlumniStudentId" placeholder="School record number" class="form-input text-xs">
+                        <p id="newAlumniIdHint" class="mt-1 text-[10px] text-slate-400">The official Alumni ID (SAA-YYYY-NNNN) is issued by the system when this record is verified.</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">

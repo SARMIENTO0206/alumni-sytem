@@ -313,7 +313,12 @@
         document.getElementById("editAlumniId").value = "";
         document.getElementById("newAlumniName").value = "";
         document.getElementById("newAlumniBatch").value = new Date().getFullYear();
-        document.getElementById("newAlumniStudentId").value = "";
+        const idField = document.getElementById("newAlumniStudentId");
+        idField.value = "";
+        idField.readOnly = false;
+        idField.classList.remove("bg-slate-50");
+        const idHint = document.getElementById("newAlumniIdHint");
+        if (idHint) idHint.textContent = "The official Alumni ID (SAA-YYYY-NNNN) is issued by the system when this record is verified.";
         document.getElementById("newAlumniProgram").value = "";
         document.getElementById("newAlumniEmployment").value = "No Data";
         document.getElementById("alumniVerificationNotice").classList.remove("hidden");
@@ -330,7 +335,18 @@
         document.getElementById("editAlumniId").value = item.id;
         document.getElementById("newAlumniName").value = item.name;
         document.getElementById("newAlumniBatch").value = item.batch;
-        document.getElementById("newAlumniStudentId").value = item.studentId || "";
+        /* The Alumni ID is locked once the record is verified. */
+        const idField = document.getElementById("newAlumniStudentId");
+        const idLocked = item.verificationStatus === "Verified";
+        idField.value = item.studentId || "";
+        idField.readOnly = idLocked;
+        idField.classList.toggle("bg-slate-50", idLocked);
+        const idHint = document.getElementById("newAlumniIdHint");
+        if (idHint) {
+            idHint.textContent = idLocked
+                ? "Official Alumni ID issued by the system. It can no longer be edited."
+                : "The official Alumni ID (SAA-YYYY-NNNN) is issued by the system when this record is verified.";
+        }
         document.getElementById("newAlumniProgram").value = item.program;
         document.getElementById("newAlumniEmployment").value = item.status;
         document.getElementById("alumniVerificationNotice").classList.add("hidden");
@@ -346,9 +362,13 @@
         const editId = document.getElementById("editAlumniId").value;
         const name = document.getElementById("newAlumniName").value.trim();
         const batch = document.getElementById("newAlumniBatch").value;
-        const studentId = document.getElementById("newAlumniStudentId").value.trim();
+        const idField = document.getElementById("newAlumniStudentId");
+        const studentId = idField.value.trim();
         const program = document.getElementById("newAlumniProgram").value.trim();
         const status = document.getElementById("newAlumniEmployment").value;
+        const payload = { name, batch, program, status };
+        /* The Alumni ID is only sent while it is still editable (unverified records). */
+        if (!idField.readOnly) payload.studentId = studentId;
         if (!name) {
             showToast("Name is required.", "error");
             return;
@@ -362,13 +382,13 @@
             if (editId) {
                 await SAA_API.request(`/api/alumni/${editId}`, {
                     method: "PUT",
-                    body: JSON.stringify({ name, batch, program, status, studentId })
+                    body: JSON.stringify(payload)
                 });
                 showToast(`Updated record for ${name}.`, "success");
             } else {
                 await SAA_API.request("/api/alumni", {
                     method: "POST",
-                    body: JSON.stringify({ name, batch, program, status, studentId })
+                    body: JSON.stringify(payload)
                 });
                 showToast(`Added ${name}. Verify the school record before account activation.`, "success");
             }

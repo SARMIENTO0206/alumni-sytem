@@ -39,6 +39,22 @@ const [admin, registrar, alumni] = await Promise.all([
   login('alumni', 'alumni123')
 ]);
 
+/* Account codes identify the account; the Alumni ID belongs to the alumni record. */
+assert(/^ADM-\d{4}$/.test(String(admin.user.userCode || '')), 'Admin accounts carry an ADM- account code');
+assert(/^REG-\d{4}$/.test(String(registrar.user.userCode || '')), 'Registrar accounts carry a REG- account code');
+assert(/^ALU-\d{4}$/.test(String(alumni.user.userCode || '')), 'Alumni accounts carry an ALU- account code');
+assert(!String(admin.user.studentId || '').trim() && !String(registrar.user.studentId || '').trim(), 'Admin and Registrar accounts must not carry an alumni-style ID');
+const adminCreatedStaff = await req(admin.token, 'POST', '/api/users', {
+  username: `registrar.test.${Date.now()}`,
+  password: 'registrar456',
+  name: 'Test Registrar Account',
+  role: 'staff',
+  email: 'registrar.test@stagnes.edu.ph'
+});
+assert(adminCreatedStaff.status === 201 && /^REG-\d{4}$/.test(String(adminCreatedStaff.data.user.userCode || '')), 'Admin-created Registrar accounts are issued a REG- account code');
+assert(!String(adminCreatedStaff.data.user.studentId || '').trim(), 'staff accounts never store a school record number');
+await req(admin.token, 'DELETE', `/api/users/${adminCreatedStaff.data.user.id}`);
+
 const communicationRecipients = await req(registrar.token, 'GET', '/api/notifications/communications/recipients');
 assert(communicationRecipients.status === 200 && communicationRecipients.data.recipients.length >= 1, 'Registrar can load the active Alumni recipient list');
 const alumniCommunicationRecipients = await req(alumni.token, 'GET', '/api/notifications/communications/recipients');
@@ -202,6 +218,18 @@ const adminVerifyRecord = await req(admin.token, 'POST', `/api/alumni/${otherRec
 assert(adminVerifyRecord.status === 403, 'only Registrar staff can verify manually added alumni records');
 const registrarVerifyRecord = await req(registrar.token, 'POST', `/api/alumni/${otherRecordId}/verify`);
 assert(registrarVerifyRecord.status === 200 && registrarVerifyRecord.data.alumni.verificationStatus === 'Verified', 'Registrar can verify a school-matched alumni record');
+assert(registrarVerifyRecord.data.alumni.studentId === `TRACKING-TEST-${testTimestamp}`, 'verification keeps a school-issued record number as the Alumni ID');
+const unsignedRecord = await req(registrar.token, 'POST', '/api/alumni', {
+  name: `Unsigned Alumni ${testTimestamp}`,
+  batch: '2024',
+  program: 'STEM'
+});
+assert(unsignedRecord.status === 201 && !String(unsignedRecord.data.alumni.studentId || '').trim(), 'a record without a school number stays unassigned until verification');
+const issuedAlumniId = await req(registrar.token, 'POST', `/api/alumni/${unsignedRecord.data.alumni.id}/verify`);
+assert(issuedAlumniId.status === 200 && /^SAA-2024-\d{4}$/.test(String(issuedAlumniId.data.alumni.studentId || '')), 'verification issues the official SAA-YYYY-NNNN Alumni ID');
+const editIssuedAlumniId = await req(registrar.token, 'PUT', `/api/alumni/${unsignedRecord.data.alumni.id}`, { studentId: 'SAA-2024-9999' });
+assert(editIssuedAlumniId.status === 409, 'the issued Alumni ID cannot be edited after verification');
+await req(admin.token, 'POST', `/api/alumni/${unsignedRecord.data.alumni.id}/archive`);
 const staffArchiveRecord = await req(registrar.token, 'POST', `/api/alumni/${otherRecordId}/archive`);
 assert(staffArchiveRecord.status === 403, 'only Admin can archive alumni records');
 const reportsBeforeArchive = await req(admin.token, 'GET', '/api/reports/summary');

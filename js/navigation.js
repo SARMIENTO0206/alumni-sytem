@@ -486,7 +486,7 @@
         const name = currentUser.name || match.name || "Alumni";
         const program = currentUser.program || match.program || "—";
         const batch = currentUser.batch || match.batch || "—";
-        const studentId = currentUser.studentId || match.studentId || "—";
+        const studentId = match.studentId || currentUser.studentId || "—";
         const photoUrl = currentUser.photoUrl || JSON.parse(localStorage.getItem("alumniProfile") || "{}").photoUrl || "";
 
         document.getElementById("idCardName").textContent = name;
@@ -619,8 +619,12 @@
         setVal("profileEmail", user.email || "");
         setVal("profileContact", user.contact || alumni.contact || "");
         setVal("profileAddress", user.address || alumni.address || "");
-        setVal("profileAlumniId", user.studentId || alumni.studentId || "");
-        setVal("profileStaffId", user.staffId || user.employeeId || user.studentId || "");
+        /* Alumni ID = official record ID issued on verification. The account code
+           (ADM-/REG-/ALU-) identifies a staff or admin account instead. */
+        setVal("profileAlumniId", alumni.studentId || user.studentId || "");
+        setVal("profileStaffId", user.userCode || "");
+        const staffIdLabel = document.getElementById("profileStaffIdLabel");
+        if (staffIdLabel) staffIdLabel.textContent = isAdminRole() ? "Admin ID" : "Staff ID";
         setVal("profileBatch", user.batch || alumni.batch || "");
         setVal("profileProgram", user.program || alumni.program || "");
         setVal("profileTrack", user.strand || user.track || alumni.strand || alumni.track || "");

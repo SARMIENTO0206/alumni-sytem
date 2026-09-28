@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { createHash, randomInt } from 'node:crypto';
-import { db, createSession, destroySession, destroyUserSessions, mapUser, mapAlumni, writeAudit, writeLoginLog, linkAlumniAccount } from '../db.js';
+import { db, createSession, destroySession, destroyUserSessions, generateUserCode, mapUser, mapAlumni, writeAudit, writeLoginLog, linkAlumniAccount } from '../db.js';
 import { isAlumni, requireAuth } from '../auth.js';
 import { normalizePhMobile } from '../phone.js';
 import { sendMail } from '../mail.js';
@@ -178,8 +178,8 @@ router.post('/register', (req, res) => {
     return res.status(400).json({ error: 'Username, password and full name are required.' });
   }
   const normalizedStudentId = String(studentId || '').trim();
-  if (!normalizedStudentId || !batch || !educationLevel || !email) {
-    return res.status(400).json({ error: 'Student ID, graduation year, educational level and email are required.' });
+  if (!batch || !educationLevel || !email) {
+    return res.status(400).json({ error: 'Graduation year, educational level and email are required.' });
   }
   if (!['JHS', 'SHS'].includes(educationLevel)) {
     return res.status(400).json({ error: 'Select Junior High School or Senior High School.' });
@@ -220,10 +220,14 @@ router.post('/register', (req, res) => {
   if (exists) return res.status(409).json({ error: 'Username already exists. Please pick a unique username.' });
 
   const avatar = String(name).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const duplicateStudentId = db.prepare(
-    `SELECT id FROM users WHERE LOWER(student_id) = LOWER(?) AND TRIM(student_id) != ''`
-  ).get(normalizedStudentId);
-  if (duplicateStudentId) return res.status(409).json({ error: 'This Student ID is already associated with an account. Contact the Registrar if you need help.' });
+  /* The school record number is optional: the official Alumni ID is issued by
+     the Registrar verification step, not self-declared at registration. */
+  if (normalizedStudentId) {
+    const duplicateStudentId = db.prepare(
+      `SELECT id FROM users WHERE LOWER(student_id) = LOWER(?) AND TRIM(student_id) != ''`
+    ).get(normalizedStudentId);
+    if (duplicateStudentId) return res.status(409).json({ error: 'This school record number is already associated with an account. Contact the Registrar if you need help.' });
+  }
 
   let mobile = '';
   try {
@@ -233,8 +237,8 @@ router.post('/register', (req, res) => {
   }
 
   const info = db.prepare(
-    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status, school, education_level, grade_completed, track, strand, lrn, address)
-     VALUES (?, ?, 'alumni', ?, ?, ?, ?, ?, ?, '', ?, ?, 'Pending Verification', ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status, school, education_level, grade_completed, track, strand, lrn, address, user_code)
+     VALUES (?, ?, 'alumni', ?, ?, ?, ?, ?, ?, '', ?, ?, 'Pending Verification', ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     String(username).trim(),
     bcrypt.hashSync(String(password), 10),
@@ -252,7 +256,8 @@ router.post('/register', (req, res) => {
     educationLevel === 'SHS' ? track : '',
     strand || '',
     lrn || '',
-    address || ''
+    address || '',
+    generateUserCode('alumni')
   );
 
   const user = mapUser(db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid));

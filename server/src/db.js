@@ -252,6 +252,10 @@ export function initDb() {
   ensureColumn('users', 'lrn', "lrn TEXT DEFAULT ''");
   ensureColumn('users', 'address', "address TEXT DEFAULT ''");
   ensureColumn('users', 'alumni_id', 'alumni_id INTEGER DEFAULT 0');
+  /* Account identifier per role: ADM-0001 / REG-0001 / ALU-0001. The official
+     Alumni ID lives on the alumni record and is issued after verification. */
+  ensureColumn('users', 'user_code', "user_code TEXT DEFAULT ''");
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_user_code ON users (user_code) WHERE user_code <> ''");
   ensureColumn('reunions', 'education_level', "education_level TEXT DEFAULT ''");
   ensureColumn('reunions', 'batch_year', "batch_year TEXT DEFAULT ''");
   ensureColumn('reunions', 'strand', "strand TEXT DEFAULT ''");
@@ -530,6 +534,8 @@ export function initDb() {
 
   ensureSystemUsers();
   migrateRegistrarToStaff();
+  backfillUserCodes();
+  clearStaffPseudoIds();
   clearLegacyDemoRecords();
   linkOrphanAlumniAccounts();
 }
@@ -559,6 +565,7 @@ export function mapUser(row) {
     title: row.title,
     avatar: row.avatar,
     studentId: row.student_id,
+    userCode: row.user_code || '',
     alumniId: row.alumni_id || 0,
     batch: row.batch,
     program: row.program,
@@ -653,20 +660,70 @@ export function writeAudit(user, action, entity, entityId, detail) {
 /* ------------------------------------------------------------------ *
  * System users only. No fake alumni / events / requests are inserted.
  * ------------------------------------------------------------------ */
+/**
+ * ------------------------------------------------------------------
+ * Account codes and the official Alumni ID
+ * ------------------------------------------------------------------
+ * Every account gets one code that identifies the account itself:
+ *   ADM-0001  Administrator
+ *   REG-0001  Registrar / Staff
+ *   ALU-0001  Alumni account
+ * The official Alumni ID (SAA-<graduation year>-<sequence>) belongs to the
+ * alumni *record* and is issued only after Registrar verification, so a staff
+ * or admin account never carries an alumni-style ID.
+ */
+const USER_CODE_PREFIX = { admin: 'ADM', staff: 'REG', alumni: 'ALU' };
+
+export function userCodePrefix(role) {
+  const normalized = role === 'registrar' ? 'staff' : String(role || '').toLowerCase();
+  return USER_CODE_PREFIX[normalized] || 'USR';
+}
+
+/** Next free account code for a role, e.g. REG-0003. */
+export function generateUserCode(role) {
+  const prefix = userCodePrefix(role);
+  const rows = db.prepare('SELECT user_code FROM users WHERE user_code LIKE ?').all(`${prefix}-%`);
+  let highest = 0;
+  for (const row of rows) {
+    const match = String(row.user_code || '').match(/(\d+)\s*$/);
+    if (match) highest = Math.max(highest, Number(match[1]));
+  }
+  return `${prefix}-${String(highest + 1).padStart(4, '0')}`;
+}
+
+/** Assigns account codes to accounts that predate the user_code column. */
+function backfillUserCodes() {
+  const missing = db.prepare(
+    "SELECT id, role FROM users WHERE TRIM(COALESCE(user_code, '')) = '' ORDER BY id"
+  ).all();
+  if (!missing.length) return;
+  const update = db.prepare('UPDATE users SET user_code = ? WHERE id = ?');
+  for (const row of missing) update.run(generateUserCode(row.role), row.id);
+  console.log(`[db] Assigned account codes (ADM/REG/ALU) to ${missing.length} existing account(s).`);
+}
+
+/** Staff/Admin accounts must not keep an alumni-style ID from the old scheme. */
+function clearStaffPseudoIds() {
+  const info = db.prepare(
+    "UPDATE users SET student_id = '' WHERE role IN ('admin','staff','registrar') AND student_id LIKE 'SAA-%'"
+  ).run();
+  if (info.changes) console.log(`[db] Removed ${info.changes} alumni-style ID(s) from staff/admin accounts.`);
+}
+
 function ensureSystemUsers() {
   const count = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
   if (count > 0) return;
 
   const hash = (pw) => bcrypt.hashSync(pw, 10);
   const insertUser = db.prepare(
-    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, user_code)
+     VALUES (?, ?, ?, ?, ?, ?, '', '', ?, '', ?, '', ?)`
   );
 
-  insertUser.run('admin', hash('admin123'), 'admin', 'Administrator', 'System Administrator', 'AD', 'SAA-ADMIN-01', '', 'Administration', '', 'admin@stagnes.edu.ph', '');
-  insertUser.run('staff', hash('staff123'), 'staff', 'Staff Member', 'Staff', 'ST', 'SAA-STAFF-01', '', 'Operations', '', 'staff@stagnes.edu.ph', '');
-  insertUser.run('registrar', hash('registrar123'), 'staff', 'Registrar Staff', 'Staff', 'RG', 'SAA-STAFF-02', '', 'Registrar', '', 'registrar@stagnes.edu.ph', '');
-  insertUser.run('alumni', hash('alumni123'), 'alumni', 'Alumni User', 'Alumni', 'AL', '', '', '', '', '', '');
+  insertUser.run('admin', hash('admin123'), 'admin', 'Administrator', 'System Administrator', 'AD', 'Administration', 'admin@stagnes.edu.ph', 'ADM-0001');
+  insertUser.run('staff', hash('staff123'), 'staff', 'Staff Member', 'Staff', 'ST', 'Operations', 'staff@stagnes.edu.ph', 'REG-0001');
+  insertUser.run('registrar', hash('registrar123'), 'staff', 'Registrar Staff', 'Staff', 'RG', 'Registrar', 'registrar@stagnes.edu.ph', 'REG-0002');
+  insertUser.run('alumni', hash('alumni123'), 'alumni', 'Alumni User', 'Alumni', 'AL', '', '', 'ALU-0001');
   console.log('[db] Created system login accounts only. Module tables were left empty.');
 }
 
@@ -677,7 +734,7 @@ function migrateRegistrarToStaff() {
     const hash = bcrypt.hashSync('staff123', 10);
     db.prepare(
       `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status)
-       VALUES (?, ?, 'staff', 'Staff Member', 'Staff', 'ST', 'SAA-STAFF-01', '', 'Operations', '', 'staff@stagnes.edu.ph', '', 'Active')`
+       VALUES (?, ?, 'staff', 'Staff Member', 'Staff', 'ST', '', '', 'Operations', '', 'staff@stagnes.edu.ph', '', 'Active')`
     ).run('staff', hash);
     console.log('[db] Added staff login (staff / staff123).');
   }
@@ -686,7 +743,7 @@ function migrateRegistrarToStaff() {
     const hash = bcrypt.hashSync('registrar123', 10);
     db.prepare(
       `INSERT INTO users (username, password_hash, role, name, title, avatar, student_id, batch, program, photo_url, email, contact, status)
-       VALUES (?, ?, 'staff', 'Registrar Staff', 'Staff', 'RG', 'SAA-STAFF-02', '', 'Registrar', '', 'registrar@stagnes.edu.ph', '', 'Active')`
+       VALUES (?, ?, 'staff', 'Registrar Staff', 'Staff', 'RG', '', '', 'Registrar', '', 'registrar@stagnes.edu.ph', '', 'Active')`
     ).run('registrar', hash);
     console.log('[db] Restored registrar login (registrar / registrar123) with staff access.');
   }
