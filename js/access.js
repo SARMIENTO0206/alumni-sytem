@@ -436,19 +436,20 @@ async function loadUsersView() {
     const tbody = document.getElementById("usersTableBody");
     if (!tbody) return;
     if (!isAdminRole()) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-rose-600">Administrator access required.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-rose-600">Administrator access required.</td></tr>`;
         return;
     }
     try {
         const data = await SAA_API.request("/api/users");
         const users = data.users || [];
         if (!users.length) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-400">No user accounts found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-slate-400">No user accounts found.</td></tr>`;
             return;
         }
         tbody.innerHTML = users.map((u) => `
             <tr>
                 <td class="font-bold">${escapeHtml(u.name)}</td>
+                <td class="font-mono text-xs text-slate-500">${escapeHtml(u.userCode || "—")}</td>
                 <td>${escapeHtml(u.username)}</td>
                 <td>${escapeHtml(roleLabel(u.role))}</td>
                 <td>${escapeHtml(u.email || "—")}</td>
@@ -461,7 +462,7 @@ async function loadUsersView() {
         `).join("");
         window._saaUsers = users;
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-rose-600">${escapeHtml(err.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-rose-600">${escapeHtml(err.message)}</td></tr>`;
     }
 }
 
