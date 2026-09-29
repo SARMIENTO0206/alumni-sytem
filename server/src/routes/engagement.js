@@ -627,7 +627,11 @@ router.get('/reunions/target-options', requireRole('admin', 'staff'), (req, res)
        AND batch GLOB '[0-9][0-9][0-9][0-9]'
      ORDER BY CAST(batch AS INTEGER) DESC`
   ).all();
-  const years = batchRows.map((row) => row.batch);
+  const currentYear = new Date().getFullYear();
+  const years = [...new Set([
+    ...batchRows.map((row) => row.batch),
+    ...Array.from({ length: currentYear - 1959 }, (_, offset) => String(currentYear - offset))
+  ])].sort((firstYear, secondYear) => Number(secondYear) - Number(firstYear));
   const strands = [...new Set([
     'STEM', 'ABM', 'HUMSS', 'GAS', 'TVL',
     ...db.prepare(
