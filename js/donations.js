@@ -37,7 +37,6 @@
         const body = document.getElementById("donationRecordsBody");
         if (!body) return;
         const query = (document.getElementById("donationSearch")?.value || "").trim().toLowerCase();
-        const levelFilter = document.getElementById("donationLevelFilter")?.value || "";
         const statusFilter = document.getElementById("donationStatusFilter")?.value || "";
         const role = currentUser?.role;
         const isRegistrar = role === "staff" || role === "registrar";
@@ -49,7 +48,6 @@
                     .some((value) => String(value || "").toLowerCase().includes(query))
             );
         }
-        if (levelFilter) records = records.filter((donation) => donation.educationLevel === levelFilter);
         if (statusFilter && isRegistrar) {
             records = records.filter((donation) =>
                 statusFilter === "matched" ? donation.identityMatched : !donation.identityMatched
@@ -202,11 +200,6 @@
             showToast("There are no donation records to export.", "warning");
             return;
         }
-        const csvCell = (value) => {
-            let text = String(value == null ? "" : value);
-            if (/^[=+\-@]/.test(text)) text = `'${text}`;
-            return `"${text.replace(/"/g, '""')}"`;
-        };
         const lines = [
             ["Donor", "Student ID", "Level", "Batch", "Amount PHP", "Date", "Payment Status", "Reference"].map(csvCell).join(","),
             ...records.map((donation) => [
@@ -333,10 +326,8 @@
         document.getElementById("exportDonationReportButton")?.classList.toggle("hidden", !isAdmin);
         const recordsDescription = document.getElementById("donationRecordsDescription");
         const search = document.getElementById("donationSearch");
-        const levelFilter = document.getElementById("donationLevelFilter");
         const statusFilter = document.getElementById("donationStatusFilter");
         if (search) search.oninput = renderDonationRecords;
-        if (levelFilter) levelFilter.onchange = renderDonationRecords;
         if (statusFilter) {
             statusFilter.onchange = renderDonationRecords;
             const isRegistrar = role === "staff" || role === "registrar";

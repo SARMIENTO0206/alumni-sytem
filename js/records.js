@@ -291,7 +291,6 @@
     }
 
     function exportToCSV() {
-        const csvCell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
         const rows = [
             ["ID", "Student ID", "Name", "Batch Year", "Program/Course", "Employment Status", "Record Status"],
             ...alumniList.map((item) => [
@@ -1233,10 +1232,11 @@
 
     function exportAcademicRecordsCSV() {
         const source = academicRecordsSource();
-        let csv = "Student ID,Full Name,Degree Program,Batch,GWA,Honors,Status\n";
-        source.forEach(r => {
-            csv += `"${r.studentId}","${r.name}","${r.program}","${r.batch}","${r.gwa}","${r.honors}","${r.status}"\n`;
-        });
+        const rows = [
+            ["Student ID", "Full Name", "Degree Program", "Batch", "GWA", "Honors", "Status"],
+            ...source.map((r) => [r.studentId, r.name, r.program, r.batch, r.gwa, r.honors, r.status])
+        ];
+        const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");

@@ -346,29 +346,3 @@
         }
     }
 
-    function renderDashboardUpcomingEvents() {
-        const box = document.getElementById("dashboardUpcomingEvents");
-        if (!box) return;
-        if (!eventsList.length) {
-            box.innerHTML = '<p class="text-xs text-slate-400 font-medium py-6 text-center">No upcoming events yet.</p>';
-            return;
-        }
-        box.innerHTML = eventsList.slice(0, 4).map((ev) => {
-            const dateBits = String(ev.date || "").split(/[\s,•]+/).filter(Boolean);
-            const month = (dateBits[0] || "EVT").slice(0, 3);
-            const day = dateBits[1] || "";
-            return `
-            <button type="button" onclick="openDashboardModule('events')" class="flex items-center p-3.5 border border-slate-100 rounded-xl bg-slate-50/60 hover:bg-pink-50/40 transition w-full text-left">
-                <div class="bg-pink-100 text-brand-magenta font-extrabold rounded-lg p-2.5 text-center min-w-[52px]">
-                    <p class="text-[10px] uppercase tracking-wider">${month}</p>
-                    <p class="text-lg leading-tight">${day || "—"}</p>
-                </div>
-                <div class="ml-4 min-w-0">
-                    <h4 class="font-bold text-slate-800 text-xs sm:text-sm truncate">${ev.title || "Event"}</h4>
-                    <p class="text-[11px] text-slate-400 font-medium mt-0.5">
-                        <i class="fa-regular fa-clock mr-1"></i> ${ev.date || ""} ${ev.location ? "| " + ev.location : ""}
-                    </p>
-                </div>
-            </button>`;
-        }).join("");
-    }

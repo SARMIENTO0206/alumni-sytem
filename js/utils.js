@@ -1,4 +1,15 @@
-/* utils.js - Shared UI helpers: toasts, storage sync, DOM formatters. */
+/* utils.js - Shared UI helpers: toasts, CSV cells, storage sync, DOM formatters. */
+
+    /**
+     * CSV cell shared by every export: quotes the value, doubles embedded quotes and
+     * neutralises the spreadsheet formula prefixes (=, +, -, @) so an exported file
+     * can never carry an injection payload into Excel or Google Sheets.
+     */
+    function csvCell(value) {
+        let text = String(value == null ? "" : value);
+        if (/^[=+\-@]/.test(text)) text = `'${text}`;
+        return `"${text.replace(/"/g, '""')}"`;
+    }
 
 /* ------------------------------------------------------------------------- */
 /* Source: index.html lines 3088-3116 */

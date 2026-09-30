@@ -123,7 +123,6 @@
             : null;
         document.getElementById("reunionModalTitle").textContent = reunion ? "Edit Reunion Draft" : "Create Batch Reunion";
         if (reunion) {
-            document.getElementById("reunionEducationLevel").value = reunion.educationLevel || "";
             document.getElementById("reunionLabel").value = reunion.title || "";
             document.getElementById("reunionDate").value = reunion.date || "";
             document.getElementById("reunionStartTime").value = reunion.startTime || "";
@@ -144,16 +143,16 @@
     }
 
     async function updateReunionTargetOptions(selectedBatchYear = "", selectedStrand = "") {
-        const educationLevel = document.getElementById("reunionEducationLevel").value;
+        /* SHS-only system: level is fixed, only batch/strand vary. */
+        const educationLevel = "SHS";
         const batchSelect = document.getElementById("reunionBatch");
         const strandField = document.getElementById("reunionStrandField");
         const strandSelect = document.getElementById("reunionStrand");
         strandField.hidden = false;
-        batchSelect.replaceChildren(new Option(educationLevel ? "Loading batches..." : "Select level first...", ""));
+        batchSelect.replaceChildren(new Option("Loading batches...", ""));
         batchSelect.disabled = true;
         reunionTargetCounts = { eligible: 0, withEmail: 0, withMobile: 0 };
         updateReunionSummaryText();
-        if (!educationLevel) return;
 
         const requestId = ++reunionTargetRequest;
         try {
@@ -177,25 +176,24 @@
     }
 
     function updateReunionSummaryText() {
-        const educationLevel = document.getElementById("reunionEducationLevel").value;
         const batchYear = document.getElementById("reunionBatch").value;
         const strand = document.getElementById("reunionStrand").value;
         const levelLabel = "Senior High School";
         document.getElementById("reunionTargetSummary").textContent = batchYear
             ? `${levelLabel} · Batch ${batchYear}${strand ? ` · ${strand}` : " · All Strands"}`
-            : "Choose an educational level and batch to preview recipients.";
+            : "Choose a batch to preview recipients.";
         document.getElementById("reunionRecipientCounts").textContent =
             `Eligible alumni: ${reunionTargetCounts.eligible} · With email: ${reunionTargetCounts.withEmail} · With mobile: ${reunionTargetCounts.withMobile}`;
     }
 
     async function updateReunionTargetPreview() {
-        const educationLevel = document.getElementById("reunionEducationLevel").value;
+        const educationLevel = "SHS";
         const batchYear = document.getElementById("reunionBatch").value;
         const strand = document.getElementById("reunionStrand").value;
         const requestId = ++reunionTargetRequest;
         reunionTargetCounts = { eligible: 0, withEmail: 0, withMobile: 0 };
         updateReunionSummaryText();
-        if (!educationLevel || !batchYear) return;
+        if (!batchYear) return;
 
         try {
             const query = new URLSearchParams({ educationLevel, batchYear, strand });
@@ -238,7 +236,7 @@
                 showToast("No verified alumni match the selected target batch.", "warning");
                 return;
             }
-            const levelLabel = document.getElementById("reunionEducationLevel").selectedOptions[0].textContent;
+            const levelLabel = "Senior High School (SHS)";
             const batchYear = document.getElementById("reunionBatch").value;
             const strand = document.getElementById("reunionStrand").value;
             const audienceLabel = `${levelLabel} Batch ${batchYear}${strand ? ` ${strand}` : ""}`;
@@ -259,7 +257,7 @@
                 method: "POST",
                 body: JSON.stringify({
                     title,
-                    educationLevel: document.getElementById("reunionEducationLevel").value,
+                    educationLevel: "SHS",
                     batchYear,
                     strand: document.getElementById("reunionStrand").value,
                     date,
@@ -341,20 +339,20 @@
         if (!r) return;
 
         let csv = "Batch Reunion Attendance Report\n";
-        csv += `Reunion,${r.batch}\n`;
-        csv += `Date,${r.date}\n`;
-        csv += `Venue,${r.venue}\n`;
-        csv += `Coordinator,${r.coordinators}\n\n`;
+        csv += [csvCell("Reunion"), csvCell(r.batch)].join(",") + "\n";
+        csv += [csvCell("Date"), csvCell(r.date)].join(",") + "\n";
+        csv += [csvCell("Venue"), csvCell(r.venue)].join(",") + "\n";
+        csv += [csvCell("Coordinator"), csvCell(r.coordinators)].join(",") + "\n\n";
         csv += "Alumni Name,Status,Attendance\n";
 
         (r.attendees || []).forEach(a => {
-            csv += `"${a.name}","${a.confirmed ? 'CONFIRMED' : 'PENDING'}","${a.present ? 'PRESENT' : 'ABSENT'}"\n`;
+            csv += [a.name, a.confirmed ? "CONFIRMED" : "PENDING", a.present ? "PRESENT" : "ABSENT"].map(csvCell).join(",") + "\n";
         });
 
         const presentCount = (r.attendees || []).filter(a => a.present).length;
-        csv += `\nTotal Confirmed,${(r.attendees || []).filter(a => a.confirmed).length}\n`;
-        csv += `Total Present,${presentCount}\n`;
-        csv += `Attendance Rate,${(r.attendees || []).length ? Math.round((presentCount / r.attendees.length) * 100) : 0}%\n`;
+        csv += "\n" + [csvCell("Total Confirmed"), csvCell((r.attendees || []).filter(a => a.confirmed).length)].join(",") + "\n";
+        csv += [csvCell("Total Present"), csvCell(presentCount)].join(",") + "\n";
+        csv += [csvCell("Attendance Rate"), csvCell(`${r.attendees.length ? Math.round((presentCount / r.attendees.length) * 100) : 0}%`)].join(",") + "\n";
 
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);

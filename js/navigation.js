@@ -457,34 +457,6 @@
     function updateStatCounters() {
         if (typeof renderRoleDashboard === "function") renderRoleDashboard();
         else if (typeof renderDashboardStats === "function") renderDashboardStats();
-        if (typeof renderDashboardActivity === "function") renderDashboardActivity();
-    }
-
-    function renderDashboardActivity() {
-        const box = document.getElementById("recentActivityList");
-        if (!box) return;
-        const items = [];
-        if (alumniList[0]) items.push({ title: "Latest alumni record", detail: alumniList[0].name + (alumniList[0].batch ? ` (Batch ${alumniList[0].batch})` : "") });
-        if (transcriptRequests[0]) items.push({ title: "Latest transcript request", detail: transcriptRequests[0].name + " • " + (transcriptRequests[0].status || "") });
-        const latestEmployment = alumniList.find((alumnus) => ["Employed", "Self-employed"].includes(alumnus.status));
-        if (latestEmployment) items.push({ title: "Latest alumni employment update", detail: latestEmployment.name + " • " + (latestEmployment.company || latestEmployment.status) });
-        if (eventsList[0]) items.push({ title: "Latest event", detail: eventsList[0].title });
-
-        if (!items.length) {
-            box.innerHTML = `<p class="text-xs text-slate-400 font-medium py-6 text-center">No activity yet. Add alumni, events, or requests to see them here.</p>`;
-            return;
-        }
-        box.innerHTML = items.map(item => `
-            <div class="flex items-start space-x-3">
-                <div class="w-8 h-8 rounded-full bg-slate-50 text-brand-magenta flex items-center justify-center flex-shrink-0 text-xs font-bold">
-                    <i class="fa-regular fa-bell"></i>
-                </div>
-                <div>
-                    <p class="font-bold text-slate-800 text-xs">${item.title}</p>
-                    <p class="text-[11px] text-slate-500 font-medium">${item.detail}</p>
-                </div>
-            </div>
-        `).join("");
     }
 
     /* Digital Alumni ID */

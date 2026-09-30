@@ -1368,10 +1368,7 @@
                     <div data-tracking-role="staff" class="app-card p-5">
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                             <div>
-                                <label class="form-label" for="trackingEducationLevelFilter">Educational Level</label>
-                                <select id="trackingEducationLevelFilter" class="form-select text-xs">
-                                    <option value="SHS" selected>Senior High School (SHS)</option>
-                                </select>
+                                <input type="hidden" id="trackingEducationLevelFilter" value="SHS">
                             </div>
                             <div>
                                 <label class="form-label" for="trackingBatchFilter">Graduation Batch</label>
@@ -1792,11 +1789,9 @@
                                 <i class="fa-solid fa-file-csv mr-1"></i> Export Report
                             </button>
                         </div>
-                        <div class="grid sm:grid-cols-3 gap-3 mb-4">
+                        <div class="grid sm:grid-cols-2 gap-3 mb-4">
                             <label class="sr-only" for="donationSearch">Search donations</label>
                             <input id="donationSearch" type="search" placeholder="Search donor or student ID" class="form-input text-xs">
-                            <label class="sr-only" for="donationLevelFilter">Filter by educational level</label>
-                            <select id="donationLevelFilter" class="form-select text-xs"><option value="">All Levels</option><option value="SHS">Senior High School (SHS)</option></select>
                             <label id="donationStatusFilterLabel" class="sr-only" for="donationStatusFilter">Filter by payment status</label>
                             <select id="donationStatusFilter" class="form-select text-xs"><option value="">All Payment Statuses</option><option value="verified">Verified</option><option value="pending">Pending</option><option value="recorded">Recorded</option></select>
                         </div>
@@ -2924,13 +2919,7 @@
 
                 <section class="space-y-3 border-t border-slate-100 pt-3">
                     <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Educational Background</h4>
-                    <div>
-                        <label class="form-label" for="regEducationLevel">Educational Level *</label>
-                        <select id="regEducationLevel" required onchange="updateRegistrationEducationFields()" class="form-select text-xs">
-                            <option value="SHS" selected>Senior High School (SHS)</option>
-                        </select>
-                    </div>
-                    <div id="regJhsFields" class="hidden"></div>
+                    <input type="hidden" id="regEducationLevel" value="SHS">
                     <div id="regShsFields">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -3456,17 +3445,12 @@
             <form onsubmit="saveNewReunion(event)" class="space-y-4">
                 <section class="space-y-3">
                     <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Target Alumni</h4>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="form-label" for="reunionEducationLevel">Educational Level <span class="text-rose-600">*</span></label>
-                            <select id="reunionEducationLevel" required class="form-select text-xs" onchange="updateReunionTargetOptions()">
-                                <option value="SHS" selected>Senior High School (SHS)</option>
-                            </select>
-                        </div>
+                    <div class="grid grid-cols-1 gap-3">
+                        <input type="hidden" id="reunionEducationLevel" value="SHS">
                         <div>
                             <label class="form-label" for="reunionBatch">Target Batch Year <span class="text-rose-600">*</span></label>
                             <select id="reunionBatch" required class="form-select text-xs" disabled onchange="updateReunionTargetPreview()">
-                                <option value="">Select level first...</option>
+                                <option value="">Loading batches...</option>
                             </select>
                         </div>
                     </div>

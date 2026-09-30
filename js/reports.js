@@ -67,10 +67,9 @@
     }
 
     function updateTrackingStrandFilter() {
-        const level = document.getElementById("trackingEducationLevelFilter")?.value || "";
+        /* SHS-only tracking: the strand filter is always enabled. */
         const wrap = document.getElementById("trackingStrandFilterWrap");
         const strand = document.getElementById("trackingStrandFilter");
-        const disabled = false;
         if (wrap) wrap.classList.remove("opacity-50");
         if (strand) {
             strand.disabled = false;
@@ -383,14 +382,13 @@
     function exportGraduateTrackingReport() {
         const rows = trackingAlumni();
         const headers = ["Alumni", "Education Level", "Batch Year", "SHS Strand", "Current Status", "Industry", "Employment Type", "School / Provider", "Course / Training", "Review Status", "Last Updated"];
-        const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
-        let csv = headers.map(escapeCsv).join(",") + "\n";
+        let csv = headers.map(csvCell).join(",") + "\n";
         rows.forEach(a => {
             csv += [
                 a.name, a.educationLevel || "Unknown", a.batch, a.strand, a.status || "No Data",
                 a.industry, a.employmentType, a.educationSchool, a.educationProgram,
                 a.trackingReviewStatus || "Pending", a.lastUpdated || ""
-            ].map(escapeCsv).join(",") + "\n";
+            ].map(csvCell).join(",") + "\n";
         });
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
@@ -789,11 +787,6 @@
             if (title) title.textContent = "Graduate Tracking Analytics";
             if (description) description.textContent = "Monitor SHS education pathways and employment outcomes.";
         }
-        const educationFilter = document.getElementById("trackingEducationLevelFilter");
-        if (educationFilter && !educationFilter.dataset.listenerAttached) {
-            educationFilter.addEventListener("change", updateTrackingStrandFilter);
-            educationFilter.dataset.listenerAttached = "true";
-        }
         populateTrackingFilters();
         renderTrackingRecordsTable();
         renderMyTrackingSummary();
@@ -988,8 +981,6 @@
         if (typeof renderAlumniTable === "function") renderAlumniTable();
         if (typeof updateReports === "function") updateReports();
         if (typeof updateRegistrarReports === "function") updateRegistrarReports();
-        if (typeof renderDashboardUpcomingEvents === "function") renderDashboardUpcomingEvents();
-        if (typeof renderDashboardActivity === "function") renderDashboardActivity();
         if (typeof renderEventsGrid === "function") renderEventsGrid();
         if (typeof renderReunionsGrid === "function") renderReunionsGrid();
         if (typeof renderJobsGrid === "function") renderJobsGrid();

@@ -46,7 +46,6 @@
                     if (typeof renderAlumniTable === "function") renderAlumniTable();
                     if (typeof updateStatCounters === "function") updateStatCounters();
                     if (typeof updateReports === "function") updateReports();
-                    if (typeof renderDashboardActivity === "function") renderDashboardActivity();
                 });
             }
         };
@@ -128,11 +127,10 @@
     }
 
     function updateRegistrationEducationFields() {
-        const shsFields = document.getElementById("regShsFields");
+        /* SHS-only system: track/strand fields are always required. */
         const trackSelect = document.getElementById("regTrack");
         const strandSelect = document.getElementById("regStrand");
 
-        if (shsFields) shsFields.classList.remove("hidden");
         if (trackSelect) trackSelect.required = true;
         if (strandSelect) strandSelect.required = true;
     }

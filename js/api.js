@@ -54,15 +54,6 @@
         }
     }
 
-    function logNotificationServerSide(payload) {
-        try {
-            apiRequest("/api/notifications", {
-                method: "POST",
-                body: JSON.stringify(payload)
-            }).catch(() => { /* offline / unreachable */ });
-        } catch (e) { /* ignore */ }
-    }
-
     async function refreshAllData() {
         if (!(await apiHealth())) return false;
         try {
@@ -122,7 +113,6 @@
         base: API_BASE,
         request: apiRequest,
         health: apiHealth,
-        logNotification: logNotificationServerSide,
         refreshAllData
     };
 })();
